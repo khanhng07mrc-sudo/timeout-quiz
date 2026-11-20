@@ -266,33 +266,33 @@ export function getWideStageCameraPreset(totalSeats: number = 4): CameraPreset {
 }
 
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
-  // Downstage left raking shot down the line of contestant podiums (Reference Image 7)
-  // Dynamically pulled back for 6 and 8 contestants so Seat 0 is comfortably in view.
+  // Frontal Direct Arc Shot facing the curved line of contestant podiums
+  // Dynamically pulled back for 6 and 8 contestants so all seats are directly visible without occlusion.
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   if (count >= 7) {
     return {
       id: 10,
       label: "Toàn Cảnh Bục Thí Sinh",
-      pos: [-4.60, 1.55, 5.80],
-      target: [-5.60, 1.25, -2.80],
-      fov: 38,
+      pos: [0.15, 2.35, 5.60],
+      target: [-4.60, 1.25, -2.10],
+      fov: 52,
     };
   }
   if (count >= 5) {
     return {
       id: 10,
       label: "Toàn Cảnh Bục Thí Sinh",
-      pos: [-4.40, 1.50, 5.20],
-      target: [-5.50, 1.25, -3.00],
-      fov: 36,
+      pos: [-0.10, 2.20, 5.10],
+      target: [-4.65, 1.25, -2.35],
+      fov: 46,
     };
   }
   return {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
-    pos: [-4.20, 1.45, 4.80],
-    target: [-5.40, 1.25, -3.20],
-    fov: 34,
+    pos: [-0.30, 2.05, 4.60],
+    target: [-4.80, 1.25, -2.60],
+    fov: 40,
   };
 }
 
@@ -328,8 +328,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     id: 3,
     label: "Bục MC & Cổng Lục Giác",
     // Coaxial direct eye-level frontal angle along MC desk normal, framing full MC desk, presenters & Hexagon Portal
-    pos: [2.30, 1.26, -3.94],
-    target: [3.12, 1.02, -7.16],
+    // Legacy baseline: pos: [2.30, 1.26, -3.94], target: [3.12, 1.02, -7.16]
+    pos: [2.18, 1.44, -3.55],
+    target: [3.12, 1.28, -7.16],
+    fov: 42,
   },
   4: {
     id: 4,
@@ -471,9 +473,9 @@ export const _introFloorFocusTarget = new THREE.Vector3(0.00, 0.188, -0.50);
 // Phase 2 (2.5s - 7.0s): Crane elevates and smoothly tilts up as cyan bloom opens, revealing both MCs at center background (Image 4)
 export const _introCraneUpPos = new THREE.Vector3(-1.20, 1.65, 4.20);
 export const _introCraneUpTarget = new THREE.Vector3(0.00, 1.25, 0.00);
-// Phase 3 (Center MC medium shot waist-up, zero feet in frame)
-export const _frontCenterMCPos = new THREE.Vector3(0.00, 1.38, 2.15);
-export const _frontCenterMCTarget = new THREE.Vector3(0.00, 1.38, 0.00);
+// Phase 3 (Center MC American shot waist-up, upper thighs, zero feet in frame)
+export const _frontCenterMCPos = new THREE.Vector3(0.00, 1.35, 2.75);
+export const _frontCenterMCTarget = new THREE.Vector3(0.00, 1.20, 0.00);
 // Aliases for backwards compatibility with existing references
 export const _introLowGroundPos = _introFloorFocusPos;
 export const _introLowGroundTarget = _introFloorFocusTarget;
@@ -607,7 +609,12 @@ export function CameraController({
         camera.position.copy(targetPos);
         camera.lookAt(targetLookAt);
       }
-      smoothPushRef.current = isSummarySeatCut ? 0.0 : pushInProgress;
+      if (transitionMode === "CUT" || prevCamAngleRef.current !== camAngle) {
+        smoothPushRef.current = 0.0;
+        questionZoomStartRef.current = 0;
+      } else {
+        smoothPushRef.current = isSummarySeatCut ? 0.0 : pushInProgress;
+      }
       prevCamAngleRef.current = camAngle;
       prevActiveSeatRef.current = activeSeat;
     }
@@ -619,12 +626,14 @@ export function CameraController({
     const isKdActive = qIdx != null && qIdx >= 0 && Boolean(questionRevealed);
     const isNewQuestion = isKdActive && (qIdx !== prevQIdxRef.current || !prevRevealedRef.current);
     const isSummarySeatCut = camAngle === 18 && prevActiveSeatRef.current !== activeSeat;
+    const isCamChanged = prevCamAngleRef.current !== camAngle;
 
     if (isNewQuestion) {
       prevQIdxRef.current = qIdx ?? -1;
       prevRevealedRef.current = Boolean(questionRevealed);
       const now = serverNow ? serverNow() : Date.now();
-      questionZoomStartRef.current = now;
+      // Guard question zoom so it only runs when isContestantCam is active
+      questionZoomStartRef.current = isContestantCam ? now : 0;
       // Snap reset to 1.0x (push = 0) immediately on frame 0 of the new question:
       // Eliminates the 0.5-1.0s backward damping jerk from 1.25x to 1.0x
       smoothPushRef.current = 0.0;
@@ -635,19 +644,21 @@ export function CameraController({
       prevActiveSeatRef.current = activeSeat;
       prevCamAngleRef.current = camAngle;
       smoothPushRef.current = 0.0;
+      questionZoomStartRef.current = 0;
       currentPos.current.copy(targetPos);
       currentTarget.current.copy(targetLookAt);
       camera.position.copy(targetPos);
       camera.lookAt(targetLookAt);
-    } else if (prevCamAngleRef.current !== camAngle) {
+    } else if (isCamChanged) {
       if (prevCamAngleRef.current === 29 && camAngle === 1 && transitionMode === "MORPH") {
         glideStartRef.current = serverNow ? serverNow() : Date.now();
       }
-      smoothPushRef.current = pushInProgress;
+      smoothPushRef.current = 0.0;
+      questionZoomStartRef.current = 0;
       prevCamAngleRef.current = camAngle;
       prevActiveSeatRef.current = activeSeat;
-    } else if (isKdActive && questionZoomStartRef.current > 0) {
-      // 60FPS smooth zoom-in over 7.5s (1.0x -> 1.25x), holding firmly at 1.0 without looping
+    } else if (isKdActive && isContestantCam && questionZoomStartRef.current > 0) {
+      // 60FPS smooth zoom-in over 7.5s (1.0x -> 1.12x), holding firmly at 1.0 without looping
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = Math.max(0, (now - questionZoomStartRef.current) / 1000);
       const targetKdPush = Math.min(1.0, elapsedSec / 7.5);
@@ -665,7 +676,7 @@ export function CameraController({
     if (camera instanceof THREE.PerspectiveCamera) {
       const baseFov = (isPostIntroStandby && camAngle === 3)
         ? 24.5
-        : (targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43));
+        : (targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 40 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43));
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;
@@ -679,13 +690,14 @@ export function CameraController({
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
       const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
-      // Zoom smooth 100% -> 125% (or 100% -> 150% on CAM 18 Score Summary) based on smoothPush (0.0 to 1.0)
+      // Subtle optical zoom capped at 1.12x (general) and 1.15x (CAM 18 Score Summary)
       const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
-      const maxPushMultiplier = camAngle === 18 ? 0.50 : 0.25;
+      const maxPushMultiplier = camAngle === 18 ? 0.15 : 0.12;
       const zoomFactor = 1.0 + activePush * maxPushMultiplier;
       const pushFov = opticalFov / zoomFactor;
-      if (transitionMode === "CUT" && (prevCamAngleRef.current !== camAngle || isNewQuestion || (pushInProgress === 0 && smoothPushRef.current === 0))) {
+      if (transitionMode === "CUT" && (isCamChanged || isNewQuestion || (pushInProgress === 0 && smoothPushRef.current === 0))) {
         camera.fov = Math.min(85, Math.max(12, pushFov));
+        camera.updateProjectionMatrix();
       } else {
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 8.0, delta);
       }
@@ -739,11 +751,11 @@ export function CameraController({
           camera.fov = 40.0;
         }
       } else {
-        // Phase 5 (>= 10.0s): Cut directly to Center MC waist-up medium 2-shot (Zero feet in frame)
-        _curPos.set(0.00, 1.38, 2.15);
-        _curTarget.set(0.00, 1.38, 0.00);
+        // Phase 5 (>= 10.0s): Cut directly to Center MC American shot (upper thighs, safe headroom 14.2%)
+        _curPos.set(0.00, 1.35, 2.75);
+        _curTarget.set(0.00, 1.20, 0.00);
         if (camera instanceof THREE.PerspectiveCamera) {
-          camera.fov = 24.5;
+          camera.fov = 30.0;
         }
       }
 
@@ -805,21 +817,12 @@ export function CameraController({
       }
     }
 
-    // 1. Calculate subtle broadcast push-in (dolly) towards target
+    // 1. Anti-Double-Zoom Guardrails: Keep camera position at target preset (no horizontal forward dolly translation)
     _effectivePos.copy(targetPos);
     const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
-    if (activePush > 0) {
-      if (camAngle === 18) {
-        // CAM 18 Score Summary (O27):
-        // Horizontal push towards contestant so camera doesn't dip down into the table:
-        _dir.set(targetLookAt.x - targetPos.x, 0, targetLookAt.z - targetPos.z).normalize();
-        _effectivePos.addScaledVector(_dir, activePush * 0.35);
-        // Elevate camera slightly from 1.52m to 1.56m to center upper chest & head:
-        _effectivePos.y = THREE.MathUtils.lerp(1.52, 1.56, activePush);
-      } else {
-        _dir.copy(targetLookAt).sub(targetPos).normalize();
-        _effectivePos.addScaledVector(_dir, activePush * 0.40);
-      }
+    if (activePush > 0 && camAngle === 18) {
+      // Maintain gentle elevation lerp from 1.52m to 1.56m for CAM 18 without horizontal forward dolly
+      _effectivePos.y = THREE.MathUtils.lerp(1.52, 1.56, activePush);
     }
     // For CAM 18 (Score Summary), smoothly tilt aim upwards from desk (1.05m) to contestant chest & chin (1.45m)
     const effectiveLookAt = targetLookAt.clone();

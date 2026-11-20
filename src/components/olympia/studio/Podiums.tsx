@@ -732,7 +732,7 @@ export function createProceduralTorsoGeometry(
   const vertices: number[] = [];
   const indices: number[] = [];
 
-  const superP = 2.6;
+  const superP = 2.05;
   const exp = 2 / superP;
 
   for (let r = 0; r <= rings; r++) {
@@ -768,6 +768,127 @@ export function createProceduralTorsoGeometry(
       indices.push(i0, i2, i1);
       indices.push(i1, i2, i3);
     }
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geom.setIndex(indices);
+  geom.computeVertexNormals();
+  return geom;
+}
+
+/**
+ * Organic Pelvic Mesh Geometry (Feature 15):
+ * - Replaces sharp 90° box primitives at pelvis/hips with a smooth lofted elliptical cylinder/tube.
+ * - Contours smoothly from waist (Y ≈ 0.84m) down to upper thighs (Y ≈ 0.70m), eliminating rectangular seams.
+ */
+export function createProceduralPelvisGeometry(
+  type: "contestant" | "female" | "male" | "mc_female" | "mc_male"
+): THREE.BufferGeometry {
+  const isFemale = type === "mc_female" || type === "female";
+  const isContestant = type === "contestant";
+
+  // Height is 0.14m centered around 0 (y from -0.07 to +0.07)
+  const yTop = 0.07;
+  const yBottom = -0.07;
+
+  // Key profiles: [u, halfWidth, halfDepth]
+  // u = 0 (top / waist, Y = +0.07), u = 0.4 (iliac crest / hips), u = 1.0 (crotch / upper thigh, Y = -0.07)
+  const profiles = isFemale
+    ? [
+        { u: 0.0, w: 0.120, d: 0.074 },
+        { u: 0.4, w: 0.125, d: 0.078 },
+        { u: 1.0, w: 0.114, d: 0.068 },
+      ]
+    : isContestant
+    ? [
+        { u: 0.0, w: 0.122, d: 0.075 },
+        { u: 0.4, w: 0.124, d: 0.077 },
+        { u: 1.0, w: 0.116, d: 0.070 },
+      ]
+    : [
+        { u: 0.0, w: 0.132, d: 0.082 },
+        { u: 0.4, w: 0.134, d: 0.083 },
+        { u: 1.0, w: 0.125, d: 0.075 },
+      ];
+
+  function interpolatePelvis(u: number): { w: number; d: number } {
+    if (u <= profiles[0].u) return { w: profiles[0].w, d: profiles[0].d };
+    if (u >= profiles[profiles.length - 1].u) {
+      const last = profiles[profiles.length - 1];
+      return { w: last.w, d: last.d };
+    }
+    for (let k = 0; k < profiles.length - 1; k++) {
+      const p0 = profiles[k];
+      const p1 = profiles[k + 1];
+      if (u >= p0.u && u <= p1.u) {
+        const f = (u - p0.u) / (p1.u - p0.u);
+        const s = f * f * (3 - 2 * f);
+        return {
+          w: p0.w + (p1.w - p0.w) * s,
+          d: p0.d + (p1.d - p0.d) * s,
+        };
+      }
+    }
+    return { w: profiles[0].w, d: profiles[0].d };
+  }
+
+  const rings = 16;
+  const segments = 32;
+  const vertices: number[] = [];
+  const indices: number[] = [];
+
+  const superP = 2.05;
+  const exp = 2 / superP;
+
+  // Lofted rings
+  for (let r = 0; r <= rings; r++) {
+    const u = r / rings;
+    const y = yTop * (1 - u) + yBottom * u;
+    const { w, d } = interpolatePelvis(u);
+
+    for (let s = 0; s < segments; s++) {
+      const theta = (s / segments) * Math.PI * 2;
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      const absCos = Math.abs(cosT);
+      const absSin = Math.abs(sinT);
+
+      const superX = Math.sign(cosT) * Math.pow(absCos, exp) * w;
+      const superZ = Math.sign(sinT) * Math.pow(absSin, exp) * d;
+
+      vertices.push(superX, y, superZ);
+    }
+  }
+
+  // Ring quads (CCW):
+  for (let r = 0; r < rings; r++) {
+    for (let s = 0; s < segments; s++) {
+      const nextS = (s + 1) % segments;
+      const i0 = r * segments + s;
+      const i1 = r * segments + nextS;
+      const i2 = (r + 1) * segments + s;
+      const i3 = (r + 1) * segments + nextS;
+      indices.push(i0, i1, i2);
+      indices.push(i1, i3, i2);
+    }
+  }
+
+  // Top cap (CCW viewed from above):
+  const topCenterIndex = vertices.length / 3;
+  vertices.push(0, yTop, 0);
+  for (let s = 0; s < segments; s++) {
+    const nextS = (s + 1) % segments;
+    indices.push(topCenterIndex, nextS, s);
+  }
+
+  // Bottom cap (CCW viewed from below):
+  const bottomCenterIndex = vertices.length / 3;
+  vertices.push(0, yBottom, 0);
+  const bottomRingStart = rings * segments;
+  for (let s = 0; s < segments; s++) {
+    const nextS = (s + 1) % segments;
+    indices.push(bottomCenterIndex, bottomRingStart + s, bottomRingStart + nextS);
   }
 
   const geom = new THREE.BufferGeometry();
@@ -1385,6 +1506,7 @@ export function ContestantFigure({
   const skinMat = useMemo(() => createWarmPeachSkinMaterial(style.skinTone), [style.skinTone]);
   const hairMat = useMemo(() => createHairMaterial(style.hairColor), [style.hairColor]);
   const contestantTorsoGeom = useMemo(() => createProceduralTorsoGeometry("contestant"), []);
+  const contestantPelvisGeom = useMemo(() => createProceduralPelvisGeometry("contestant"), []);
   const figureRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
@@ -1639,8 +1761,7 @@ export function ContestantFigure({
     <group ref={figureRef} position={position}>
       {/* ── LOWER BODY & TROUSERS (Athletic Vietnamese student proportions, Golden Ratio 50%) ── */}
       <group name="static-lower-body">
-        <mesh position={[0, 0.76, 0]} castShadow={true}>
-          <boxGeometry args={[0.24, 0.14, 0.15]} />
+        <mesh position={[0, 0.76, 0]} geometry={contestantPelvisGeom} castShadow={true}>
           <meshStandardMaterial color={trouserColor} roughness={0.85} />
         </mesh>
 
@@ -1745,8 +1866,8 @@ export function ContestantFigure({
         {/* ── ARMS & HANDS (Seamless Sleeves embedded in shoulder, ZERO Ball Joints!) ── */}
         {/* Left Arm Group (pivoted at shoulder X = -0.145, Y = 1.21m) */}
         <group position={[-0.145, 1.21, 0.0]}>
-          <mesh>
-            <sphereGeometry args={[0.035, 16, 16]} />
+          <mesh position={[0.015, 0, 0]}>
+            <sphereGeometry args={[0.042, 16, 16]} />
             <meshStandardMaterial color={shirtColor} roughness={0.45} />
           </mesh>
           <group ref={leftArmRef}>
@@ -1788,8 +1909,8 @@ export function ContestantFigure({
 
         {/* Right Arm Group (pivoted at shoulder X = 0.145, Y = 1.21m) */}
         <group position={[0.145, 1.21, 0.0]}>
-          <mesh>
-            <sphereGeometry args={[0.035, 16, 16]} />
+          <mesh position={[-0.015, 0, 0]}>
+            <sphereGeometry args={[0.042, 16, 16]} />
             <meshStandardMaterial color={shirtColor} roughness={0.45} />
           </mesh>
           <group ref={rightArmRef}>
@@ -2706,17 +2827,7 @@ export function ContestantPodium({
         </mesh>
       </group>
 
-      {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}
-      {showFigure && (
-        <ContestantFigure
-          seatId={seatId}
-          quality={quality}
-          position={[0, 0, -0.42]}
-          isBuzzed={isBuzzed}
-          gesture={gesture}
-          gestureProgress={gestureProgress}
-        />
-      )}
+      {/* ── 6. 3D CONTESTANT FIGURE (Managed persistently by PersistentContestantEntity) ── */}
     </group>
   );
 }
@@ -3063,6 +3174,12 @@ export function McPresenters({
   const nhHairMat = useMemo(() => createHairMaterial("#191512", 0.65), []);
   const kvTorsoGeom = useMemo(() => createProceduralTorsoGeometry("mc_female"), []);
   const nhTorsoGeom = useMemo(() => createProceduralTorsoGeometry("mc_male"), []);
+  const kvPelvisGeom = useMemo(() => createProceduralPelvisGeometry("female"), []);
+  const nhPelvisGeom = useMemo(() => createProceduralPelvisGeometry("male"), []);
+
+  const isIntroStandby = Boolean((introStartedAt || state?.introTimer) && (state?.introStandby ?? true));
+  const hasFinishedEntrance = Boolean(state?.entranceCompleted);
+  const isDeskStanding = !isIntroStandby || hasFinishedEntrance;
 
   const kvBlazerMat = useMemo(
     () =>
@@ -3347,7 +3464,7 @@ export function McPresenters({
     const isAtDesk = !isIntro || hasEntranceCompleted || (isEntranceActive && elapsedEntrance >= 6000);
 
     const kvHoldFolderX = isAtDesk ? -0.15 : -0.12 + (isWalking ? armStride * 0.06 : breatheWave * 0.015);
-    const kvHoldForearmX = isAtDesk ? -0.48 : -0.38 + talkSub * 0.02;
+    const kvHoldForearmX = isAtDesk ? -0.72 : -0.38 + talkSub * 0.02;
 
     if (kvLeftArmRef.current) {
       kvLeftArmRef.current.rotation.x = kvHoldFolderX;
@@ -3382,7 +3499,7 @@ export function McPresenters({
     }
 
     const nhHoldFolderX = isAtDesk ? -0.15 : -0.12 + (isWalking ? armStride * 0.08 : breatheWave * 0.015);
-    const nhHoldForearmX = isAtDesk ? -0.48 : -0.38 + talkSub * 0.02;
+    const nhHoldForearmX = isAtDesk ? -0.70 : -0.38 + talkSub * 0.02;
 
     if (nhLeftArmRef.current) {
       nhLeftArmRef.current.rotation.x = nhHoldFolderX;
@@ -3646,8 +3763,8 @@ export function McPresenters({
         <group position={[-0.142, 1.24, 0.005]}>
           <group ref={kvLeftArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]} material={kvBlazerMat}>
-              <sphereGeometry args={[0.033, 14, 14]} />
+            <mesh position={[0.015, 0, 0]} material={kvBlazerMat}>
+              <sphereGeometry args={[0.042, 16, 16]} />
             </mesh>
             {/* Upper arm hangs naturally down along side of body */}
             <group rotation={[-0.08, 0, 0.06]}>
@@ -3676,11 +3793,11 @@ export function McPresenters({
                       scale={0.88}
                       skinMat={kvSkinMat}
                       isLeft={true}
-                      mode="hang"
+                      mode={isDeskStanding ? "rest" : "hang"}
                     />
                     {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC cầm tự nhiên ngang eo, mặt giấy ngửa lên phía người MC, KHÔNG dựng đứng chìa vào camera) */}
                     {/* Mặt ngoài bìa tập hướng xuống dưới/ra ngoài, mặt giấy tài liệu hướng lên trên về phía ngực MC (-Z) */}
-                    <group ref={kvFolderRef} position={[0.075, -0.05, 0.02]} rotation={[1.15, 0, 0]}>
+                    <group ref={kvFolderRef} position={[0.075, -0.05, 0.02]} rotation={[0.785, 0, 0]}>
                       {/* Bìa kẹp da xanh đen sang trọng */}
                       <mesh>
                         <boxGeometry args={[0.20, 0.26, 0.005]} />
@@ -3718,8 +3835,8 @@ export function McPresenters({
         <group position={[0.142, 1.24, 0.005]}>
           <group ref={kvRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]} material={kvBlazerMat}>
-              <sphereGeometry args={[0.033, 14, 14]} />
+            <mesh position={[-0.015, 0, 0]} material={kvBlazerMat}>
+              <sphereGeometry args={[0.042, 16, 16]} />
             </mesh>
             {/* Upper arm hangs down and slightly forward */}
             <group rotation={[-0.20, -0.04, -0.10]}>
@@ -3748,7 +3865,7 @@ export function McPresenters({
                       scale={0.88}
                       skinMat={kvSkinMat}
                       isLeft={false}
-                      mode="hang"
+                      mode={isDeskStanding ? "rest" : "hang"}
                     />
                   </group>
                 </group>
@@ -3758,8 +3875,7 @@ export function McPresenters({
         </group>
 
         {/* Tailored Dark Trousers / Waist (Under blazer hem, Hips Y = 0.72m to 0.84m) */}
-        <mesh position={[0, 0.77, 0]}>
-          <boxGeometry args={[0.24, 0.14, 0.15]} />
+        <mesh position={[0, 0.77, 0]} geometry={kvPelvisGeom}>
           <meshStandardMaterial color="#0f172a" roughness={0.85} />
         </mesh>
 
@@ -4004,8 +4120,8 @@ export function McPresenters({
         <group position={[-0.165, 1.28, 0.005]}>
           <group ref={nhLeftArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]} material={nhBlazerMat}>
-              <sphereGeometry args={[0.039, 14, 14]} />
+            <mesh position={[0.015, 0, 0]} material={nhBlazerMat}>
+              <sphereGeometry args={[0.046, 16, 16]} />
             </mesh>
             {/* Upper arm hangs naturally down and slightly forward */}
             <group rotation={[-0.22, 0.05, 0.12]}>
@@ -4038,11 +4154,11 @@ export function McPresenters({
                       scale={0.94}
                       skinMat={nhSkinMat}
                       isLeft={true}
-                      mode="card"
+                      mode={isDeskStanding ? "rest" : "card"}
                     />
                     {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC cầm tự nhiên ngang eo, mặt giấy ngửa lên phía người MC, KHÔNG dựng đứng chìa vào camera) */}
                     {/* Mặt ngoài bìa tập hướng xuống dưới/ra ngoài, mặt giấy tài liệu hướng lên trên về phía ngực MC (-Z) */}
-                    <group ref={nhFolderRef} position={[0.08, -0.05, 0.02]} rotation={[1.15, 0.08, -0.05]}>
+                    <group ref={nhFolderRef} position={[0.08, -0.05, 0.02]} rotation={[0.785, 0.08, -0.05]}>
                       {/* Bìa kẹp da xanh đen sang trọng */}
                       <mesh>
                         <boxGeometry args={[0.22, 0.28, 0.006]} />
@@ -4080,8 +4196,8 @@ export function McPresenters({
         <group position={[0.165, 1.28, 0.005]}>
           <group ref={nhRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]} material={nhBlazerMat}>
-              <sphereGeometry args={[0.039, 14, 14]} />
+            <mesh position={[-0.015, 0, 0]} material={nhBlazerMat}>
+              <sphereGeometry args={[0.046, 16, 16]} />
             </mesh>
             {/* Upper arm bends down and forward toward Cue Card */}
             <group rotation={[-0.20, -0.05, -0.10]}>
@@ -4110,7 +4226,7 @@ export function McPresenters({
                       scale={0.94}
                       skinMat={nhSkinMat}
                       isLeft={false}
-                      mode="card"
+                      mode={isDeskStanding ? "rest" : "card"}
                     />
                   </group>
                 </group>
@@ -4120,8 +4236,7 @@ export function McPresenters({
         </group>
 
         {/* Tailored Dark Obsidian Trousers / Waist (Under jacket skirt, Hips Y = 0.74m to 0.86m) */}
-        <mesh position={[0, 0.79, 0]}>
-          <boxGeometry args={[0.26, 0.14, 0.16]} />
+        <mesh position={[0, 0.79, 0]} geometry={nhPelvisGeom}>
           <meshStandardMaterial color="#0f172a" roughness={0.85} />
         </mesh>
 
@@ -4558,18 +4673,8 @@ function SingleContestantEntranceWalkingFigure({
     g.rotation.y = traj.rotY;
   });
 
-  return (
-    <group ref={figureRef}>
-      <ContestantFigure
-        seatId={seatId}
-        position={[0, 0, 0]}
-        isWalking={isWalking}
-        walkPhaseRef={walkPhaseRef}
-        gesture={gesture}
-        gestureProgressRef={gestureProgressRef}
-      />
-    </group>
-  );
+  // Legacy figure placeholder: ContestantFigure is now exclusively rendered by PersistentContestantEntity
+  return <group ref={figureRef} />;
 }
 
 export function ContestantEntranceWalkingFigures({
@@ -5056,16 +5161,9 @@ export function VeDichWalkingContestant({
     }
   });
 
-  return (
-    <group ref={rootRef} position={targetCenterPos}>
-      <ContestantFigure
-        seatId={seatId}
-        quality={quality}
-        position={[0, 0, 0]}
-        isWalking={isWalking}
-      />
-    </group>
-  );
+  // Legacy figure placeholder: ContestantFigure is now exclusively rendered by PersistentContestantEntity
+  void quality;
+  return <group ref={rootRef} position={targetCenterPos} />;
 }
 
 /**
@@ -6097,6 +6195,245 @@ export function CenterFloorStage({
   );
 }
 
+export interface PersistentContestantEntityProps {
+  seatId: number;
+  targetCfg: { seatId: number; pos: [number, number, number]; rotY: number };
+  totalSeats: number;
+  state?: OlympiaState | null;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  serverNow?: () => number;
+  isBuzzed?: boolean;
+  isDimmed?: boolean;
+}
+
+export function PersistentContestantEntity({
+  seatId,
+  targetCfg,
+  totalSeats,
+  state,
+  quality = "HIGH",
+  serverNow,
+  isBuzzed = false,
+  isDimmed = false,
+}: PersistentContestantEntityProps) {
+  const rootRef = useRef<THREE.Group>(null);
+  const [isWalking, setIsWalking] = useState(false);
+  const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
+  const gestureProgressRef = useRef<number>(0);
+  const walkPhaseRef = useRef<number>(0);
+  const lastWalkingRef = useRef<boolean>(false);
+  const lastGestureRef = useRef<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
+
+  // Về Đích turn tracking
+  const lastVdStateRef = useRef<{ turnIdx: number; mode: string; startedPerf: number }>({
+    turnIdx: -1,
+    mode: "idle",
+    startedPerf: 0,
+  });
+
+  const getNow = serverNow || (() => Date.now());
+
+  // Target desk coordinates in world space (accounting for +0.22m group X shift)
+  const deskRotY = targetCfg.rotY;
+  const deskWorldX = +(targetCfg.pos[0] + 0.22 - Math.sin(deskRotY) * 0.42).toFixed(3);
+  const deskWorldY = 0.22;
+  const deskWorldZ = +(targetCfg.pos[2] - Math.cos(deskRotY) * 0.42).toFixed(3);
+
+  const targetCfgShifted = useMemo(() => ({
+    ...targetCfg,
+    pos: [+(targetCfg.pos[0] + 0.22).toFixed(3), targetCfg.pos[1], targetCfg.pos[2]] as [number, number, number],
+  }), [targetCfg]);
+
+  useFrame(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const now = getNow();
+
+    // ── 1. VỀ ĐÍCH ACTIVE TURN (Walk to center stage, stand, return) ──
+    const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
+    const vd = state?.veDich;
+    const activeVdSeat = vd ? (vd.order?.[vd.turnIdx] ?? 0) : 0;
+    const isVdActive = Boolean(isVeDich && vd?.phase && (vd.phase !== "idle" || vd.onStage));
+    const isThisContestantInVeDichTurn = isVdActive && seatId === activeVdSeat;
+
+    if (isThisContestantInVeDichTurn) {
+      const curTurn = vd?.turnIdx ?? 0;
+      const curPhase = vd?.phase ?? "idle";
+      const mode = curPhase === "seatDone" ? "seatDone" : vd?.onStage ? "onStage" : "idle";
+      const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+      if (curTurn !== lastVdStateRef.current.turnIdx || mode !== lastVdStateRef.current.mode) {
+        lastVdStateRef.current = { turnIdx: curTurn, mode, startedPerf: perfNow };
+      }
+
+      const elapsed = Math.max(0, perfNow - lastVdStateRef.current.startedPerf) / 1000;
+      const DURATION = 4.5;
+      let walkProgress = 1.0;
+      let walkingNow = false;
+      let isReturning = false;
+
+      if (mode === "seatDone") {
+        isReturning = true;
+        if (elapsed < DURATION) {
+          const raw = elapsed / DURATION;
+          walkProgress = 1.0 - raw * raw * (3 - 2 * raw);
+          walkingNow = true;
+        } else {
+          walkProgress = 0.0;
+          walkingNow = false;
+        }
+      } else if (mode === "onStage") {
+        if (elapsed < DURATION) {
+          const raw = elapsed / DURATION;
+          walkProgress = raw * raw * (3 - 2 * raw);
+          walkingNow = true;
+        } else {
+          walkProgress = 1.0;
+          walkingNow = false;
+        }
+      }
+
+      const { rawPos, rotY } = evaluateVeDichWalkTrajectory(
+        walkProgress,
+        seatId,
+        targetCfgShifted.pos,
+        targetCfg.rotY,
+        totalSeats,
+        isReturning
+      );
+
+      const bounce = walkingNow ? Math.abs(Math.sin(walkProgress * Math.PI * 28)) * 0.024 : 0;
+      root.position.set(rawPos[0], rawPos[1] + bounce, rawPos[2]);
+      root.rotation.y = rotY;
+
+      if (walkingNow !== lastWalkingRef.current) {
+        lastWalkingRef.current = walkingNow;
+        setIsWalking(walkingNow);
+      }
+      if (lastGestureRef.current !== "none") {
+        lastGestureRef.current = "none";
+        setGesture("none");
+      }
+      return;
+    }
+
+    // ── 2. SUMMARY GESTURES (Match finished) ──
+    if (state?.summaryState?.active) {
+      root.position.set(deskWorldX, deskWorldY, deskWorldZ);
+      root.rotation.y = deskRotY;
+      if (lastWalkingRef.current) {
+        lastWalkingRef.current = false;
+        setIsWalking(false);
+      }
+
+      const ordered = state.summaryState.orderedSeats || [];
+      const curSummarySeat = ordered[state.summaryState.currentIndex ?? 0] ?? 0;
+      if (seatId === curSummarySeat) {
+        const seatStart = state.summaryState.seatEnteredAt || state.summaryState.lastAdvanceAt || now;
+        const elapsedOnSeat = Math.max(0, (now - seatStart) / 1000);
+        gestureProgressRef.current = Math.max(0, Math.min(1.0, elapsedOnSeat / 1.5));
+
+        const scores = (state?.seats || []).map((s, idx) => ({ idx, score: s.score || 0 }));
+        scores.sort((a, b) => b.score - a.score);
+        const topScore = scores[0]?.score ?? 0;
+        const myScore = state?.seats?.[seatId]?.score ?? 0;
+        const rank = scores.findIndex((s) => s.idx === seatId) + 1;
+        const gap = topScore - myScore;
+
+        let curG: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
+        if (gap === 0 || rank === 1) {
+          curG = seatId % 2 === 0 ? "fist_pump" : "wave";
+        } else if (gap <= 30) {
+          curG = seatId % 2 === 0 ? "heart" : "desk_bow";
+        } else {
+          curG = seatId % 2 === 0 ? "desk_bow" : "wave";
+        }
+        if (curG !== lastGestureRef.current) {
+          lastGestureRef.current = curG;
+          setGesture(curG);
+        }
+      } else {
+        if (lastGestureRef.current !== "none") {
+          lastGestureRef.current = "none";
+          setGesture("none");
+        }
+      }
+      return;
+    }
+
+    // ── 3. COMPETITION ROUND ACTIVE OR ENTRANCE COMPLETED (In Podium Desk Posture) ──
+    const hasEntranceCompleted = Boolean(state?.entranceCompleted);
+    const isCompetitionRound = Boolean(
+      state?.stage === "playing" &&
+      !state?.introStandby &&
+      !state?.introTimer &&
+      !state?.entranceState?.active &&
+      state?.currentRound
+    );
+
+    if (hasEntranceCompleted || isCompetitionRound) {
+      root.position.set(deskWorldX, deskWorldY, deskWorldZ);
+      root.rotation.y = deskRotY;
+      if (lastWalkingRef.current) {
+        lastWalkingRef.current = false;
+        setIsWalking(false);
+      }
+      if (lastGestureRef.current !== "none") {
+        lastGestureRef.current = "none";
+        setGesture("none");
+      }
+      return;
+    }
+
+    // ── 4. PRE-MATCH LOBBY & SEQUENTIAL ENTRANCE SPLINE TRAJECTORY ──
+    const isEntranceActive = Boolean(state?.entranceState?.active);
+    const currentEntranceSeat = state?.entranceState?.currentSeatIdx ?? 0;
+    const currentEntranceSeatStartedAt = state?.entranceState?.seatStartedAt ?? state?.entranceState?.startedAt ?? null;
+    const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(totalSeats);
+
+    const seatStart = !isEntranceActive
+      ? now + 1000000000 // Far future: t < 0 keeps contestant waiting behind portal arch
+      : (state?.entranceState?.seatStartTimes?.[seatId] ??
+        (seatId === currentEntranceSeat
+          ? currentEntranceSeatStartedAt || now
+          : (state?.entranceState?.startedAt || now) + (seatStartOffsetsMs[seatId] ?? seatId * 6800)));
+
+    const t = (now - seatStart) / 1000;
+    const firstPhi = Math.PI / 2 - targetCfg.rotY;
+    const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfgShifted, firstPhi, totalSeats);
+
+    root.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
+    root.rotation.y = traj.rotY;
+
+    if (traj.walkingNow !== lastWalkingRef.current) {
+      lastWalkingRef.current = traj.walkingNow;
+      setIsWalking(traj.walkingNow);
+    }
+    if (traj.gesture !== lastGestureRef.current) {
+      lastGestureRef.current = traj.gesture;
+      setGesture(traj.gesture);
+    }
+    gestureProgressRef.current = traj.gestureProg;
+    walkPhaseRef.current = traj.walkPhase;
+  });
+
+  return (
+    <group ref={rootRef}>
+      <ContestantFigure
+        seatId={seatId}
+        quality={quality}
+        position={[0, 0, 0]}
+        isWalking={isWalking}
+        walkPhaseRef={walkPhaseRef}
+        gesture={gesture}
+        gestureProgressRef={gestureProgressRef}
+        isBuzzed={isBuzzed}
+      />
+    </group>
+  );
+}
+
 /**
  * Podiums Assembly:
  * 1. Center-Right MC Desk + 2 MC Presenters
@@ -6187,26 +6524,30 @@ export function Podiums({
         isIdle={isIdle}
       />
 
-      {/* VeDich Active Contestant (Walking from desk to center stage, standing at center podium, and walking back on seatDone) */}
-      {isVdActive && activeSeat != null && contestantConfigs[activeSeat] && (
-        <VeDichWalkingContestant
-          seatId={activeSeat}
-          homePos={contestantConfigs[activeSeat].pos}
-          homeRotY={contestantConfigs[activeSeat].rotY}
-          state={state}
-          serverNow={serverNow}
-          quality={quality}
-        />
-      )}
-
-      {/* Contestant Entrance Figures (Waiting behind grandstand doorway arch -> Stairs -> Landing Platform -> Assigned Podium) */}
-      {!state?.entranceCompleted && state && (
-        <ContestantEntranceWalkingFigures
-          state={state}
-          contestantConfigs={contestantConfigs}
-          serverNow={serverNow}
-        />
-      )}
+      {/* ── SINGLE PERSISTENT CONTESTANT ENTITIES (Seats 0..activeCount-1) ── */}
+      <group name="persistent-contestant-entities">
+        {contestantConfigs.map((cfg) => {
+          const isBuzzed = isSeatBuzzedIn3D(cfg.seatId, state);
+          const isDimmed = Boolean(
+            isContestantDimmed &&
+            activeMainContestantSeat !== null &&
+            activeMainContestantSeat !== cfg.seatId
+          );
+          return (
+            <PersistentContestantEntity
+              key={cfg.seatId}
+              seatId={cfg.seatId}
+              targetCfg={cfg}
+              totalSeats={activeCount}
+              state={state}
+              quality={quality}
+              serverNow={serverNow}
+              isBuzzed={isBuzzed}
+              isDimmed={isDimmed}
+            />
+          );
+        })}
+      </group>
 
       {/* N Contestant Arc Podiums on Raised Dais (Group shifted slightly right to align with background screen) */}
       <group position={[0.22, 0, 0]}>

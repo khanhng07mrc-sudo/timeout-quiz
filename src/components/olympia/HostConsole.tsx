@@ -14,7 +14,17 @@ import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
 import QRCode from "qrcode";
 import ScaledDisplayFrame from "./ScaledDisplayFrame";
 import { MediaView, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
-import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
+import {
+  isTtsEnabled,
+  setTtsEnabled,
+  speakTTS,
+  cancelTTS,
+  speakHostStealCall,
+  scheduleDramaticStealCall,
+  cancelDramaticStealCall,
+  speakVcnvCorrect,
+  speakVcnvElimination,
+} from "@/lib/olympia/tts";
 
 type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
 type SN = () => number;
@@ -286,7 +296,7 @@ export const HostConsole = React.memo(function HostConsole({
           call("kd:wrong");
         }
         else if (state?.currentRound === "vcnv") call("vcnv:wrong");
-        else if (state?.currentRound === "veDich") call("vd:wrong");
+        else if (state?.currentRound === "veDich") call("vd:openSteal");
         else if (state?.currentRound === "cauHoiPhu") call("chp:wrong");
       } else if (e.key === "w" || e.key === "W") {
         e.preventDefault();
@@ -808,46 +818,50 @@ export const HostConsole = React.memo(function HostConsole({
 
           <div className="pt-1.5 border-t border-white/10 space-y-1">
             {/* Entrance Sequence Toggle / Step / Skip Controls (Manual Trigger by Host/MC) */}
-            {state.entranceState?.active ? (
-              <div className="space-y-1 bg-amber-950/40 border border-amber-400/40 rounded p-1">
-                <div className="flex items-center justify-between text-[10px] font-bold text-amber-200 px-0.5">
-                  <span>TS {(state.entranceState.currentSeatIdx ?? 0) + 1}/{state.seats.length || 4}</span>
-                  <span className="text-[9px] text-amber-300">
-                    {(() => {
-                      const g = state.entranceState.seatGestures?.[state.entranceState.currentSeatIdx ?? 0];
-                      if (g === "fist_pump") return "✊ Quyết tâm";
-                      if (g === "hand_on_heart_bow") return "🙇 Cúi chào";
-                      if (g === "wave_double") return "🙌 Vẫy 2 tay";
-                      if (g === "heart_pose") return "🫶 Bắn tim";
-                      return "👋 Vẫy tay";
-                    })()}
-                  </span>
-                </div>
-                <div className="text-[10px] text-amber-300/80 text-center py-0.5 bg-black/30 rounded border border-white/5 font-semibold">
-                  <span>🎬 Đang chào sân khấu</span>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => call("entrance:start")}
-                className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-sky-300 bg-sky-950/40 border border-sky-500/30 hover:bg-sky-500/20 flex items-center gap-1 cursor-pointer truncate"
-                title="Bắt đầu hoạt cảnh từng thí sinh bước từ cổng vòm xuống bục"
-              >
-                <span>👥</span>
-                <span className="truncate">Chào sân TS</span>
-              </button>
-            )}
+            {isIntroStage && (
+              <>
+                {state.entranceState?.active ? (
+                  <div className="space-y-1 bg-amber-950/40 border border-amber-400/40 rounded p-1">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-amber-200 px-0.5">
+                      <span>TS {(state.entranceState.currentSeatIdx ?? 0) + 1}/{state.seats.length || 4}</span>
+                      <span className="text-[9px] text-amber-300">
+                        {(() => {
+                          const g = state.entranceState.seatGestures?.[state.entranceState.currentSeatIdx ?? 0];
+                          if (g === "fist_pump") return "✊ Quyết tâm";
+                          if (g === "hand_on_heart_bow") return "🙇 Cúi chào";
+                          if (g === "wave_double") return "🙌 Vẫy 2 tay";
+                          if (g === "heart_pose") return "🫶 Bắn tim";
+                          return "👋 Vẫy tay";
+                        })()}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-amber-300/80 text-center py-0.5 bg-black/30 rounded border border-white/5 font-semibold">
+                      <span>🎬 Đang chào sân khấu</span>
+                    </div>
+                  </div>
+                ) : !state.entranceCompleted ? (
+                  <button
+                    type="button"
+                    onClick={() => call("entrance:start")}
+                    className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-sky-300 bg-sky-950/40 border border-sky-500/30 hover:bg-sky-500/20 flex items-center gap-1 cursor-pointer truncate"
+                    title="Bắt đầu hoạt cảnh từng thí sinh bước từ cổng vòm xuống bục"
+                  >
+                    <span>👥</span>
+                    <span className="truncate">Chào sân TS</span>
+                  </button>
+                ) : null}
 
-            <button
-              type="button"
-              onClick={() => call("intro:start")}
-              className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-amber-300 bg-amber-950/40 border border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1 cursor-pointer truncate"
-              title="Kích hoạt lại hoạt cảnh mở đầu 12s của 2 MC Khánh Vy & Ngọc Huy"
-            >
-              <span>🎬</span>
-              <span className="truncate">Hoạt cảnh MC (12s)</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => call("intro:start")}
+                  className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-amber-300 bg-amber-950/40 border border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1 cursor-pointer truncate"
+                  title="Kích hoạt lại hoạt cảnh mở đầu 12s của 2 MC Khánh Vy & Ngọc Huy"
+                >
+                  <span>🎬</span>
+                  <span className="truncate">Hoạt cảnh MC (12s)</span>
+                </button>
+              </>
+            )}
 
             <button
               type="button"
@@ -2997,6 +3011,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
   const v = state.vcnv!;
   const [selectedCnvSeat, setSelectedCnvSeat] = useState<number | null>(v.bells?.[0]?.seat ?? null);
   const [showClearBellsModal, setShowClearBellsModal] = useState(false);
+  const [isCnvJudgingPending, setIsCnvJudgingPending] = useState(false);
 
   // Strictly sync selectedCnvSeat with active v.bells: only contestants with an active CNV bell can be selected
   useEffect(() => {
@@ -3412,27 +3427,45 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             <button
               type="button"
-              disabled={activeCnvSeat == null}
+              disabled={activeCnvSeat == null || isCnvJudgingPending}
               onClick={() => {
-                if (activeCnvSeat != null) call("vcnv:correctCNV", { seat: activeCnvSeat });
+                if (activeCnvSeat == null || isCnvJudgingPending) return;
+                if (isTtsEnabled()) {
+                  setIsCnvJudgingPending(true);
+                  let handled = false;
+                  const execute = () => {
+                    if (handled) return;
+                    handled = true;
+                    call("vcnv:correctCNV", { seat: activeCnvSeat });
+                    setIsCnvJudgingPending(false);
+                  };
+                  // Congratulate and announce answer, delaying score addition and image reveal until speech finishes
+                  speakVcnvCorrect(activeSeatName, v.keyword || "", execute);
+                  setTimeout(execute, 3500);
+                } else {
+                  call("vcnv:correctCNV", { seat: activeCnvSeat });
+                }
               }}
               className={`py-2 px-1 rounded-lg text-white text-xs font-black shadow transition ${
-                activeCnvSeat != null
+                activeCnvSeat != null && !isCnvJudgingPending
                   ? "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
                   : "bg-emerald-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
               title="Chấm Đúng cho thí sinh bấm chuông (chỉ người bấm được tính đúng)"
             >
-              ✔ Chấm ĐÚNG
+              {isCnvJudgingPending ? "⏳ Đang chúc mừng..." : "✔ Chấm ĐÚNG"}
             </button>
             <button
               type="button"
-              disabled={!v.bells || v.bells.length === 0}
+              disabled={!v.bells || v.bells.length === 0 || isCnvJudgingPending}
               onClick={() => {
+                if (isTtsEnabled() && activeSeatName) {
+                  speakVcnvElimination(activeSeatName);
+                }
                 call("vcnv:wrongCNV", activeCnvSeat != null ? { seat: activeCnvSeat } : {});
               }}
               className={`py-2 px-1 rounded-lg text-white text-xs font-black shadow transition ${
-                v.bells && v.bells.length > 0
+                v.bells && v.bells.length > 0 && !isCnvJudgingPending
                   ? "bg-rose-600 hover:bg-rose-500 cursor-pointer"
                   : "bg-rose-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
@@ -3936,6 +3969,41 @@ function VeDichDeck({
   const [pkgQ1, setPkgQ1] = useState<number>(allowedPointOptions[0] ?? 20);
   const [pkgQ2, setPkgQ2] = useState<number>(isO22Q1 ? 40 : allowedPointOptions[0] ?? 20);
   const [pkgQ3, setPkgQ3] = useState<number>(allowedPointOptions[0] ?? 20);
+  const [dramaticCountdown, setDramaticCountdown] = useState<number | null>(null);
+  const lastStealBuzzedRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const buzzed = vd.steal?.buzzedSeat;
+    if (buzzed != null && buzzed !== lastStealBuzzedRef.current) {
+      lastStealBuzzedRef.current = buzzed;
+      const sName = seatName(state, buzzed);
+      setDramaticCountdown(2.5);
+
+      if (isTtsEnabled()) {
+        scheduleDramaticStealCall(sName, {
+          dramaticDelayMs: 2500,
+        });
+      }
+
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const remaining = Math.max(0, 2.5 - elapsed);
+        setDramaticCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(interval);
+        }
+      }, 100);
+
+      return () => {
+        clearInterval(interval);
+      };
+    } else if (buzzed == null && lastStealBuzzedRef.current != null) {
+      lastStealBuzzedRef.current = null;
+      setDramaticCountdown(null);
+      cancelDramaticStealCall();
+    }
+  }, [vd.steal?.buzzedSeat, state]);
 
   useEffect(() => {
     const opts = isO22Q1 ? [20, 40] : rs.pointOptions;
@@ -4207,6 +4275,16 @@ function VeDichDeck({
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={() => speakHostStealCall({ round: "veDich" })}
+            className="w-full py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs font-black shadow cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1.5 border border-fuchsia-400/30"
+            title="Phát khẩu lệnh MC: Mời các bạn còn lại giành quyền trả lời!"
+          >
+            <span>📢</span>
+            <span>Thoại: Mời các bạn còn lại</span>
+          </button>
+
           {vd.phase === "seatDone" ? (
             <button
               type="button"
@@ -4248,6 +4326,12 @@ function VeDichDeck({
 
           {vd.steal?.buzzedSeat != null && (
             <div className="bg-yellow-400/10 border border-yellow-400/30 p-2 rounded-lg text-center space-y-1.5">
+              {dramaticCountdown !== null && dramaticCountdown > 0 ? (
+                <div className="bg-amber-500/20 border border-amber-400/40 p-1.5 rounded text-amber-200 text-xs font-bold animate-pulse flex items-center justify-center gap-1">
+                  <span>⏳</span>
+                  <span>Đang giữ nhịp kịch tính ({dramaticCountdown.toFixed(1)}s)...</span>
+                </div>
+              ) : null}
               <span className="text-xs text-yellow-300 font-bold">Thí sinh cướp điểm:</span>
               <div className="text-sm font-black text-white">{seatName(state, vd.steal.buzzedSeat)}</div>
               <div className="grid grid-cols-2 gap-1">

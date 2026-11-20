@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
+import { speakHostStealCall } from "@/lib/olympia/tts";
 
 interface SoundItem {
   id: string; // e.g. "1_KhoiDong/start_round"
@@ -89,6 +90,7 @@ const GROUPS_O26: SoundGroup[] = [
       { id: "4_VeDich/40s_practice", name: "Nhạc nền thực hành 40s" },
       { id: "4_VeDich/60s_practice", name: "Nhạc nền thực hành 60s" },
       { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
+      { id: "4_VeDich/host_steal_call", name: "📢 Thoại: Mời các bạn còn lại" },
       { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
       { id: "4_VeDich/star_of_hope", name: "Ngôi sao hy vọng" },
       { id: "4_VeDich/correct", name: "Trả lời đúng (+Điểm)" },
@@ -158,6 +160,7 @@ const GROUPS_O22: SoundGroup[] = [
       { id: "4_VeDich/15s_tick", name: "Nhạc nền suy nghĩ 15s (câu 20đ)" },
       { id: "4_VeDich/20s_tick", name: "Nhạc nền suy nghĩ 20s (câu 30đ)" },
       { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
+      { id: "4_VeDich/host_steal_call", name: "📢 Thoại: Mời các bạn còn lại" },
       { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
       { id: "4_VeDich/star_of_hope", name: "Ngôi sao hy vọng" },
       { id: "4_VeDich/correct", name: "Trả lời đúng (+Điểm)" },
@@ -206,6 +209,7 @@ const GROUPS_O13_21: SoundGroup[] = [
       { id: "4_VeDich/15s_tick", name: "Nhạc nền suy nghĩ 15s (câu 20đ)" },
       { id: "4_VeDich/20s_tick", name: "Nhạc nền suy nghĩ 20s (câu 30đ)" },
       { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
+      { id: "4_VeDich/host_steal_call", name: "📢 Thoại: Mời các bạn còn lại" },
       { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
       { id: "4_VeDich/star_of_hope", name: "Ngôi sao hy vọng" },
       { id: "4_VeDich/correct", name: "Trả lời đúng (+Điểm)" },
@@ -425,6 +429,17 @@ export default function OlympiaAudioManagerDrawer({
 
     // Stop all playing audio first so sounds do not clash, overlap, or leak
     stopAllAudio();
+
+    if (id === "4_VeDich/host_steal_call") {
+      setPlayingId(id);
+      speakHostStealCall({
+        round: "veDich",
+        onEnd: () => {
+          setPlayingId((curr) => (curr === id ? null : curr));
+        },
+      });
+      return;
+    }
 
     const folder = activeTab;
     const isBgm = id.includes("tick") || id.includes("start_round") || id.includes("intro") || id.includes("practice") || id.includes("bgm") || id.includes("on_stage");

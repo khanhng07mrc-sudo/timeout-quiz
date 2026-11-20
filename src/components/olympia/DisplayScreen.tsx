@@ -40,6 +40,12 @@ import {
   speakOlympiaResult,
   speakRoundIntroTTS,
   summarizeOlympiaAnswer,
+  handleBuzzerInterrupt,
+  scheduleDramaticStealCall,
+  groupContestantAnswers,
+  generateGroupedAnswerCommentary,
+  generateTangTocTimeCallout,
+  resolveTurnHosts,
 } from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -347,6 +353,8 @@ export default function DisplayScreen({ code }: { code: string }) {
         season: effectiveAudioSeason,
         round: state.currentRound || undefined,
         seatId: questionSeatId,
+        segIdx: state.khoiDong?.segIdx,
+        rowIdx: state.vcnv?.currentRow,
       });
     } else if (!currentQ) {
       lastQuestionRef.current = "";
@@ -373,19 +381,56 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.cauHoiPhu?.qIdx,
   ]);
 
-  // Natural speech stop on contestant buzzer activation
+  // Natural speech stop on contestant buzzer activation & reflex callout
   const prevBuzzedRef = useRef<boolean>(false);
   useEffect(() => {
     if (!state) return;
-    const isBuzzed = Boolean(
-      state.khoiDong?.buzzedSeat != null ||
-      (state.vcnv?.bells && state.vcnv.bells.length > 0) ||
-      state.veDich?.steal?.buzzedSeat != null ||
-      state.cauHoiPhu?.buzzedSeat != null
-    );
+    const buzzerSeat =
+      state.khoiDong?.buzzedSeat ??
+      state.vcnv?.bells?.[state.vcnv.bells.length - 1]?.seat ??
+      state.veDich?.steal?.buzzedSeat ??
+      state.cauHoiPhu?.buzzedSeat;
+
+    const isBuzzed = buzzerSeat != null;
 
     if (isBuzzed && !prevBuzzedRef.current) {
-      smoothStopOlympiaTTS(30);
+      if (ttsActive && buzzerSeat != null) {
+        const contestantName = state.seats[buzzerSeat]?.name || `Thí sinh ${buzzerSeat + 1}`;
+        if (state.currentRound === "veDich") {
+          // 2.0s - 3.0s dramatic delay before host calls name
+          smoothStopOlympiaTTS(30);
+          scheduleDramaticStealCall(contestantName, {
+            season: effectiveAudioSeason,
+            dramaticDelayMs: 2500,
+          });
+        } else {
+          let readingHost: "khanh_vy" | "ngoc_huy" = "khanh_vy";
+          let coHost: "khanh_vy" | "ngoc_huy" = "ngoc_huy";
+
+          if (state.currentRound === "khoiDong") {
+            const hosts = resolveTurnHosts("khoiDong", state.khoiDong?.segIdx ?? 0);
+            readingHost = hosts.readingHost;
+            coHost = hosts.coHost;
+          } else if (state.currentRound === "vcnv") {
+            const hosts = resolveTurnHosts("vcnv", state.vcnv?.currentRow ?? 0);
+            readingHost = hosts.readingHost;
+            coHost = hosts.coHost;
+          } else {
+            readingHost = "ngoc_huy";
+            coHost = "khanh_vy";
+          }
+
+          handleBuzzerInterrupt(contestantName, {
+            readingHost,
+            coHost,
+            season: effectiveAudioSeason,
+            round: state.currentRound || undefined,
+            reflexPauseMs: 500,
+          });
+        }
+      } else {
+        smoothStopOlympiaTTS(30);
+      }
     }
     prevBuzzedRef.current = isBuzzed;
   }, [
@@ -393,6 +438,80 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.vcnv?.bells?.length,
     state?.veDich?.steal?.buzzedSeat,
     state?.cauHoiPhu?.buzzedSeat,
+    ttsActive,
+    effectiveAudioSeason,
+    state?.currentRound,
+    state?.khoiDong?.segIdx,
+    state?.vcnv?.currentRow,
+    state?.seats,
+  ]);
+
+  // Vocalize grouped answers and speed callouts when answers are revealed
+  const prevRevealKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!state || !ttsActive) return;
+
+    if (state.currentRound === "vcnv" && state.vcnv?.answersRevealed && state.vcnv.phase === "answers") {
+      const rKey = `vcnv-reveal-${state.vcnv.currentRow}`;
+      if (rKey !== prevRevealKeyRef.current) {
+        prevRevealKeyRef.current = rKey;
+        const targetAns = state.vcnv.currentRow === 4
+          ? state.vcnv.centerQuestion?.a
+          : state.vcnv.rows[state.vcnv.currentRow]?.answer;
+        const subs = state.seats.map((s, idx) => ({
+          seat: idx,
+          name: s.name || `Thí sinh ${idx + 1}`,
+          answer: state.vcnv?.answers?.[idx]?.text || "",
+          noAnswer: !state.vcnv?.answers?.[idx]?.text,
+        }));
+        const groups = groupContestantAnswers(subs, targetAns);
+        const commentary = generateGroupedAnswerCommentary(groups, {
+          round: "vcnv",
+          totalContestants: state.seats.length || 4,
+        });
+        if (commentary) {
+          speakTTS(commentary);
+        }
+      }
+    } else if (state.currentRound === "tangToc" && (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded")) {
+      const rKey = `tt-reveal-${state.tangToc.qIdx}`;
+      if (rKey !== prevRevealKeyRef.current) {
+        prevRevealKeyRef.current = rKey;
+        const targetAns = state.tangToc.correctAnswer || state.tangToc.questions[state.tangToc.qIdx]?.answer;
+        const subs = state.seats.map((s, idx) => ({
+          seat: idx,
+          name: s.name || `Thí sinh ${idx + 1}`,
+          answer: state.tangToc?.submissions?.[idx]?.answer || "",
+          ms: state.tangToc?.submissions?.[idx]?.ms,
+          noAnswer: !state.tangToc?.submissions?.[idx]?.answer,
+        }));
+        const groups = groupContestantAnswers(subs, targetAns);
+        const answerCommentary = generateGroupedAnswerCommentary(groups, {
+          round: "tangToc",
+          totalContestants: state.seats.length || 4,
+        });
+        const speedCommentary = generateTangTocTimeCallout(subs);
+        const fullCommentary = [answerCommentary, speedCommentary].filter(Boolean).join(" ");
+        if (fullCommentary) {
+          speakTTS(fullCommentary);
+        }
+      }
+    }
+  }, [
+    state?.currentRound,
+    state?.vcnv?.answersRevealed,
+    state?.vcnv?.phase,
+    state?.vcnv?.currentRow,
+    state?.vcnv?.answers,
+    state?.vcnv?.rows,
+    state?.vcnv?.centerQuestion,
+    state?.tangToc?.phase,
+    state?.tangToc?.qIdx,
+    state?.tangToc?.submissions,
+    state?.tangToc?.questions,
+    state?.tangToc?.correctAnswer,
+    ttsActive,
+    state?.seats,
   ]);
 
   // Vocalize result confirmation ("Chính xác!") or concise summarized answer

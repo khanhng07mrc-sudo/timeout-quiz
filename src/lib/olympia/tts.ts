@@ -10,7 +10,18 @@
  */
 
 export type MCRole = "khanh_vy" | "ngoc_huy" | "khanhVy" | "ngocHuy" | "auto";
-export type TTSSegment = "intro_greeting" | "round_intro" | "question" | "result";
+export type TTSSegment =
+  | "intro_greeting"
+  | "round_intro"
+  | "question"
+  | "result"
+  | "buzzer"
+  | "steal_callout"
+  | "answers_summary"
+  | "time_callout"
+  | "cnv_bell"
+  | "cnv_congratulate"
+  | "cnv_elimination";
 
 export interface SpeakTTSOptions {
   role?: MCRole;
@@ -18,7 +29,29 @@ export interface SpeakTTSOptions {
   segment?: TTSSegment;
   seatId?: number;
   round?: string;
+  segIdx?: number;
+  rowIdx?: number;
+  turnIdx?: number;
+  isConsecutive?: boolean;
+  delayMs?: number;
   onEnd?: () => void;
+}
+
+export interface ContestantSubmissionItem {
+  seat: number;
+  name: string;
+  answer: string;
+  ms?: number;
+  noAnswer?: boolean;
+}
+
+export interface GroupedAnswerItem {
+  normalizedAnswer: string;
+  displayAnswer: string;
+  contestantNames: string[];
+  isSpellingError: boolean;
+  isNoAnswer: boolean;
+  minMs?: number;
 }
 
 export function normalizeVietnameseTTS(rawText: string): string {
@@ -155,7 +188,43 @@ export function getSeasonReadingRate(season?: string, wordCount: number = 0): nu
 }
 
 /**
- * Resolves active MC role based on round, seat, and segment:
+ * Resolves alternating hosts for turn/segment:
+ * - Khởi động:
+ *   Alternate 2 hosts per turn/segment (segIdx).
+ *   One host reads all questions (readingHost), the other confirms answers/points/buzzers (coHost).
+ *   Swap roles at segment completion (segIdx).
+ *   segIdx % 2 === 0: readingHost = khanh_vy, coHost = ngoc_huy
+ *   segIdx % 2 === 1: readingHost = ngoc_huy, coHost = khanh_vy
+ * - VCNV:
+ *   One host manages a full horizontal row; swap hosts for subsequent rows.
+ *   rowIdx % 2 === 0: readingHost = khanh_vy, coHost = ngoc_huy
+ *   rowIdx % 2 === 1: readingHost = ngoc_huy, coHost = khanh_vy
+ * - Tăng Tốc / Về Đích / Câu Hỏi Phụ:
+ *   readingHost = ngoc_huy, coHost = khanh_vy (default)
+ */
+export function resolveTurnHosts(
+  round: string,
+  turnIdx: number = 0
+): {
+  readingHost: "khanh_vy" | "ngoc_huy";
+  coHost: "khanh_vy" | "ngoc_huy";
+} {
+  const normRound = (round || "").toLowerCase();
+  if (normRound === "khoidong" || normRound === "vcnv") {
+    const isEven = turnIdx % 2 === 0;
+    return {
+      readingHost: isEven ? "khanh_vy" : "ngoc_huy",
+      coHost: isEven ? "ngoc_huy" : "khanh_vy",
+    };
+  }
+  return {
+    readingHost: "ngoc_huy",
+    coHost: "khanh_vy",
+  };
+}
+
+/**
+ * Resolves active MC role based on round, seat, segment, and alternating turns:
  * - Intro greeting: Khánh Vy
  * - Round intro:
  *     * Khởi động: Ngọc Huy
@@ -163,9 +232,9 @@ export function getSeasonReadingRate(season?: string, wordCount: number = 0): nu
  *     * Tăng tốc: Ngọc Huy
  *     * Về đích: Khánh Vy
  *     * Câu hỏi phụ: Ngọc Huy
- * - Questions:
- *     * Khởi động solo: Khánh Vy (seats 0, 2) / Ngọc Huy (seats 1, 3, shared)
- *     * VCNV: Khánh Vy
+ * - Questions & Turns:
+ *     * Khởi động: Alternates 2 hosts per segment (readingHost reads, coHost confirms).
+ *     * VCNV: Alternates 2 hosts per row.
  *     * Tăng tốc: Ngọc Huy
  *     * Về đích: Ngọc Huy
  *     * Câu hỏi phụ: Ngọc Huy
@@ -179,24 +248,56 @@ export function resolveMCRole(options?: SpeakTTSOptions): "khanh_vy" | "ngoc_huy
   const segment = options?.segment || "question";
   const round = options?.round || "khoiDong";
   const seatId = options?.seatId ?? 0;
+  const turnIdx = options?.segIdx ?? options?.rowIdx ?? options?.turnIdx;
 
   if (segment === "intro_greeting") return "khanh_vy";
   if (segment === "round_intro") {
     if (round === "vcnv" || round === "veDich") return "khanh_vy";
     return "ngoc_huy";
   }
+
+  // Khởi động
+  if (round === "khoiDong") {
+    if (turnIdx != null) {
+      const { readingHost, coHost } = resolveTurnHosts("khoiDong", turnIdx);
+      if (segment === "result" || segment === "buzzer") {
+        return coHost;
+      }
+      return readingHost;
+    }
+    // Backward compatibility when turnIdx/segIdx is not explicitly passed
+    if (segment === "result") {
+      return "ngoc_huy";
+    }
+    return seatId % 2 === 0 ? "khanh_vy" : "ngoc_huy";
+  }
+
+  // VCNV
+  if (round === "vcnv") {
+    if (turnIdx != null) {
+      const { readingHost, coHost } = resolveTurnHosts("vcnv", turnIdx);
+      if (segment === "buzzer" || segment === "cnv_bell") {
+        return coHost;
+      }
+      return readingHost;
+    }
+    if (segment === "buzzer" || segment === "cnv_bell") return "ngoc_huy";
+    return "khanh_vy";
+  }
+
+  // Result segment for other rounds
   if (segment === "result") {
-    if (round === "vcnv" || round === "veDich") return "khanh_vy";
+    if (round === "veDich") return "khanh_vy";
     return "ngoc_huy";
   }
 
-  // Question segment
-  if (round === "vcnv") return "khanh_vy";
-  if (round === "tangToc" || round === "veDich" || round === "cauHoiPhu") return "ngoc_huy";
-  if (round === "khoiDong") {
-    // Alternate by seat: seats 0 & 2 female (Khánh Vy), seats 1 & 3 male (Ngọc Huy)
-    return seatId % 2 === 0 ? "khanh_vy" : "ngoc_huy";
+  // Buzzer segment for other rounds
+  if (segment === "buzzer" || segment === "steal_callout") {
+    return "khanh_vy";
   }
+
+  // Question segment
+  if (round === "tangToc" || round === "veDich" || round === "cauHoiPhu") return "ngoc_huy";
   return "khanh_vy";
 }
 
@@ -443,4 +544,463 @@ export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): vo
 // Backward compatibility with legacy speakTTS
 export function speakTTS(text: string, onEnd?: () => void): void {
   speakOlympiaTTS(text, { onEnd });
+}
+
+/**
+ * Strips prefix tags (e.g. "Thí sinh ", "Ghế ", "Bạn ", "TS ") from contestant names
+ * to produce clean personal names for broadcast vocalization.
+ */
+export function getContestantSpokenName(name: string): string {
+  if (!name) return "";
+  let clean = name.trim();
+  clean = clean.replace(/^(thí sinh|ghế\s*\d*[\s:\.-]*|bạn|ts\.?)\s*/i, "").trim();
+  return clean;
+}
+
+/**
+ * Buzzer Callout Variations (R1 / M4):
+ * Randomize among 3 variants:
+ * (1) "<Tên>!"
+ * (2) "Xin mời <Tên>!"
+ * (3) "Tiếp tục là <Tên>!" (when buzzing consecutively)
+ */
+export function generateBuzzerCallout(name: string, isConsecutive: boolean = false): string {
+  const cleanName = getContestantSpokenName(name);
+  if (!cleanName) return "";
+  if (isConsecutive) {
+    return `Tiếp tục là ${cleanName}!`;
+  }
+  const variants = [`${cleanName}!`, `Xin mời ${cleanName}!`];
+  return variants[Math.floor(Math.random() * variants.length)];
+}
+
+let buzzerPauseTimer: any = null;
+let lastBuzzedContestant: string | null = null;
+
+/**
+ * Handle buzzer interrupt during question reading:
+ * - Natural pause at word boundary (~0.5s reflex pause)
+ * - Co-host calls contestant name after ~0.5s reflex pause
+ */
+export function handleBuzzerInterrupt(
+  contestantName: string,
+  options?: {
+    readingHost?: MCRole;
+    coHost?: MCRole;
+    isConsecutive?: boolean;
+    reflexPauseMs?: number;
+    season?: string;
+    round?: string;
+    onEnd?: () => void;
+  }
+): void {
+  if (buzzerPauseTimer) {
+    clearTimeout(buzzerPauseTimer);
+    buzzerPauseTimer = null;
+  }
+
+  // 1. Natural word boundary stop
+  smoothStopOlympiaTTS(45);
+
+  if (!contestantName) return;
+
+  const isConsecutive =
+    options?.isConsecutive !== undefined
+      ? options.isConsecutive
+      : lastBuzzedContestant === contestantName;
+  lastBuzzedContestant = contestantName;
+
+  const reflexPauseMs = options?.reflexPauseMs ?? 500;
+
+  // 2. Reflex pause (~0.5s), then co-host calls name
+  buzzerPauseTimer = setTimeout(() => {
+    buzzerPauseTimer = null;
+    const callout = generateBuzzerCallout(contestantName, isConsecutive);
+    const coHost =
+      options?.coHost ||
+      (options?.readingHost === "khanh_vy" ? "ngoc_huy" : "khanh_vy");
+
+    speakOlympiaTTS(callout, {
+      role: coHost,
+      segment: "buzzer",
+      season: options?.season,
+      round: options?.round,
+      onEnd: options?.onEnd,
+    });
+  }, reflexPauseMs);
+}
+
+export function removeVietnameseAccents(str: string): string {
+  if (!str) return "";
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim();
+}
+
+export function computeLevenshteinDistance(a: string, b: string): number {
+  const an = a.length;
+  const bn = b.length;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix: number[][] = [];
+  for (let i = 0; i <= bn; i++) matrix[i] = [i];
+  for (let j = 0; j <= an; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= bn; i++) {
+    for (let j = 1; j <= an; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[bn][an];
+}
+
+/**
+ * Detects whether a submitted answer is a typo/spelling error or meaningless text:
+ * - Vowel-less gibberish (e.g. length >= 3 with no Vietnamese vowels)
+ * - Diacritic error: same base letters without accents, but different with accents
+ * - Small Levenshtein edit distance: dist <= 2 on words >= 4 characters
+ */
+export function detectSpellingError(
+  submission: string,
+  targetAnswer?: string
+): {
+  isError: boolean;
+  reason?: "diacritic" | "distance" | "gibberish";
+} {
+  const cleanSub = (submission || "").trim();
+  if (!cleanSub) return { isError: false };
+
+  // Consonant mash with no vowels
+  const hasVowels = /[aeiouyáàảãạâấầẩẫậăắằẳẵặéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]/i.test(cleanSub);
+  if (cleanSub.length >= 3 && !hasVowels) {
+    return { isError: true, reason: "gibberish" };
+  }
+
+  if (!targetAnswer) return { isError: false };
+
+  const normSub = removeVietnameseAccents(cleanSub);
+  const normTarget = removeVietnameseAccents(targetAnswer);
+
+  if (cleanSub.toLowerCase() === targetAnswer.toLowerCase()) {
+    return { isError: false };
+  }
+
+  if (normSub === normTarget && cleanSub.toLowerCase() !== targetAnswer.toLowerCase()) {
+    return { isError: true, reason: "diacritic" };
+  }
+
+  const dist = computeLevenshteinDistance(normSub, normTarget);
+  if (dist > 0 && dist <= 2 && normTarget.length >= 4) {
+    return { isError: true, reason: "distance" };
+  }
+
+  return { isError: false };
+}
+
+/**
+ * Groups contestant answers for VCNV and Tăng Tốc commentary:
+ * - Identical answers are merged
+ * - No-answer submissions are grouped
+ * - Typo/spelling errors are tagged so they are not vocalized literally
+ */
+export function groupContestantAnswers(
+  submissions: ContestantSubmissionItem[],
+  targetAnswer?: string
+): GroupedAnswerItem[] {
+  const groups: Map<string, GroupedAnswerItem> = new Map();
+
+  for (const item of submissions) {
+    const raw = (item.answer || "").trim();
+    const cleanName = getContestantSpokenName(item.name);
+    const isNoAnswer = !raw || Boolean(item.noAnswer);
+
+    if (isNoAnswer) {
+      const key = "__NO_ANSWER__";
+      if (!groups.has(key)) {
+        groups.set(key, {
+          normalizedAnswer: "",
+          displayAnswer: "",
+          contestantNames: [cleanName],
+          isSpellingError: false,
+          isNoAnswer: true,
+          minMs: item.ms,
+        });
+      } else {
+        groups.get(key)!.contestantNames.push(cleanName);
+      }
+      continue;
+    }
+
+    const spelling = detectSpellingError(raw, targetAnswer);
+    if (spelling.isError) {
+      const key = `__SPELLING_ERROR__:${cleanName}`;
+      groups.set(key, {
+        normalizedAnswer: raw.toLowerCase(),
+        displayAnswer: raw,
+        contestantNames: [cleanName],
+        isSpellingError: true,
+        isNoAnswer: false,
+        minMs: item.ms,
+      });
+      continue;
+    }
+
+    const norm = raw.toLowerCase();
+    if (!groups.has(norm)) {
+      groups.set(norm, {
+        normalizedAnswer: norm,
+        displayAnswer: raw,
+        contestantNames: [cleanName],
+        isSpellingError: false,
+        isNoAnswer: false,
+        minMs: item.ms,
+      });
+    } else {
+      const g = groups.get(norm)!;
+      g.contestantNames.push(cleanName);
+      if (item.ms != null && (g.minMs == null || item.ms < g.minMs)) {
+        g.minMs = item.ms;
+      }
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
+/**
+ * Generates spoken commentary for grouped answers in VCNV and Tăng Tốc:
+ * - "Cả 4 bạn cùng có đáp án là X."
+ * - "Các bạn A, B cùng đáp án X."
+ * - "Bạn C có đáp án là X."
+ * - "Bạn D viết sai chính tả."
+ * - "Bạn E không đưa ra câu trả lời."
+ */
+export function generateGroupedAnswerCommentary(
+  groups: GroupedAnswerItem[],
+  options?: { round?: string; totalContestants?: number }
+): string {
+  if (!groups || groups.length === 0) return "";
+  const parts: string[] = [];
+  const total = options?.totalContestants ?? 4;
+
+  for (const g of groups) {
+    if (g.isNoAnswer) {
+      if (g.contestantNames.length === 1) {
+        parts.push(`Bạn ${g.contestantNames[0]} không đưa ra câu trả lời.`);
+      } else if (g.contestantNames.length === total) {
+        parts.push(`Cả ${total} bạn đều không đưa ra câu trả lời.`);
+      } else {
+        parts.push(`Các bạn ${g.contestantNames.join(", ")} không đưa ra câu trả lời.`);
+      }
+    } else if (g.isSpellingError) {
+      if (g.contestantNames.length === 1) {
+        parts.push(`Bạn ${g.contestantNames[0]} viết sai chính tả.`);
+      } else {
+        parts.push(`Các bạn ${g.contestantNames.join(", ")} viết sai chính tả.`);
+      }
+    } else {
+      const spokenAnswer = summarizeOlympiaAnswer(g.displayAnswer);
+      if (g.contestantNames.length === total) {
+        parts.push(`Cả ${total} bạn cùng có đáp án là ${spokenAnswer}.`);
+      } else if (g.contestantNames.length > 1) {
+        parts.push(`Các bạn ${g.contestantNames.join(", ")} cùng có đáp án là ${spokenAnswer}.`);
+      } else {
+        parts.push(`Bạn ${g.contestantNames[0]} có đáp án là ${spokenAnswer}.`);
+      }
+    }
+  }
+
+  return parts.join(" ");
+}
+
+/**
+ * Generates Tăng Tốc speed commentary for special cases:
+ * - Fast reaction time (< 1.5s)
+ * - Identical response times between contestants
+ */
+export function generateTangTocTimeCallout(submissions: ContestantSubmissionItem[]): string | null {
+  if (!submissions || submissions.length === 0) return null;
+  const validSubs = submissions.filter((s) => s.ms != null && s.ms > 0 && !s.noAnswer && s.answer?.trim());
+  if (validSubs.length === 0) return null;
+
+  const callouts: string[] = [];
+
+  // 1. Fast answers (< 1.5s)
+  const fastSubs = validSubs.filter((s) => s.ms! < 1500);
+  for (const fs of fastSubs) {
+    const cleanName = getContestantSpokenName(fs.name);
+    const secStr = (fs.ms! / 1000).toFixed(2);
+    callouts.push(`Bạn ${cleanName} trả lời rất nhanh, chỉ ${secStr} giây!`);
+  }
+
+  // 2. Identical response times
+  const timeBuckets: Map<number, string[]> = new Map();
+  for (const s of validSubs) {
+    const roundedTime = Math.round(s.ms! / 10) * 10;
+    const cleanName = getContestantSpokenName(s.name);
+    if (!timeBuckets.has(roundedTime)) {
+      timeBuckets.set(roundedTime, [cleanName]);
+    } else {
+      timeBuckets.get(roundedTime)!.push(cleanName);
+    }
+  }
+
+  for (const [timeMs, names] of timeBuckets.entries()) {
+    if (names.length >= 2) {
+      const secStr = (timeMs / 1000).toFixed(2);
+      if (names.length === 2) {
+        callouts.push(`Hai bạn ${names[0]} và ${names[1]} có cùng thời gian trả lời là ${secStr} giây!`);
+      } else {
+        callouts.push(`Các bạn ${names.join(", ")} có cùng thời gian trả lời là ${secStr} giây!`);
+      }
+    }
+  }
+
+  if (callouts.length === 0) return null;
+  return callouts.join(" ");
+}
+
+/**
+ * VCNV CNV buzzer sequence announcement in order:
+ */
+export function generateCnvBellsAnnouncement(contestantNames: string[]): string {
+  if (!contestantNames || contestantNames.length === 0) return "";
+  const cleanNames = contestantNames.map(getContestantSpokenName);
+  if (cleanNames.length === 1) {
+    return `Tín hiệu chuông xin trả lời Chướng ngại vật từ bạn ${cleanNames[0]}.`;
+  }
+  return `Tín hiệu chuông xin trả lời Chướng ngại vật từ bạn ${cleanNames[0]}, tiếp theo là ${cleanNames.slice(1).join(", ")}.`;
+}
+
+export function speakCnvBells(contestantNames: string[], options?: SpeakTTSOptions): void {
+  const text = generateCnvBellsAnnouncement(contestantNames);
+  if (!text) return;
+  speakOlympiaTTS(text, {
+    ...options,
+    segment: "cnv_bell",
+    role: options?.role || "ngoc_huy",
+  });
+}
+
+/**
+ * Spoken line for CNV correct or incorrect:
+ */
+export function formatCnvVerdictSpoken(
+  isCorrect: boolean,
+  contestantName: string,
+  keyword?: string
+): string {
+  const cleanName = getContestantSpokenName(contestantName);
+  if (isCorrect) {
+    const kw = keyword ? summarizeOlympiaAnswer(keyword) : "";
+    return `Chúc mừng bạn ${cleanName} đã trả lời chính xác Chướng ngại vật! ${kw ? `Từ khóa là: ${kw}!` : ""}`.trim();
+  }
+  return `Rất tiếc câu trả lời chưa chính xác. Bạn ${cleanName} mất quyền chơi phần thi Vượt chướng ngại vật. Các bạn còn lại tiếp tục phần thi.`;
+}
+
+export function speakVcnvCorrect(
+  contestantName: string,
+  keyword: string,
+  onEnd?: () => void,
+  options?: SpeakTTSOptions
+): void {
+  const text = formatCnvVerdictSpoken(true, contestantName, keyword);
+  speakOlympiaTTS(text, {
+    ...options,
+    segment: "cnv_congratulate",
+    role: options?.role || "khanh_vy",
+    onEnd,
+  });
+}
+
+export function speakVcnvElimination(
+  contestantName: string,
+  onEnd?: () => void,
+  options?: SpeakTTSOptions
+): void {
+  const text = formatCnvVerdictSpoken(false, contestantName);
+  speakOlympiaTTS(text, {
+    ...options,
+    segment: "cnv_elimination",
+    role: options?.role || "khanh_vy",
+    onEnd,
+  });
+}
+
+/**
+ * Về Đích steal invitation soundboard trigger: 📢 "Thoại: Mời các bạn còn lại"
+ */
+export function speakHostStealCall(options?: SpeakTTSOptions): void {
+  const lines = [
+    "Xin mời các bạn còn lại giành quyền trả lời!",
+    "Mời các bạn còn lại!",
+  ];
+  const text = lines[Math.floor(Math.random() * lines.length)];
+  speakOlympiaTTS(text, {
+    ...options,
+    segment: "steal_callout",
+    role: options?.role || "khanh_vy",
+    round: "veDich",
+  });
+}
+
+export const VE_DICH_DRAMATIC_STEAL_DELAY_MS = 2500; // 2.5s (in 2.0s - 3.0s range)
+
+let dramaticStealTimer: any = null;
+
+/**
+ * Schedules a dramatic 2.0s - 3.0s delay before calling the contestant who buzzed to steal in Về Đích
+ */
+export function scheduleDramaticStealCall(
+  stealerName: string,
+  options?: {
+    dramaticDelayMs?: number;
+    isConsecutive?: boolean;
+    role?: MCRole;
+    season?: string;
+    onEnd?: () => void;
+  }
+): void {
+  if (dramaticStealTimer) {
+    clearTimeout(dramaticStealTimer);
+    dramaticStealTimer = null;
+  }
+
+  const delayMs = options?.dramaticDelayMs ?? VE_DICH_DRAMATIC_STEAL_DELAY_MS;
+  const isConsecutive =
+    options?.isConsecutive !== undefined
+      ? options.isConsecutive
+      : lastBuzzedContestant === stealerName;
+  lastBuzzedContestant = stealerName;
+
+  dramaticStealTimer = setTimeout(() => {
+    dramaticStealTimer = null;
+    const callout = generateBuzzerCallout(stealerName, isConsecutive);
+    speakOlympiaTTS(callout, {
+      role: options?.role || "ngoc_huy",
+      segment: "steal_callout",
+      season: options?.season,
+      round: "veDich",
+      onEnd: options?.onEnd,
+    });
+  }, delayMs);
+}
+
+export function cancelDramaticStealCall(): void {
+  if (dramaticStealTimer) {
+    clearTimeout(dramaticStealTimer);
+    dramaticStealTimer = null;
+  }
 }

@@ -174,24 +174,6 @@ export function evaluateVeDichCameraState(
   }
 
   if (vd.phase === "stealing") {
-    // R5: Practical question buzzer steal countdown active -> Auto cut to CAM 2 (Right Screen)
-    if (vd.current?.q?.type === "practice") {
-      if (vd.steal?.timer?.startedAt) {
-        return {
-          camAngle: 2,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-      return {
-        camAngle: 1,
-        transitionMode: "CUT",
-        isOverlayHidden: false,
-        pushInProgress: 0,
-      };
-    }
-
     if (vd.steal?.buzzedSeat != null) {
       if (lastVdBuzzedSeatRef && vdBuzzedAtRef) {
         if (lastVdBuzzedSeatRef.current !== vd.steal.buzzedSeat) {
@@ -204,7 +186,7 @@ export function evaluateVeDichCameraState(
             camAngle: 10,
             transitionMode: "CUT",
             isOverlayHidden: false,
-            pushInProgress: 0.1,
+            pushInProgress: 0,
           };
         }
       }
@@ -212,7 +194,7 @@ export function evaluateVeDichCameraState(
         camAngle: getCameraForSeat(vd.steal.buzzedSeat, activeCount),
         transitionMode: "CUT",
         isOverlayHidden: false,
-        pushInProgress: 0.2,
+        pushInProgress: 0,
       };
     }
     if (lastVdBuzzedSeatRef) lastVdBuzzedSeatRef.current = null;

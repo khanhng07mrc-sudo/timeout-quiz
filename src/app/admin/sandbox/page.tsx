@@ -10201,6 +10201,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     return null;
   };
 
+  const isOlympiaIntroStage =
+    olympiaState?.stage === "playing" &&
+    (Boolean(olympiaState.introTimer) ||
+      Boolean(olympiaState.entranceState?.active) ||
+      Boolean(olympiaState.introStandby));
+
   return (
     <div
       className="h-full max-h-full flex flex-col min-h-0 gap-1.5 sm:gap-2 overflow-hidden relative"
@@ -10477,7 +10483,9 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       <span>Bắt đầu</span>
                     </button>
                   )}
-                  {olympiaState?.stage === "playing" && (
+                  {isOlympiaIntroStage &&
+                    !olympiaState?.entranceCompleted &&
+                    !olympiaState?.entranceState?.active && (
                     <button
                       type="button"
                       onClick={() => sendOlympiaAction("entrance:start")}

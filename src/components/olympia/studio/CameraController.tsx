@@ -242,8 +242,8 @@ export function getWideStageCameraPreset(totalSeats: number = 4): CameraPreset {
     return {
       id: 1,
       label: "Toàn Cảnh (8 Thí Sinh)",
-      pos: [-0.60, 4.60, 15.00],
-      target: [-2.20, 1.35, -2.20],
+      pos: [0.00, 3.80, 10.80],
+      target: [-1.80, 1.35, -2.50],
       fov: 52,
     };
   }
@@ -251,17 +251,17 @@ export function getWideStageCameraPreset(totalSeats: number = 4): CameraPreset {
     return {
       id: 1,
       label: "Toàn Cảnh (6 Thí Sinh)",
-      pos: [-0.40, 4.30, 14.00],
-      target: [-1.60, 1.40, -2.60],
-      fov: 46,
+      pos: [0.00, 3.80, 10.80],
+      target: [-1.40, 1.40, -2.80],
+      fov: 48,
     };
   }
   return {
     id: 1,
     label: "Toàn Cảnh",
-    pos: [0.00, 4.10, 13.20],
-    target: [-1.00, 1.45, -3.00],
-    fov: 42,
+    pos: [0.00, 3.80, 10.80],
+    target: [-0.80, 1.45, -3.20],
+    fov: 44,
   };
 }
 
@@ -580,14 +580,22 @@ export function CameraController({
   // Handle instant cut on camera switch when mode is CUT, except when in standby or smoothly transitioning out of standby
   useEffect(() => {
     if (prevCamAngleRef.current !== camAngle) {
-      if (transitionMode === "CUT" && !isPostIntroStandby && standbyExitedAtRef.current == null) {
+      const isMcHandoff = prevCamAngleRef.current === 3 || camAngle === 3;
+      if (prevCamAngleRef.current === 14 && camAngle !== 14) {
+        // CUT immediately to CAM 10 (Toàn cảnh hàng bục thí sinh) as starting point for 2.5s zoom into contestant
+        const cam10 = getWidePodiumsCameraPreset(effectiveTotalSeats);
+        currentPos.current.copy(new THREE.Vector3(...cam10.pos));
+        currentTarget.current.copy(new THREE.Vector3(...cam10.target));
+        camera.position.copy(currentPos.current);
+        camera.lookAt(currentTarget.current);
+      } else if ((transitionMode === "CUT" || isMcHandoff) && !isPostIntroStandby && standbyExitedAtRef.current == null) {
         currentPos.current.copy(targetPos);
         currentTarget.current.copy(targetLookAt);
       }
       smoothPushRef.current = pushInProgress;
       prevCamAngleRef.current = camAngle;
     }
-  }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress]);
+  }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress, effectiveTotalSeats, camera]);
 
   useFrame((_, delta) => {
     // Smooth push-in zoom:
@@ -807,7 +815,7 @@ export function CameraController({
         currentPos.current.lerpVectors(new THREE.Vector3(...cam29.pos), new THREE.Vector3(...cam1.pos), smoothGlide);
         currentTarget.current.lerpVectors(new THREE.Vector3(...cam29.target), new THREE.Vector3(...cam1.target), smoothGlide);
       }
-    } else if (transitionMode === "CUT" && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
+    } else if ((transitionMode === "CUT" || (prevCamAngleRef.current === 3 || camAngle === 3)) && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
       currentPos.current.copy(_effectivePos);
       currentTarget.current.copy(targetLookAt);
     } else {

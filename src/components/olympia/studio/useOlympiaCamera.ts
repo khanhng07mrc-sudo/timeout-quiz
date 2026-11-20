@@ -443,7 +443,7 @@ export function useOlympiaCameraState(
       isThinking ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
-        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil + 2000) ||
+        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil + 2500) ||
           state.khoiDong.phase === "segmentDone")) ||
       Boolean(state?.summaryState?.active) ||
       (state?.currentRound === "veDich" &&
@@ -639,8 +639,8 @@ export function useOlympiaCameraState(
         };
       }
 
-      // 3.3b. Sau 3.5s đầu: từ góc toàn cảnh zoom (morph) về đúng góc thí sinh tương ứng trong vòng 2s
-      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2000) {
+      // 3.3b. Sau 3.5s đầu: CUT sang CAM 10 rồi lướt zoom (morph) về đúng góc thí sinh tương ứng trong 2.5s
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2500) {
         return {
           camAngle: targetContestantCam,
           transitionMode: "MORPH",

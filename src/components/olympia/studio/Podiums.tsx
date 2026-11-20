@@ -6254,10 +6254,10 @@ export function Podiums({
         const showFigure =
           !isThisContestantInVeDichTurn &&
           !isLobby &&
-          (hasEntranceCompleted
+          (hasEntranceCompleted || (state?.stage === "playing" && !isEntranceActive)
             ? true
             : isEntranceActive
-            ? false // ContestantEntranceWalkingFigures handles figure rendering during entrance, eliminating duplicate Z-fighting
+            ? (hasFinishedEntrance || cfg.seatId < currentEntranceSeat || (currentEntranceSeat >= activeCount - 1 && thisSeatElapsed >= seatTiming.bowEndSec))
             : isCompetitionRound);
 
         const isDimmed = Boolean(

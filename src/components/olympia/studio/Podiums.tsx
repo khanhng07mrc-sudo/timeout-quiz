@@ -2375,6 +2375,8 @@ export function ContestantPodium({
   submittedAnswer,
   responseTimeSec,
   isTurn = false,
+  gesture = "none",
+  gestureProgress = 0,
   state,
 }: {
   seatId: number;
@@ -2395,6 +2397,8 @@ export function ContestantPodium({
   submittedAnswer?: string;
   responseTimeSec?: number;
   isTurn?: boolean;
+  gesture?: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow";
+  gestureProgress?: number;
   state?: OlympiaState | null;
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
@@ -2709,6 +2713,8 @@ export function ContestantPodium({
           quality={quality}
           position={[0, 0, -0.42]}
           isBuzzed={isBuzzed}
+          gesture={gesture}
+          gestureProgress={gestureProgress}
         />
       )}
     </group>
@@ -4283,10 +4289,10 @@ export function evaluateContestantEntranceTrajectory(
 
   // Door side selection for contestants (alternating or seat-based):
   const isDoorLeft = seatId % 2 === 0;
-  const doorX = isDoorLeft ? 1.15 : -1.15;
-  const doorZ = 12.85;
   const queueIdx = Math.floor(seatId / 2);
-  const waitZ = doorZ + queueIdx * 0.45;
+  const queueSpreadX = queueIdx * 0.08;
+  const doorX = isDoorLeft ? (1.18 + queueSpreadX) : (-1.18 - queueSpreadX);
+  const doorZ = 12.85 + queueIdx * 0.48;
 
   const startX = doorX;
   const startY = 1.84;
@@ -4305,9 +4311,9 @@ export function evaluateContestantEntranceTrajectory(
 
   if (t < 0) {
     // Phase 0: Waiting behind portal doorway arch on grandstand top plinth
-    curX = doorX;
+    curX = startX;
     curY = startY;
-    curZ = waitZ;
+    curZ = startZ;
     curRotY = initialDoorRotY;
     walkingNow = false;
     curGesture = "none";
@@ -4316,12 +4322,12 @@ export function evaluateContestantEntranceTrajectory(
   } else if (t < 0.6) {
     const p = t / 0.6;
     const smoothP = p * p * (3 - 2 * p);
-    curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
+    curX = THREE.MathUtils.lerp(startX, 0, smoothP);
     curY = startY;
-    curZ = THREE.MathUtils.lerp(doorZ, 11.9, smoothP);
-    curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
+    curZ = THREE.MathUtils.lerp(startZ, 11.9, smoothP);
+    curRotY = THREE.MathUtils.lerp(initialDoorRotY, Math.PI, smoothP);
     const dpDt = (6 * p * (1 - p)) / 0.6;
-    vel = Math.hypot(-doorX, 11.9 - doorZ) * dpDt;
+    vel = Math.hypot(-startX, 11.9 - startZ) * dpDt;
   } else if (t < 1.8) {
     // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to Bục Giữa (Z = 10.20m, Y = 0.92m)
     const p = (t - 0.6) / 1.2;
@@ -4545,8 +4551,9 @@ function SingleContestantEntranceWalkingFigure({
     gestureProgressRef.current = traj.gestureProg;
     walkPhaseRef.current = traj.walkPhase;
 
-    // Permanently visible: waiting behind doorway arch, descending stairs, or staying behind assigned desk!
-    g.visible = true;
+    // Visible while waiting behind doorway arch, descending stairs, and bowing; handoff to ContestantPodium upon bow completion
+    const isBowFinished = traj.bowEndSec > 0 && t >= traj.bowEndSec;
+    g.visible = !isBowFinished;
     g.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
     g.rotation.y = traj.rotY;
   });
@@ -4610,7 +4617,11 @@ export function ContestantEntranceWalkingFigures({
     allFigures.push({
       seatId: i,
       seatStart,
-      targetCfg: contestantConfigs[i],
+      targetCfg: {
+        ...contestantConfigs[i],
+        // Match ContestantPodium world position which is shifted by +0.22m in X
+        pos: [+(contestantConfigs[i].pos[0] + 0.22).toFixed(3), contestantConfigs[i].pos[1], contestantConfigs[i].pos[2]],
+      },
     });
   }
 
@@ -6272,7 +6283,35 @@ export function Podiums({
         const showFigure =
           !isThisContestantInVeDichTurn &&
           !isLobby &&
-          hasEntranceCompleted;
+          (hasEntranceCompleted || (state?.stage === "playing" && !isEntranceActive) || hasFinishedEntrance || cfg.seatId < currentEntranceSeat);
+
+        // Compute dynamic emotional gestures based on rank & score gap during score summary (Task 6)
+        let summaryGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
+        let summaryGestureProg = 0;
+        if (state?.summaryState?.active) {
+          const ordered = state.summaryState.orderedSeats || [];
+          const curSummarySeat = ordered[state.summaryState.currentIndex ?? 0] ?? 0;
+          if (cfg.seatId === curSummarySeat) {
+            const seatStart = state.summaryState.seatEnteredAt || state.summaryState.lastAdvanceAt || now;
+            const elapsedOnSeat = Math.max(0, (now - seatStart) / 1000);
+            summaryGestureProg = Math.max(0, Math.min(1.0, elapsedOnSeat / 1.5));
+
+            // Rank & score gap calculation across active contestants
+            const scores = (state?.seats || []).map((s, idx) => ({ idx, score: s.score || 0 }));
+            scores.sort((a, b) => b.score - a.score);
+            const topScore = scores[0]?.score ?? 0;
+            const rank = scores.findIndex((s) => s.idx === cfg.seatId) + 1;
+            const gap = topScore - score;
+
+            if (rank === 1) {
+              summaryGesture = cfg.seatId % 2 === 0 ? "fist_pump" : "wave";
+            } else if (rank <= 3 && gap <= 30) {
+              summaryGesture = cfg.seatId % 2 === 0 ? "heart" : "desk_bow";
+            } else {
+              summaryGesture = cfg.seatId % 2 === 0 ? "desk_bow" : "wave";
+            }
+          }
+        }
 
         const isDimmed = Boolean(
           isContestantDimmed &&
@@ -6364,6 +6403,8 @@ export function Podiums({
             submittedAnswer={submittedAnswer}
             responseTimeSec={responseTimeSec}
             isTurn={isTurn}
+            gesture={summaryGesture}
+            gestureProgress={summaryGestureProg}
             state={state}
           />
         );

@@ -496,10 +496,11 @@ export function useOlympiaCameraState(
       // - 0.0s -> 1.5s: Từ trạng thái thấy cả người + bảng điểm (0.75x - 0.8x) zoom lên 1.25x
       // - Sau 1.5s: Đứng im tại 1.25x (trong 1.5s với 2-4 TS, 1.0s với 5-6 TS, 0.5s với 7-8 TS)
       const push = Math.min(1.0, elapsedOnSeat / 1.5);
+      const isO27 = state.summaryState.mode === "cinematic_o27" || state.summaryMode === "cinematic_o27";
       return {
-        camAngle: 18, // Preset 18: wide_with_podium for activeSeat
+        camAngle: 18, // Preset 18: wide_with_podium for activeSeat (zooms 0.75x -> 1.50x aimed at torso)
         transitionMode: "CUT",
-        isOverlayHidden: false,
+        isOverlayHidden: isO27,
         pushInProgress: push,
       };
     }
@@ -738,8 +739,8 @@ export function useOlympiaCameraState(
       // - Giai đoạn 3 (1.5s -> 4.5s): Quay êm ái từ góc nghiêng trái về góc toàn cảnh mặc định trong 3.0s (không giật)
       if (kd.phase === "segmentDone") {
         const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-        if (segDoneElapsed < 1.5) {
-          const pushIn = Math.min(1.0, segDoneElapsed / 1.5);
+        if (segDoneElapsed < 2.0) {
+          const pushIn = Math.min(1.0, segDoneElapsed / 2.0);
           return {
             camAngle: 18, // Preset 18: Wide framing showing both contestant body & podium scoreboard
             transitionMode: "CUT",
@@ -748,7 +749,7 @@ export function useOlympiaCameraState(
           };
         }
         if (segDoneElapsed < 4.5) {
-          const isImmediateCut = segDoneElapsed < 1.58;
+          const isImmediateCut = segDoneElapsed < 2.08;
           return {
             camAngle: segDoneElapsed < 2.5 ? 29 : 1,
             transitionMode: isImmediateCut ? "CUT" : "MORPH",

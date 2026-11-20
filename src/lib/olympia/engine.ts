@@ -2255,32 +2255,21 @@ export class OlympiaGame {
         kd.currentBgmTrack = undefined;
         this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
-        if (isLastSeg) {
-          kd.phase = "segmentDone";
-          kd.current = null;
-          kd.buzzedSeat = null;
-          kd.buzzOpen = false;
-          kd.buzzUnlockAt = undefined;
-          this.finishRound(now);
-          return OK;
-        }
-        // Chuyển ngay sang thí sinh / lượt tiếp theo, không để kẹt lại ở người cũ
-        kd.segIdx += 1;
-        const ns = kd.segments[kd.segIdx];
-        kd.qIdx = -1;
-        kd.phase = "intro";
-        kd.questionRevealed = false;
+        // Hold segmentDone for 2.0s broadcast camera zoom on contestant
+        kd.phase = "segmentDone";
         kd.started = false;
-        kd.timer = mkTimer(ns.perQuestionMs);
-        kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+        kd.questionRevealed = false;
+        kd.current = null;
         kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
         kd.noBuzzWrongUnlockAt = undefined;
         kd.lockedSeats = [];
         kd.nextLockedSeats = [];
-        kd.current = null;
         kd.lastVerdict = null;
+        if (isLastSeg) {
+          this.finishRound(now);
+        }
         return OK;
       }
       case "kd:ready": {

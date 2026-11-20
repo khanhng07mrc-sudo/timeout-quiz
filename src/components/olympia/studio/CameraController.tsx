@@ -649,9 +649,10 @@ export function CameraController({
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
       const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
-      // Zoom smooth 100% -> 125% based on smoothPush (0.0 to 1.0)
+      // Zoom smooth 100% -> 125% (or 100% -> 150% on CAM 18 Score Summary) based on smoothPush (0.0 to 1.0)
       const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
-      const zoomFactor = 1.0 + activePush * 0.25;
+      const maxPushMultiplier = camAngle === 18 ? 0.50 : 0.25;
+      const zoomFactor = 1.0 + activePush * maxPushMultiplier;
       const pushFov = opticalFov / zoomFactor;
       if (transitionMode === "CUT" && (prevCamAngleRef.current !== camAngle || isNewQuestion || (pushInProgress === 0 && smoothPushRef.current === 0))) {
         camera.fov = Math.min(85, Math.max(12, pushFov));
@@ -707,15 +708,21 @@ export function CameraController({
         if (camera instanceof THREE.PerspectiveCamera) {
           camera.fov = 40.0;
         }
-      } else {
-        // Phase 5 (>= 10.0s onwards): Waist-up center medium shot settling at FOV 34°, centering hexagonal portal (zero feet)
-        const holdElapsed = elapsedSec - 10.0;
-        const breatheY = Math.sin(holdElapsed * 0.75) * 0.006;
-        const breatheX = Math.sin(holdElapsed * 0.45) * 0.004;
-        _curPos.set(0.00 + breatheX, 1.45 + breatheY, 2.25);
-        _curTarget.set(0.00, 1.35, 0.00);
+      } else if (elapsedSec < 13.5) {
+        // Phase 5 (10.0s - 13.5s): CUT to CAM 1 (Toàn Cảnh Trường Quay) holding for 3.5s
+        const cam1 = getWideStageCameraPreset(effectiveTotalSeats);
+        _curPos.set(...cam1.pos);
+        _curTarget.set(...cam1.target);
         if (camera instanceof THREE.PerspectiveCamera) {
-          camera.fov = 34.0; // Strictly 34° waist-up framing
+          camera.fov = cam1.fov ?? 44.0;
+        }
+      } else {
+        // Phase 6 (>= 13.5s onwards): CUT to CAM 3 (Bục MC & Cổng Lục Giác) for MC greeting
+        const mcPreset = OLYMPIA_CAM_PRESETS[3];
+        _curPos.set(...mcPreset.pos);
+        _curTarget.set(...mcPreset.target);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = mcPreset.fov ?? 34.0;
         }
       }
 
@@ -784,6 +791,11 @@ export function CameraController({
       _dir.copy(targetLookAt).sub(targetPos).normalize();
       _effectivePos.addScaledVector(_dir, activePush * 0.40);
     }
+    // For CAM 18 (Score Summary), smoothly tilt aim upwards from desk (1.05m) to contestant chest & head (1.42m)
+    const effectiveLookAt = targetLookAt.clone();
+    if (camAngle === 18 && activePush > 0) {
+      effectiveLookAt.y = THREE.MathUtils.lerp(1.05, 1.42, activePush);
+    }
 
     const now = serverNow ? serverNow() : Date.now();
     const isExitingStandby = standbyExitedAtRef.current != null && (now - standbyExitedAtRef.current < 2200);
@@ -801,13 +813,13 @@ export function CameraController({
       // Snap camera directly to baseline 1.0x preset (push = 0) immediately,
       // completely eliminating any backward interpolation jerk from 1.25x to 1.0x
       currentPos.current.copy(targetPos);
-      currentTarget.current.copy(targetLookAt);
+      currentTarget.current.copy(effectiveLookAt);
     } else if (glideStartRef.current != null) {
       const elapsedGlide = (now - glideStartRef.current) / 3000;
       if (elapsedGlide >= 1.0) {
         glideStartRef.current = null;
         currentPos.current.copy(_effectivePos);
-        currentTarget.current.copy(targetLookAt);
+        currentTarget.current.copy(effectiveLookAt);
       } else {
         const smoothGlide = elapsedGlide * elapsedGlide * (3 - 2 * elapsedGlide);
         const cam29 = getWideStageLeftTiltedPreset(effectiveTotalSeats);
@@ -817,12 +829,12 @@ export function CameraController({
       }
     } else if ((transitionMode === "CUT" || (prevCamAngleRef.current === 3 || camAngle === 3)) && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
       currentPos.current.copy(_effectivePos);
-      currentTarget.current.copy(targetLookAt);
+      currentTarget.current.copy(effectiveLookAt);
     } else {
       // Morph transition or same-camera smooth push damping
       const lerpSpeed = Math.min(1.0, delta * 8.0);
       currentPos.current.lerp(_effectivePos, lerpSpeed);
-      currentTarget.current.lerp(targetLookAt, lerpSpeed);
+      currentTarget.current.lerp(effectiveLookAt, lerpSpeed);
     }
 
     // 3. Apply PTZ Orbit & Pan offsets

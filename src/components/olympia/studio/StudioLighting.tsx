@@ -2880,26 +2880,26 @@ export function AudienceAmphitheater({
       })}
 
       {/* ── 5. AUTHENTIC VTV3 S14 CURVED CYLINDRICAL CYCLORAMA ENCLOSING AUDIENCE (R1) ── */}
-      {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 84°, Apex Z = 5.20m, Center Z_c = -17.30m, H = 8.50m */}
-      <mesh position={[0, 4.05, -17.30]}>
+      {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 84°, Apex Z = 7.20m (Z_world = 15.70m), Center Z_c = -15.30m, H = 8.50m */}
+      <mesh position={[0, 4.05, -15.30]}>
         <primitive object={cycloramaGeometry} attach="geometry" />
         <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Top Curved Neon Header Trim (Y = 8.28m) */}
-      <mesh position={[0, 8.28, -17.30]}>
+      <mesh position={[0, 8.28, -15.30]}>
         <tubeGeometry args={[cycloramaTrimCurve, 96, 0.02, 8, false]} />
         <meshBasicMaterial color="#38bdf8" />
       </mesh>
       {/* Base Curved Neon Trim (Y = -0.18m) */}
-      <mesh position={[0, -0.18, -17.30]}>
+      <mesh position={[0, -0.18, -15.30]}>
         <tubeGeometry args={[cycloramaTrimCurve, 96, 0.018, 8, false]} />
         <meshBasicMaterial color="#38bdf8" />
       </mesh>
 
       {/* ── TOP LANDING PLINTH BEHIND ROW 7: BASE FOR ARCHES, LOGO STANCHIONS & MOUNTAIN LANDSCAPE ── */}
-      <mesh position={[0, 1.90, 4.28]}>
-        <boxGeometry args={[13.2, 0.14, 1.80]} />
+      <mesh position={[0, 1.90, 5.33]}>
+        <boxGeometry args={[13.2, 0.14, 3.90]} />
         <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.22} />
       </mesh>
       <mesh position={[0, 1.97, 3.38]}>

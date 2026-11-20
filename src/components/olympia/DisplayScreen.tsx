@@ -703,8 +703,8 @@ export default function DisplayScreen({ code }: { code: string }) {
           )
         )}
 
-        {/* ── 6. SUMMARY LOWER-THIRD / FULLSCREEN GRAPHIC ── */}
-        {state.summaryState?.active && (
+        {/* ── 6. SUMMARY LOWER-THIRD / FULLSCREEN GRAPHIC (Suppressed in cinematic_o27 mode) ── */}
+        {state.summaryState?.active && state.summaryState.mode !== "cinematic_o27" && state.summaryMode !== "cinematic_o27" && (
           state.themeMode === "o26_classic" ? (
             <Vtv3ClassicSummaryGraphic state={state} />
           ) : (

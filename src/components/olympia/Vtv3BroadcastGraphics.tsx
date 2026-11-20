@@ -1620,12 +1620,12 @@ export function ClassicUnifiedLowerThird({
 
   return (
     <motion.div
-      initial={{ y: "100%", opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: "100%", opacity: 0 }}
-      transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
       className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1 overflow-visible"
-      style={{ perspective: 1400 }}
+      style={{ perspective: 1600 }}
     >
       {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
@@ -1642,27 +1642,114 @@ export function ClassicUnifiedLowerThird({
         </div>
       )}
 
-      {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam AFTER beam reaches Y position) ── */}
+      {/* ── 2. 6-SIDED 3D VOLUMETRIC PRISM (Rotates 3D around center wooden rod axis: rotateX 90° -> 0°) ── */}
       <motion.div
-        initial={hasOpenedRef.current ? false : { rotateX: -90, opacity: 0 }}
+        initial={hasOpenedRef.current ? false : { rotateX: 90, opacity: 0 }}
         animate={{ rotateX: 0, opacity: 1 }}
         exit={{ rotateX: -90, opacity: 0 }}
         transition={{
-          rotateX: { delay: hasOpenedRef.current ? 0 : 0.38, duration: 0.48, ease: [0.16, 1, 0.3, 1] },
-          opacity: { delay: hasOpenedRef.current ? 0 : 0.38, duration: 0.25 },
+          rotateX: { duration: 0.46, ease: [0.16, 1, 0.3, 1] },
+          opacity: { duration: 0.22 },
         }}
-        className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
+        className="relative w-full z-10 overflow-visible"
         style={{
-          transformOrigin: "top center",
+          transformOrigin: "50% 50%",
           transformStyle: "preserve-3d",
-          background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
-          border: "3px solid #d4af37",
-          boxShadow:
-            "0 14px 44px rgba(0,0,0,0.94), 0 0 24px rgba(212,175,55,0.35), inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.85)",
-          outline: "1.5px solid #78350f",
-          outlineOffset: "-5px",
         }}
       >
+        {/* ── 3D PRISM BACK FACE (Z = -12px, rotateY: 180deg) - Solid dark polished mahogany with embossed seal ── */}
+        <div
+          className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none shadow-2xl flex items-center justify-center border-4 border-amber-600/70"
+          style={{
+            transform: "rotateY(180deg) translateZ(12px)",
+            backfaceVisibility: "hidden",
+            background:
+              "linear-gradient(135deg, #1c100b 0%, #2e1a12 25%, #3f2318 50%, #2a150e 75%, #140b08 100%)",
+            boxShadow: "inset 0 0 50px rgba(0,0,0,0.95), 0 16px 40px rgba(0,0,0,0.9)",
+          }}
+        >
+          {/* Subtle wood grain linear texture */}
+          <div
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(90deg, rgba(254,240,138,0.06) 0px, transparent 3px, rgba(0,0,0,0.35) 7px)",
+            }}
+          />
+          {/* Embossed Bronze Seal */}
+          <div className="relative z-10 flex flex-col items-center justify-center p-6 border-2 border-amber-500/30 rounded-full w-28 h-28 bg-amber-950/40 shadow-inner">
+            <div className="text-amber-400 font-black text-xs tracking-widest uppercase opacity-80 text-center">
+              OLYMPIA
+            </div>
+            <div className="w-8 h-0.5 bg-amber-400/50 my-1" />
+            <div className="text-amber-500 text-[10px] tracking-wider opacity-60">S14</div>
+          </div>
+        </div>
+
+        {/* ── 3D PRISM TOP RIM (Height 24px, rotateX: 90deg, translateZ: 12px) - Beveled gilded brass edge ── */}
+        <div
+          className="absolute top-0 left-3 right-3 h-[24px] pointer-events-none rounded-t-sm"
+          style={{
+            transform: "translateY(-12px) rotateX(90deg)",
+            transformOrigin: "center center",
+            background:
+              "linear-gradient(90deg, #78350f 0%, #d4af37 20%, #fef08a 50%, #d4af37 80%, #78350f 100%)",
+            boxShadow:
+              "inset 0 1px 2px rgba(255,255,255,0.8), inset 0 -1px 3px rgba(0,0,0,0.7), 0 -2px 6px rgba(212,175,55,0.4)",
+          }}
+        />
+
+        {/* ── 3D PRISM BOTTOM RIM (Height 24px, rotateX: -90deg, translateZ: 12px) - Beveled gilded brass edge ── */}
+        <div
+          className="absolute bottom-0 left-3 right-3 h-[24px] pointer-events-none rounded-b-sm"
+          style={{
+            transform: "translateY(12px) rotateX(-90deg)",
+            transformOrigin: "center center",
+            background:
+              "linear-gradient(90deg, #451a03 0%, #b45309 25%, #fde047 50%, #b45309 75%, #451a03 100%)",
+            boxShadow:
+              "inset 0 1px 3px rgba(255,255,255,0.5), inset 0 -2px 6px rgba(0,0,0,0.9), 0 4px 10px rgba(0,0,0,0.9)",
+          }}
+        />
+
+        {/* ── 3D PRISM LEFT RIM (Width 24px, rotateY: -90deg, translateZ: 12px) ── */}
+        <div
+          className="absolute top-3 bottom-3 left-0 w-[24px] pointer-events-none rounded-l-sm"
+          style={{
+            transform: "translateX(-12px) rotateY(-90deg)",
+            transformOrigin: "center center",
+            background:
+              "linear-gradient(180deg, #451a03 0%, #92400e 30%, #fef08a 50%, #78350f 75%, #291003 100%)",
+            boxShadow: "inset 1px 0 3px rgba(255,255,255,0.7), inset -1px 0 4px rgba(0,0,0,0.9)",
+          }}
+        />
+
+        {/* ── 3D PRISM RIGHT RIM (Width 24px, rotateY: 90deg, translateZ: 12px) ── */}
+        <div
+          className="absolute top-3 bottom-3 right-0 w-[24px] pointer-events-none rounded-r-sm"
+          style={{
+            transform: "translateX(12px) rotateY(90deg)",
+            transformOrigin: "center center",
+            background:
+              "linear-gradient(180deg, #451a03 0%, #92400e 30%, #fef08a 50%, #78350f 75%, #291003 100%)",
+            boxShadow: "inset -1px 0 3px rgba(255,255,255,0.7), inset 1px 0 4px rgba(0,0,0,0.9)",
+          }}
+        />
+
+        {/* ── 3D PRISM FRONT FACE (Z = +12px) ── */}
+        <div
+          className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
+          style={{
+            transform: "translateZ(12px)",
+            transformStyle: "preserve-3d",
+            background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+            border: "3px solid #d4af37",
+            boxShadow:
+              "0 14px 44px rgba(0,0,0,0.94), 0 0 24px rgba(212,175,55,0.35), inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.85)",
+            outline: "1.5px solid #78350f",
+            outlineOffset: "-5px",
+          }}
+        >
         {/* Subtle chalkboard SVG background inside box */}
         <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
           <Vtv3ChalkboardBackdrop className="opacity-25" />
@@ -1780,6 +1867,7 @@ export function ClassicUnifiedLowerThird({
             <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />
           </div>
         )}
+        </div>
       </motion.div>
     </motion.div>
   );

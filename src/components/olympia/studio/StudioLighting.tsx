@@ -3429,9 +3429,9 @@ export function StudioLighting({
   // Grandstand Illumination Factor (R4):
   // - Lobby idle: dim sapphire standby (0.08)
   // - Opening MC greeting before Contestant Intro: moderate television blue wash (0.55)
-  // - Contestant Introduction & Competition Rounds (isGrandstandFullLit): 100% bright & clear (1.0, or 0.28 in VeDich dimmed)
+  // - Contestant Introduction & Competition Rounds (isGrandstandFullLit / isEntranceActive): 100% bright & clear (1.0, or 0.28 in VeDich dimmed)
   const grandstandLightFactor = useMemo(() => {
-    if (isGrandstandFullLit) {
+    if (isGrandstandFullLit || isEntranceActive || camAngle === 11 || camAngle === 12 || camAngle === 13 || camAngle === 19 || camAngle === 20) {
       return isVeDichDimmed ? 0.28 : 1.0;
     }
     if (isIdle) {
@@ -3441,7 +3441,7 @@ export function StudioLighting({
       return THREE.MathUtils.lerp(0.12, 0.55, liveFactor);
     }
     return THREE.MathUtils.lerp(0.12, isVeDichDimmed ? 0.28 : 1.0, liveFactor);
-  }, [isGrandstandFullLit, isVeDichDimmed, isIdle, introStartedAt, liveFactor]);
+  }, [isGrandstandFullLit, isEntranceActive, camAngle, isVeDichDimmed, isIdle, introStartedAt, liveFactor]);
 
   const dynamicContestantPositions = useMemo(() => {
     const count = Math.min(8, Math.max(1, totalSeats || 4));

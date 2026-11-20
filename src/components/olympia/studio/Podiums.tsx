@@ -2707,7 +2707,7 @@ export function ContestantPodium({
         <ContestantFigure
           seatId={seatId}
           quality={quality}
-          position={[0, 0, -0.48]}
+          position={[0, 0, -0.42]}
           isBuzzed={isBuzzed}
         />
       )}
@@ -4285,22 +4285,35 @@ export function evaluateContestantEntranceTrajectory(
   const isDoorLeft = seatId % 2 === 0;
   const doorX = isDoorLeft ? 1.15 : -1.15;
   const doorZ = 12.85;
+  const queueIdx = Math.floor(seatId / 2);
+  const waitZ = doorZ + queueIdx * 0.45;
 
   const startX = doorX;
   const startY = 1.84;
   const startZ = doorZ;
 
+  const initialDoorRotY = isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35;
+
   let curX = startX;
   let curY = startY;
   let curZ = startZ;
-  let curRotY = Math.PI; // Facing towards camera (-Z)
+  let curRotY = initialDoorRotY;
   let walkingNow = true;
   let curGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
   let curGestureProg = 0;
   let vel = 0;
 
-  // Phase 1 (0.0 -> 0.6s): Steps out from behind side arch door onto central aisle on top plinth (11.90m)
-  if (t < 0.6) {
+  if (t < 0) {
+    // Phase 0: Waiting behind portal doorway arch on grandstand top plinth
+    curX = doorX;
+    curY = startY;
+    curZ = waitZ;
+    curRotY = initialDoorRotY;
+    walkingNow = false;
+    curGesture = "none";
+    curGestureProg = 0;
+    vel = 0;
+  } else if (t < 0.6) {
     const p = t / 0.6;
     const smoothP = p * p * (3 - 2 * p);
     curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
@@ -4447,14 +4460,19 @@ export function evaluateContestantEntranceTrajectory(
     const diff = normalizeAnglePi(deskRotY - baseHeading);
     curRotY = baseHeading + diff * blendEase;
   } else {
-    // Phase 6 (arrivalSec -> bowEndSec+): Arrived behind desk with greeting bow
+    // Phase 6 (arrivalSec -> bowEndSec+): Arrived behind desk with greeting bow, then stays in desk posture
     curX = deskX;
     curY = deskY;
     curZ = deskZ;
     curRotY = deskRotY;
     walkingNow = false;
-    curGesture = "desk_bow";
-    curGestureProg = Math.max(0, Math.min(1.0, (t - arrivalSec) / ENTRANCE_DESK_BOW_SEC));
+    if (t < bowEndSec) {
+      curGesture = "desk_bow";
+      curGestureProg = Math.max(0, Math.min(1.0, (t - arrivalSec) / ENTRANCE_DESK_BOW_SEC));
+    } else {
+      curGesture = "none";
+      curGestureProg = 0;
+    }
     vel = 0;
   }
 
@@ -4512,7 +4530,7 @@ function SingleContestantEntranceWalkingFigure({
     if (!g) return;
 
     const now = getNow();
-    const t = Math.max(0, (now - seatStart) / 1000);
+    const t = (now - seatStart) / 1000;
 
     const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfg, firstPhi, totalSeats);
 
@@ -4527,8 +4545,8 @@ function SingleContestantEntranceWalkingFigure({
     gestureProgressRef.current = traj.gestureProg;
     walkPhaseRef.current = traj.walkPhase;
 
-    const isFinished = traj.bowEndSec > 0 && t >= traj.bowEndSec;
-    g.visible = !isFinished;
+    // Permanently visible: waiting behind doorway arch, descending stairs, or staying behind assigned desk!
+    g.visible = true;
     g.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
     g.rotation.y = traj.rotY;
   });
@@ -4560,39 +4578,40 @@ export function ContestantEntranceWalkingFigures({
   }>;
   serverNow?: () => number;
 }) {
-  const entrance = state.entranceState;
-  if (!entrance || !entrance.active) return null;
+  const hasEntranceCompleted = Boolean(state?.entranceCompleted);
+  // Unmounted once entrance is fully completed and Podiums takes over static rendering
+  if (hasEntranceCompleted) return null;
 
+  const entrance = state?.entranceState;
   const getNow = serverNow || (() => Date.now());
   const now = getNow();
   const totalSeats = contestantConfigs.length;
-  const currentSeat = entrance.currentSeatIdx ?? 0;
-  const startTimes = entrance.seatStartTimes || [];
+  const currentSeat = entrance?.currentSeatIdx ?? 0;
+  const startTimes = entrance?.seatStartTimes || [];
   const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(totalSeats);
 
-  // Concurrently render all active walking contestants once their walk has started
-  const activeFigures: Array<{
+  // Render all active contestants: waiting behind doorway arch before their turn,
+  // walking down stairs during their turn, or standing at their desk after arrival
+  const allFigures: Array<{
     seatId: number;
     seatStart: number;
     targetCfg: { seatId: number; pos: [number, number, number]; rotY: number };
   }> = [];
 
   for (let i = 0; i < totalSeats; i++) {
-    const seatStart =
-      startTimes[i] ??
-      (i === currentSeat
-        ? entrance.seatStartedAt || entrance.startedAt
-        : (entrance.startedAt || now) + (seatStartOffsetsMs[i] ?? i * 6800));
+    const isWalkActive = Boolean(entrance && entrance.active);
+    const seatStart = !isWalkActive
+      ? now + 1000000000
+      : (startTimes[i] ??
+        (i === currentSeat
+          ? entrance?.seatStartedAt || entrance?.startedAt || now
+          : (entrance?.startedAt || now) + (seatStartOffsetsMs[i] ?? i * 6800)));
 
-    const elapsed = (now - seatStart) / 1000;
-    // Render figure once walk has started; stays at desk seamlessly until entire entrance sequence concludes
-    if (elapsed >= 0) {
-      activeFigures.push({
-        seatId: i,
-        seatStart,
-        targetCfg: contestantConfigs[i],
-      });
-    }
+    allFigures.push({
+      seatId: i,
+      seatStart,
+      targetCfg: contestantConfigs[i],
+    });
   }
 
   const firstCfg = contestantConfigs[0];
@@ -4602,7 +4621,7 @@ export function ContestantEntranceWalkingFigures({
 
   return (
     <group>
-      {activeFigures.map((fig) => (
+      {allFigures.map((fig) => (
         <SingleContestantEntranceWalkingFigure
           key={fig.seatId}
           seatId={fig.seatId}
@@ -6169,8 +6188,8 @@ export function Podiums({
         />
       )}
 
-      {/* Contestant Entrance Walking Figures (Stairs -> Landing Platform -> Assigned Podium) */}
-      {isEntranceActive && state && (
+      {/* Contestant Entrance Figures (Waiting behind grandstand doorway arch -> Stairs -> Landing Platform -> Assigned Podium) */}
+      {!state?.entranceCompleted && state && (
         <ContestantEntranceWalkingFigures
           state={state}
           contestantConfigs={contestantConfigs}
@@ -6244,21 +6263,16 @@ export function Podiums({
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
 
-        // USER REQUIREMENT (R1 & A1 Physical Continuity):
-        // Physical continuity: Contestants walk down from grandstand stairs.
-        // - Pre-match / lobby / intro standby before entrance: Podiums are empty (showFigure = false).
-        // - Entrance walk active: Contestants who finished walk (hasFinishedEntrance || cfg.seatId < currentEntranceSeat) stand at their podium.
-        //   Contestant currently walking is rendered by ContestantEntranceWalkingFigures (NO duplicate clone).
-        //   Subsequent contestants waiting upstairs remain off stage (showFigure = false).
-        // - Entrance completed or competition round active: contestants stand at their podium (except active Về Đích contestant at center stage).
+        // USER REQUIREMENT (Physical Continuity & Contestant Entrance):
+        // - Pre-match / lobby / intro standby before entrance: Podiums are completely empty (showFigure = false).
+        //   Contestants stand waiting behind the doorway arches at the grandstand top plinth.
+        // - Entrance walk active: Contestants are rendered seamlessly by ContestantEntranceWalkingFigures
+        //   (walking down stairs, posing at center dais, walking along rear corridor, arriving at desk).
+        // - Entrance completed or competition round active: Podiums take over static contestant rendering.
         const showFigure =
           !isThisContestantInVeDichTurn &&
           !isLobby &&
-          (hasEntranceCompleted || (state?.stage === "playing" && !isEntranceActive)
-            ? true
-            : isEntranceActive
-            ? (hasFinishedEntrance || cfg.seatId < currentEntranceSeat || (currentEntranceSeat >= activeCount - 1 && thisSeatElapsed >= seatTiming.bowEndSec))
-            : isCompetitionRound);
+          hasEntranceCompleted;
 
         const isDimmed = Boolean(
           isContestantDimmed &&

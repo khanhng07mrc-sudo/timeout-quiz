@@ -2881,28 +2881,18 @@ export function AudienceAmphitheater({
 
       {/* ── 5. AUTHENTIC VTV3 S14 CURVED CYLINDRICAL CYCLORAMA ENCLOSING AUDIENCE (R1) ── */}
       {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 84°, Apex Z = 5.20m, Center Z_c = -17.30m, H = 8.50m */}
-      {/* Set to FrontSide so it faces audience (+Z) and is backface culled when viewed from CAM 1 looking at stage (-Z) */}
-      <mesh
-        position={[0, 4.05, -17.30]}
-        visible={!isEntranceActive && !(camAngle === 11 || camAngle === 12 || camAngle === 13 || camAngle === 19)}
-      >
+      <mesh position={[0, 4.05, -17.30]}>
         <primitive object={cycloramaGeometry} attach="geometry" />
-        <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.FrontSide} />
+        <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Top Curved Neon Header Trim (Y = 8.28m) */}
-      <mesh
-        position={[0, 8.28, -17.30]}
-        visible={!isEntranceActive && !(camAngle === 11 || camAngle === 12 || camAngle === 13 || camAngle === 19)}
-      >
+      <mesh position={[0, 8.28, -17.30]}>
         <tubeGeometry args={[cycloramaTrimCurve, 96, 0.02, 8, false]} />
         <meshBasicMaterial color="#38bdf8" />
       </mesh>
       {/* Base Curved Neon Trim (Y = -0.18m) */}
-      <mesh
-        position={[0, -0.18, -17.30]}
-        visible={!isEntranceActive && !(camAngle === 11 || camAngle === 12 || camAngle === 13 || camAngle === 19)}
-      >
+      <mesh position={[0, -0.18, -17.30]}>
         <tubeGeometry args={[cycloramaTrimCurve, 96, 0.018, 8, false]} />
         <meshBasicMaterial color="#38bdf8" />
       </mesh>

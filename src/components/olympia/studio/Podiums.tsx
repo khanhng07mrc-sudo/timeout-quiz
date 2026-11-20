@@ -6257,7 +6257,7 @@ export function Podiums({
           (hasEntranceCompleted
             ? true
             : isEntranceActive
-            ? (hasFinishedEntrance || cfg.seatId < currentEntranceSeat)
+            ? false // ContestantEntranceWalkingFigures handles figure rendering during entrance, eliminating duplicate Z-fighting
             : isCompetitionRound);
 
         const isDimmed = Boolean(

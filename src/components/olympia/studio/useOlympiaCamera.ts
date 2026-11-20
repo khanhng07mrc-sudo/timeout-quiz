@@ -441,7 +441,10 @@ export function useOlympiaCameraState(
       isRoundPostIntroStandby(state, getNow()) ||
       hasActiveBuzzer ||
       isThinking ||
-      (state?.currentRound === "khoiDong" && state?.khoiDong?.phase === "segmentDone") ||
+      (state?.currentRound === "khoiDong" &&
+        state?.khoiDong &&
+        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil + 2000) ||
+          state.khoiDong.phase === "segmentDone")) ||
       Boolean(state?.summaryState?.active) ||
       (state?.currentRound === "veDich" &&
         state?.veDich &&
@@ -562,40 +565,20 @@ export function useOlympiaCameraState(
     }
 
     // 2.8. Post-Intro Opening Round Camera Sequence (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
-    // Standard 4-Phase Broadcast Sequence after 7.66s intro video finishes:
-    // - Phase 1 (0.0s - 3.5s): CAM 14 (Cẩu quay Vòng nguyệt quế quét lên)
-    // - Phase 2 (3.5s - 7.5s): CAM 3 (Bục MC giới thiệu thể lệ vòng thi)
-    // - Phase 3 (7.5s - 11.5s): CAM 10 (Toàn cảnh bục thí sinh sẵn sàng)
-    // - Phase 4 (11.5s+): CAM 1 (Toàn cảnh trường quay lướt bao quát)
+    // Tối giản 2 giai đoạn: Bục MC (CAM 3, trong 3s) -> Toàn cảnh trường quay (CAM 1) chờ Host bắt đầu thi
     if (isRoundPostIntroStandby(state, now)) {
       const baseTime = state?.roundIntroDoneAt ?? roundEnteredAtRef.current;
       const postIntroElapsed = Math.max(0, (now - baseTime) / 1000);
-      if (postIntroElapsed < 3.5) {
-        return {
-          camAngle: 14,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.1,
-        };
-      }
-      if (postIntroElapsed < 7.5) {
+      if (postIntroElapsed < 3.0) {
         return {
           camAngle: 3,
           transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: Math.min(1.0, (postIntroElapsed - 3.5) / 4.0) * 0.25,
-        };
-      }
-      if (postIntroElapsed < 11.5) {
-        return {
-          camAngle: 10,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.1,
+          pushInProgress: Math.min(1.0, postIntroElapsed / 3.0) * 0.15,
         };
       }
       return {
-        camAngle: 1, // Hết 11.5s lướt toàn cảnh trường quay chờ Host bắt đầu
+        camAngle: 1, // Hết 3s chuyển thẳng về toàn cảnh trường quay chờ Host bắt đầu
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0,
@@ -625,20 +608,20 @@ export function useOlympiaCameraState(
         ? (validSeat ? getCameraForSeat(seatId, activeCount) : 1)
         : (kd.buzzedSeat != null ? getCameraForSeat(kd.buzzedSeat, activeCount) : 10);
 
-      // 3.2. Khi chưa nhấn Bắt đầu (hết intro Khởi động):
+      // 3.2. Khi chưa nhấn Bắt đầu (màn chờ Khởi Động):
       // Giữ zoom in bục MC 2.8s để MC dẫn trọn lời trước khi zoom out toàn cảnh (CAM 1)
-      if (!kd.started && (kd.phase === "intro" || kd.qIdx < 0)) {
+      if (!kd.started && (kd.phase === "intro" || kd.phase === "idle" || kd.qIdx < 0)) {
         const introElapsed = Math.max(0, (now - (state.roundIntroDoneAt ?? roundEnteredAtRef.current)) / 1000);
         if (introElapsed < 2.8) {
           return {
             camAngle: 3, // Zoom in bục MC
             transitionMode: "CUT",
             isOverlayHidden: false,
-            pushInProgress: Math.min(1.0, introElapsed / 2.8) * 0.20,
+            pushInProgress: Math.min(1.0, introElapsed / 2.8) * 0.15,
           };
         }
         return {
-          camAngle: 1, // Hết 2.8s mặc định zoom out toàn cảnh (lúc đó đã thi đâu)
+          camAngle: 1, // Toàn cảnh trường quay bao quát toàn bộ bục thí sinh
           transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
@@ -647,22 +630,22 @@ export function useOlympiaCameraState(
 
       // 3.3. Khi nhấn Bắt đầu (trong 3.5s đầu):
       // Smooth continuous sweep từ góc toàn cảnh CAM 14
-      if (kd.startCooldownUntil && now < kd.startCooldownUntil && !kd.questionRevealed) {
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
         return {
           camAngle: 14,
           transitionMode: "MORPH",
           isOverlayHidden: false,
-          pushInProgress: 0,
+          pushInProgress: 0.15,
         };
       }
 
       // 3.3b. Sau 3.5s đầu: từ góc toàn cảnh zoom (morph) về đúng góc thí sinh tương ứng trong vòng 2s
-      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2000 && !kd.questionRevealed) {
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2000) {
         return {
           camAngle: targetContestantCam,
           transitionMode: "MORPH",
           isOverlayHidden: false,
-          pushInProgress: 0,
+          pushInProgress: 0.25,
         };
       }
 

@@ -492,10 +492,14 @@ export function useOlympiaCameraState(
       const seatStart = state.summaryState.seatEnteredAt || state.summaryState.lastAdvanceAt || now;
       const elapsedOnSeat = Math.max(0, (now - seatStart) / 1000);
 
-      // O27 Choreography:
-      // - 0.0s -> 1.5s: Từ trạng thái thấy cả người + bảng điểm (0.75x - 0.8x) zoom lên 1.25x
-      // - Sau 1.5s: Đứng im tại 1.25x (trong 1.5s với 2-4 TS, 1.0s với 5-6 TS, 0.5s với 7-8 TS)
-      const push = Math.min(1.0, elapsedOnSeat / 1.5);
+      // Phase 1 (0.0s -> 0.8s): Hold still at wide scoreboard framing to read score
+      // Phase 2 (0.8s -> 2.0s): Smooth ease-in towards contestant
+      // Phase 3 (>= 2.0s): Hold close-up
+      let push = 0.0;
+      if (elapsedOnSeat >= 0.8) {
+        const t = Math.min(1.0, (elapsedOnSeat - 0.8) / 1.2);
+        push = t * t * (3 - 2 * t);
+      }
       const isO27 = state.summaryState.mode === "cinematic_o27" || state.summaryMode === "cinematic_o27";
       return {
         camAngle: 18, // Preset 18: wide_with_podium for activeSeat (zooms 0.75x -> 1.50x aimed at torso)
@@ -559,7 +563,7 @@ export function useOlympiaCameraState(
     if (state.introTimer || state.introStandby) {
       return {
         camAngle: 3,
-        transitionMode: "MORPH",
+        transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0.15,
       };

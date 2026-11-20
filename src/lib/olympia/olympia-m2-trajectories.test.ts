@@ -460,6 +460,8 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
         const deskZ = cfg.pos[2] - Math.cos(cfg.rotY) * 0.42;
 
         const arrival = evaluateContestantEntranceTrajectory(timing.arrivalSec, s, cfg, arc.startPhi, totalSeats);
+        assert.equal(arrival.arrivalSec, timing.arrivalSec, `N=${totalSeats} seat=${s}: arrivalSec must match timing exactly`);
+        assert.equal(arrival.bowEndSec, timing.bowEndSec, `N=${totalSeats} seat=${s}: bowEndSec must match timing exactly to prevent handoff float divergence`);
         const posErr = Math.hypot(arrival.rawPos[0] - deskX, arrival.rawPos[2] - deskZ);
         assert.ok(posErr <= 0.001, `N=${totalSeats} seat=${s}: arrival error ${(posErr * 1000).toFixed(3)}mm must be <= 1.0mm`);
         let rotDiff = (arrival.rotY - cfg.rotY) % (2 * Math.PI);

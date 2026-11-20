@@ -4284,8 +4284,8 @@ export function evaluateContestantEntranceTrajectory(
   const floorDurationSec = timing
     ? timing.floorDurationSec
     : +Math.min(8.4, Math.max(3.6, (arcLenA + arcLenB) / 2.45)).toFixed(2);
-  const arrivalSec = ENTRANCE_STAIRS_END_SEC + floorDurationSec;
-  const bowEndSec = arrivalSec + ENTRANCE_DESK_BOW_SEC;
+  const arrivalSec = timing ? timing.arrivalSec : +(ENTRANCE_STAIRS_END_SEC + floorDurationSec).toFixed(2);
+  const bowEndSec = timing ? timing.bowEndSec : +(arrivalSec + ENTRANCE_DESK_BOW_SEC).toFixed(2);
 
   // Door side selection for contestants (alternating or seat-based):
   const isDoorLeft = seatId % 2 === 0;
@@ -6274,16 +6274,16 @@ export function Podiums({
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
 
-        // USER REQUIREMENT (Physical Continuity & Contestant Entrance):
+        // Physical Continuity & Contestant Entrance (Zero Cloning):
         // - Pre-match / lobby / intro standby before entrance: Podiums are completely empty (showFigure = false).
-        //   Contestants stand waiting behind the doorway arches at the grandstand top plinth.
+        //   Contestants stand waiting exclusively behind the doorway arches at the grandstand top plinth.
         // - Entrance walk active: Contestants are rendered seamlessly by ContestantEntranceWalkingFigures
         //   (walking down stairs, posing at center dais, walking along rear corridor, arriving at desk).
+        //   Only after finishing entrance does the podium figure appear.
         // - Entrance completed or competition round active: Podiums take over static contestant rendering.
         const showFigure =
           !isThisContestantInVeDichTurn &&
-          !isLobby &&
-          (hasEntranceCompleted || (state?.stage === "playing" && !isEntranceActive) || hasFinishedEntrance || cfg.seatId < currentEntranceSeat);
+          (hasEntranceCompleted || isCompetitionRound || (isEntranceActive && hasFinishedEntrance));
 
         // Compute dynamic emotional gestures based on rank & score gap during score summary (Task 6)
         let summaryGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";

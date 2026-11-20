@@ -30,7 +30,17 @@ import {
   BroadcastRoundIntroOverlay,
 } from "./Vtv3BroadcastGraphics";
 import { preloadOlympiaIntroVideos } from "@/lib/olympia/assetCache";
-import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
+import {
+  isTtsEnabled,
+  setTtsEnabled,
+  speakTTS,
+  cancelTTS,
+  speakSmartQuestion,
+  smoothStopOlympiaTTS,
+  speakOlympiaResult,
+  speakRoundIntroTTS,
+  summarizeOlympiaAnswer,
+} from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
   ssr: false,
@@ -293,11 +303,13 @@ export default function DisplayScreen({ code }: { code: string }) {
   );
   const isCameraOverridden = isCameraManual || isCameraPtzActive;
 
-  // Automated Vietnamese TTS question reading
+  // Automated Vietnamese Smart TTS question reading with season speed calibration & role alternation
   const lastQuestionRef = useRef<string>("");
   useEffect(() => {
     if (!state || !ttsActive) return;
     let currentQ = "";
+    let questionSeatId: number | undefined;
+
     if (
       state.currentRound === "khoiDong" &&
       state.khoiDong?.started &&
@@ -307,6 +319,8 @@ export default function DisplayScreen({ code }: { code: string }) {
       state.khoiDong.current?.q
     ) {
       currentQ = state.khoiDong.current.q;
+      const curSeg = state.khoiDong.segments?.[state.khoiDong.segIdx];
+      questionSeatId = curSeg?.kind === "solo" ? curSeg.seat : undefined;
     } else if (state.currentRound === "vcnv" && state.vcnv?.phase === "question") {
       const curIdx = state.vcnv.currentRow;
       const isCenter = curIdx === 4;
@@ -321,6 +335,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       (state.veDich.phase === "thinking" || state.veDich.phase === "stealing")
     ) {
       currentQ = state.veDich.current.q.q;
+      questionSeatId = state.veDich.order[state.veDich.turnIdx];
     } else if (state.currentRound === "cauHoiPhu" && state.cauHoiPhu?.phase === "question") {
       const cp = state.cauHoiPhu;
       currentQ = cp.questions[cp.qIdx]?.q || "";
@@ -328,27 +343,125 @@ export default function DisplayScreen({ code }: { code: string }) {
 
     if (currentQ && currentQ !== lastQuestionRef.current) {
       lastQuestionRef.current = currentQ;
-      speakTTS(currentQ);
+      speakSmartQuestion(currentQ, {
+        season: effectiveAudioSeason,
+        round: state.currentRound || undefined,
+        seatId: questionSeatId,
+      });
     } else if (!currentQ) {
       lastQuestionRef.current = "";
       cancelTTS();
     }
   }, [
     ttsActive,
+    effectiveAudioSeason,
     state?.currentRound,
     state?.khoiDong?.started,
     state?.khoiDong?.questionRevealed,
     state?.khoiDong?.phase,
     state?.khoiDong?.current?.q,
+    state?.khoiDong?.segIdx,
     state?.vcnv?.phase,
     state?.vcnv?.currentRow,
     state?.tangToc?.phase,
     state?.tangToc?.qIdx,
     state?.veDich?.phase,
     state?.veDich?.current?.q?.q,
+    state?.veDich?.order,
+    state?.veDich?.turnIdx,
     state?.cauHoiPhu?.phase,
     state?.cauHoiPhu?.qIdx,
   ]);
+
+  // Natural speech stop on contestant buzzer activation
+  const prevBuzzedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!state) return;
+    const isBuzzed = Boolean(
+      state.khoiDong?.buzzedSeat != null ||
+      (state.vcnv?.bells && state.vcnv.bells.length > 0) ||
+      state.veDich?.steal?.buzzedSeat != null ||
+      state.cauHoiPhu?.buzzedSeat != null
+    );
+
+    if (isBuzzed && !prevBuzzedRef.current) {
+      smoothStopOlympiaTTS(30);
+    }
+    prevBuzzedRef.current = isBuzzed;
+  }, [
+    state?.khoiDong?.buzzedSeat,
+    state?.vcnv?.bells?.length,
+    state?.veDich?.steal?.buzzedSeat,
+    state?.cauHoiPhu?.buzzedSeat,
+  ]);
+
+  // Vocalize result confirmation ("Chính xác!") or concise summarized answer
+  const prevVerdictRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!state || !ttsActive) return;
+
+    // Khởi Động verdict
+    if (state.currentRound === "khoiDong" && state.khoiDong?.lastVerdict) {
+      const vKey = `kd-${state.khoiDong.qIdx}-${state.khoiDong.lastVerdict}`;
+      if (vKey !== prevVerdictRef.current) {
+        prevVerdictRef.current = vKey;
+        smoothStopOlympiaTTS(20);
+        if (state.khoiDong.lastVerdict === "correct") {
+          speakOlympiaResult(true, undefined, { season: effectiveAudioSeason, round: "khoiDong" });
+        } else if (state.khoiDong.lastVerdict === "wrong" && state.khoiDong.current?.a) {
+          speakOlympiaResult(false, state.khoiDong.current.a, { season: effectiveAudioSeason, round: "khoiDong" });
+        }
+      }
+    }
+
+    // Về Đích verdict
+    if (state.currentRound === "veDich" && state.veDich?.phase === "result" && state.veDich.lastVerdict) {
+      const vKey = `vd-${state.veDich.qIdx}-${state.veDich.lastVerdict}`;
+      if (vKey !== prevVerdictRef.current) {
+        prevVerdictRef.current = vKey;
+        smoothStopOlympiaTTS(20);
+        if (state.veDich.lastVerdict === "correct" || state.veDich.lastVerdict === "stealCorrect") {
+          speakOlympiaResult(true, undefined, { season: effectiveAudioSeason, round: "veDich" });
+        } else if (state.veDich.current?.q?.a) {
+          speakOlympiaResult(false, state.veDich.current.q.a, { season: effectiveAudioSeason, round: "veDich" });
+        }
+      }
+    }
+
+    // Câu Hỏi Phụ verdict
+    if (state.currentRound === "cauHoiPhu" && state.cauHoiPhu?.phase === "result") {
+      const vKey = `chp-${state.cauHoiPhu.qIdx}-${state.cauHoiPhu.buzzedSeat}`;
+      if (vKey !== prevVerdictRef.current) {
+        prevVerdictRef.current = vKey;
+        smoothStopOlympiaTTS(20);
+        speakOlympiaResult(true, undefined, { season: effectiveAudioSeason, round: "cauHoiPhu" });
+      }
+    }
+  }, [
+    ttsActive,
+    state?.currentRound,
+    state?.khoiDong?.lastVerdict,
+    state?.khoiDong?.qIdx,
+    state?.khoiDong?.current?.a,
+    state?.veDich?.phase,
+    state?.veDich?.lastVerdict,
+    state?.veDich?.qIdx,
+    state?.veDich?.current?.q?.a,
+    state?.cauHoiPhu?.phase,
+    state?.cauHoiPhu?.qIdx,
+    state?.cauHoiPhu?.buzzedSeat,
+    effectiveAudioSeason,
+  ]);
+
+  // Vocalize round intro greeting when transitioning into a new competition round
+  const prevRoundRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!state || !ttsActive || state.stage !== "playing" || !state.currentRound) return;
+    if (state.currentRound !== prevRoundRef.current) {
+      prevRoundRef.current = state.currentRound;
+      speakRoundIntroTTS(state.currentRound, { season: effectiveAudioSeason });
+    }
+  }, [state?.stage, state?.currentRound, ttsActive, effectiveAudioSeason]);
 
   if (join && !join.ok) {
     return (

@@ -471,9 +471,9 @@ export const _introFloorFocusTarget = new THREE.Vector3(0.00, 0.188, -0.50);
 // Phase 2 (2.5s - 7.0s): Crane elevates and smoothly tilts up as cyan bloom opens, revealing both MCs at center background (Image 4)
 export const _introCraneUpPos = new THREE.Vector3(-1.20, 1.65, 4.20);
 export const _introCraneUpTarget = new THREE.Vector3(0.00, 1.25, 0.00);
-// Phase 3 (7.0s onwards): Instant Hard Cut directly to Frontal Center MC medium shot (Image 5)
-export const _frontCenterMCPos = new THREE.Vector3(0.00, 1.35, 3.65);
-export const _frontCenterMCTarget = new THREE.Vector3(0.00, 1.25, 0.00);
+// Phase 3 (Center MC medium shot waist-up, zero feet in frame)
+export const _frontCenterMCPos = new THREE.Vector3(0.00, 1.38, 2.15);
+export const _frontCenterMCTarget = new THREE.Vector3(0.00, 1.38, 0.00);
 // Aliases for backwards compatibility with existing references
 export const _introLowGroundPos = _introFloorFocusPos;
 export const _introLowGroundTarget = _introFloorFocusTarget;
@@ -562,15 +562,24 @@ export function CameraController({
     ? getWideStageLeftTiltedPreset(effectiveTotalSeats)
     : (OLYMPIA_CAM_PRESETS[camAngle] || getWideStageCameraPreset(effectiveTotalSeats));
   const targetPos = useMemo(
-    () => (isIdleLobby && camAngle === 3 ? _mcTightPos.clone() : new THREE.Vector3(...targetPreset.pos)),
-    [isIdleLobby, camAngle, targetPreset]
+    () => {
+      if (isIdleLobby && camAngle === 3) return _mcTightPos.clone();
+      if (isPostIntroStandby && camAngle === 3) return _frontCenterMCPos.clone();
+      return new THREE.Vector3(...targetPreset.pos);
+    },
+    [isIdleLobby, isPostIntroStandby, camAngle, targetPreset]
   );
   const targetLookAt = useMemo(
-    () => (isIdleLobby && camAngle === 3 ? _mcTightTarget.clone() : new THREE.Vector3(...targetPreset.target)),
-    [isIdleLobby, camAngle, targetPreset]
+    () => {
+      if (isIdleLobby && camAngle === 3) return _mcTightTarget.clone();
+      if (isPostIntroStandby && camAngle === 3) return _frontCenterMCTarget.clone();
+      return new THREE.Vector3(...targetPreset.target);
+    },
+    [isIdleLobby, isPostIntroStandby, camAngle, targetPreset]
   );
 
   const prevCamAngleRef = useRef<number>(camAngle);
+  const prevActiveSeatRef = useRef<number>(activeSeat);
   const smoothPushRef = useRef<number>(pushInProgress);
   const prevQIdxRef = useRef<number>(qIdx ?? -1);
   const prevRevealedRef = useRef<boolean>(questionRevealed ?? false);
@@ -579,7 +588,11 @@ export function CameraController({
 
   // Handle instant cut on camera switch when mode is CUT, except when in standby or smoothly transitioning out of standby
   useEffect(() => {
-    if (prevCamAngleRef.current !== camAngle) {
+    const isCamChanged = prevCamAngleRef.current !== camAngle;
+    const isSeatChanged = prevActiveSeatRef.current !== activeSeat;
+    const isSummarySeatCut = camAngle === 18 && isSeatChanged;
+
+    if (isCamChanged || isSummarySeatCut) {
       const isMcHandoff = prevCamAngleRef.current === 3 || camAngle === 3;
       if (prevCamAngleRef.current === 14 && camAngle !== 14) {
         // CUT immediately to CAM 10 (Toàn cảnh hàng bục thí sinh) as starting point for 2.5s zoom into contestant
@@ -588,20 +601,24 @@ export function CameraController({
         currentTarget.current.copy(new THREE.Vector3(...cam10.target));
         camera.position.copy(currentPos.current);
         camera.lookAt(currentTarget.current);
-      } else if ((transitionMode === "CUT" || isMcHandoff) && !isPostIntroStandby && standbyExitedAtRef.current == null) {
+      } else if ((transitionMode === "CUT" || isMcHandoff || isSummarySeatCut) && !isPostIntroStandby && standbyExitedAtRef.current == null) {
         currentPos.current.copy(targetPos);
         currentTarget.current.copy(targetLookAt);
+        camera.position.copy(targetPos);
+        camera.lookAt(targetLookAt);
       }
-      smoothPushRef.current = pushInProgress;
+      smoothPushRef.current = isSummarySeatCut ? 0.0 : pushInProgress;
       prevCamAngleRef.current = camAngle;
+      prevActiveSeatRef.current = activeSeat;
     }
-  }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress, effectiveTotalSeats, camera]);
+  }, [camAngle, activeSeat, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress, effectiveTotalSeats, camera]);
 
   useFrame((_, delta) => {
     // Smooth push-in zoom:
     // Track Khởi Động active question and cleanly manage zoom-in lifecycle:
     const isKdActive = qIdx != null && qIdx >= 0 && Boolean(questionRevealed);
     const isNewQuestion = isKdActive && (qIdx !== prevQIdxRef.current || !prevRevealedRef.current);
+    const isSummarySeatCut = camAngle === 18 && prevActiveSeatRef.current !== activeSeat;
 
     if (isNewQuestion) {
       prevQIdxRef.current = qIdx ?? -1;
@@ -612,12 +629,23 @@ export function CameraController({
       // Eliminates the 0.5-1.0s backward damping jerk from 1.25x to 1.0x
       smoothPushRef.current = 0.0;
       prevCamAngleRef.current = camAngle;
+    } else if (isSummarySeatCut) {
+      // Hard CUT on score summary when advancing to next contestant:
+      // Instantly snap position and target, reset smooth push to 0.0, avoiding any glide across stage
+      prevActiveSeatRef.current = activeSeat;
+      prevCamAngleRef.current = camAngle;
+      smoothPushRef.current = 0.0;
+      currentPos.current.copy(targetPos);
+      currentTarget.current.copy(targetLookAt);
+      camera.position.copy(targetPos);
+      camera.lookAt(targetLookAt);
     } else if (prevCamAngleRef.current !== camAngle) {
       if (prevCamAngleRef.current === 29 && camAngle === 1 && transitionMode === "MORPH") {
         glideStartRef.current = serverNow ? serverNow() : Date.now();
       }
       smoothPushRef.current = pushInProgress;
       prevCamAngleRef.current = camAngle;
+      prevActiveSeatRef.current = activeSeat;
     } else if (isKdActive && questionZoomStartRef.current > 0) {
       // 60FPS smooth zoom-in over 7.5s (1.0x -> 1.25x), holding firmly at 1.0 without looping
       const now = serverNow ? serverNow() : Date.now();
@@ -635,7 +663,9 @@ export function CameraController({
 
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43);
+      const baseFov = (isPostIntroStandby && camAngle === 3)
+        ? 24.5
+        : (targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43));
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;
@@ -708,21 +738,12 @@ export function CameraController({
         if (camera instanceof THREE.PerspectiveCamera) {
           camera.fov = 40.0;
         }
-      } else if (elapsedSec < 13.5) {
-        // Phase 5 (10.0s - 13.5s): CUT to CAM 1 (Toàn Cảnh Trường Quay) holding for 3.5s
-        const cam1 = getWideStageCameraPreset(effectiveTotalSeats);
-        _curPos.set(...cam1.pos);
-        _curTarget.set(...cam1.target);
-        if (camera instanceof THREE.PerspectiveCamera) {
-          camera.fov = cam1.fov ?? 44.0;
-        }
       } else {
-        // Phase 6 (>= 13.5s onwards): CUT to CAM 3 (Bục MC & Cổng Lục Giác) for MC greeting
-        const mcPreset = OLYMPIA_CAM_PRESETS[3];
-        _curPos.set(...mcPreset.pos);
-        _curTarget.set(...mcPreset.target);
+        // Phase 5 (>= 10.0s): Cut directly to Center MC waist-up medium 2-shot (Zero feet in frame)
+        _curPos.set(0.00, 1.38, 2.15);
+        _curTarget.set(0.00, 1.38, 0.00);
         if (camera instanceof THREE.PerspectiveCamera) {
-          camera.fov = mcPreset.fov ?? 34.0;
+          camera.fov = 24.5;
         }
       }
 
@@ -818,9 +839,9 @@ export function CameraController({
     // When transitioning from standby to question framing, smoothly glide (lerp) into position without snapping.
     // When remaining on the same camera angle (e.g. advancing question), snap on new question to eliminate backward jerk.
     // When finishing a turn (CAM 29 to CAM 1), glide smoothly over 3.0 seconds.
-    if (isNewQuestion) {
-      // Snap camera directly to baseline 1.0x preset (push = 0) immediately,
-      // completely eliminating any backward interpolation jerk from 1.25x to 1.0x
+    if (isNewQuestion || isSummarySeatCut) {
+      // Snap camera directly to baseline preset immediately on new question or score summary seat change,
+      // completely eliminating any backward interpolation jerk or cross-stage morph/slide
       currentPos.current.copy(targetPos);
       currentTarget.current.copy(effectiveLookAt);
     } else if (glideStartRef.current != null) {

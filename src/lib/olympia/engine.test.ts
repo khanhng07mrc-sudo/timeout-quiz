@@ -3811,6 +3811,9 @@ test("M2: Sandbox system:setRuleset hot-reloads ruleset in-place without room ex
   assert.equal(g.state.rulesetId, "O13");
 });
 
+// Import Smart TTS test suite
+import "./tts.test";
+
 
 
 

@@ -6303,9 +6303,9 @@ export function Podiums({
             const rank = scores.findIndex((s) => s.idx === cfg.seatId) + 1;
             const gap = topScore - score;
 
-            if (rank === 1) {
+            if (gap === 0 || rank === 1) {
               summaryGesture = cfg.seatId % 2 === 0 ? "fist_pump" : "wave";
-            } else if (rank <= 3 && gap <= 30) {
+            } else if (gap <= 30) {
               summaryGesture = cfg.seatId % 2 === 0 ? "heart" : "desk_bow";
             } else {
               summaryGesture = cfg.seatId % 2 === 0 ? "desk_bow" : "wave";

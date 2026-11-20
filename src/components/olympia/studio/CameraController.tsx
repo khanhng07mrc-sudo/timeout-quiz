@@ -788,13 +788,22 @@ export function CameraController({
     _effectivePos.copy(targetPos);
     const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
     if (activePush > 0) {
-      _dir.copy(targetLookAt).sub(targetPos).normalize();
-      _effectivePos.addScaledVector(_dir, activePush * 0.40);
+      if (camAngle === 18) {
+        // CAM 18 Score Summary (O27):
+        // Horizontal push towards contestant so camera doesn't dip down into the table:
+        _dir.set(targetLookAt.x - targetPos.x, 0, targetLookAt.z - targetPos.z).normalize();
+        _effectivePos.addScaledVector(_dir, activePush * 0.35);
+        // Elevate camera slightly from 1.52m to 1.56m to center upper chest & head:
+        _effectivePos.y = THREE.MathUtils.lerp(1.52, 1.56, activePush);
+      } else {
+        _dir.copy(targetLookAt).sub(targetPos).normalize();
+        _effectivePos.addScaledVector(_dir, activePush * 0.40);
+      }
     }
-    // For CAM 18 (Score Summary), smoothly tilt aim upwards from desk (1.05m) to contestant chest & head (1.42m)
+    // For CAM 18 (Score Summary), smoothly tilt aim upwards from desk (1.05m) to contestant chest & chin (1.45m)
     const effectiveLookAt = targetLookAt.clone();
     if (camAngle === 18 && activePush > 0) {
-      effectiveLookAt.y = THREE.MathUtils.lerp(1.05, 1.42, activePush);
+      effectiveLookAt.y = THREE.MathUtils.lerp(1.05, 1.45, activePush);
     }
 
     const now = serverNow ? serverNow() : Date.now();

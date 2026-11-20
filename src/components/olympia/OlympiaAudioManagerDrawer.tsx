@@ -256,6 +256,21 @@ export default function OlympiaAudioManagerDrawer({
   // WeakMap cache: reuse existing MediaElementAudioSourceNode per element
   // (createMediaElementSource() throws InvalidStateError if called twice on same element)
   const mediaSourceMap = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
+  // Persistent WebAudio routing graph per element for uninterrupted, click-free real-time channel switching
+  const pannerGraphMap = useRef<
+    WeakMap<
+      HTMLAudioElement,
+      {
+        source: MediaElementAudioSourceNode;
+        splitter: ChannelSplitterNode;
+        merger: ChannelMergerNode;
+        gainL_to_L: GainNode;
+        gainL_to_R: GainNode;
+        gainR_to_L: GainNode;
+        gainR_to_R: GainNode;
+      }
+    >
+  >(new WeakMap());
 
   const getAudioContext = useCallback(() => {
     if (typeof window === "undefined") return null;
@@ -281,36 +296,76 @@ export default function OlympiaAudioManagerDrawer({
   );
 
   // Dual-mono channel routing: Route audio to Left only, Right only, or Both ears
+  // Uses persistent WebAudio graph with smooth 15ms gain ramps to switch channels mid-playback with ZERO interruption
   const connectPanner = useCallback(
     (a: HTMLAudioElement, ch: "both" | "left" | "right") => {
       const ctx = getAudioContext();
       if (!ctx) return;
       try {
-        const source = getOrCreateMediaSource(a, ctx);
-        try {
-          source.disconnect();
-        } catch {}
+        let graph = pannerGraphMap.current.get(a);
+        if (!graph) {
+          const source = getOrCreateMediaSource(a, ctx);
+          const splitter = ctx.createChannelSplitter(2);
+          const merger = ctx.createChannelMerger(2);
+          const gainL_to_L = ctx.createGain();
+          const gainL_to_R = ctx.createGain();
+          const gainR_to_L = ctx.createGain();
+          const gainR_to_R = ctx.createGain();
 
-        const splitter = ctx.createChannelSplitter(2);
-        const merger = ctx.createChannelMerger(2);
-        source.connect(splitter);
+          source.connect(splitter);
 
+          // Splitter ch 0 (Left input) -> gainL_to_L -> merger ch 0 (Left output)
+          splitter.connect(gainL_to_L, 0);
+          gainL_to_L.connect(merger, 0, 0);
+
+          // Splitter ch 0 (Left input) -> gainL_to_R -> merger ch 1 (Right output)
+          splitter.connect(gainL_to_R, 0);
+          gainL_to_R.connect(merger, 0, 1);
+
+          // Splitter ch 1 (Right input) -> gainR_to_L -> merger ch 0 (Left output)
+          splitter.connect(gainR_to_L, 1);
+          gainR_to_L.connect(merger, 0, 0);
+
+          // Splitter ch 1 (Right input) -> gainR_to_R -> merger ch 1 (Right output)
+          splitter.connect(gainR_to_R, 1);
+          gainR_to_R.connect(merger, 0, 1);
+
+          merger.connect(ctx.destination);
+
+          graph = {
+            source,
+            splitter,
+            merger,
+            gainL_to_L,
+            gainL_to_R,
+            gainR_to_L,
+            gainR_to_R,
+          };
+          pannerGraphMap.current.set(a, graph);
+        }
+
+        // Apply real-time channel routing with a smooth 15ms clickless ramp (zero audio interruption)
+        const now = ctx.currentTime;
+        const rampTime = 0.015;
         if (ch === "left") {
           // Route all audio channels (L + R) exclusively to Left output (100% Left ear, Right silent)
-          splitter.connect(merger, 0, 0);
-          splitter.connect(merger, 1, 0);
+          graph.gainL_to_L.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(0.0, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(0.0, now, rampTime);
         } else if (ch === "right") {
           // Route all audio channels (L + R) exclusively to Right output (100% Right ear, Left silent)
-          splitter.connect(merger, 0, 1);
-          splitter.connect(merger, 1, 1);
+          graph.gainL_to_L.gain.setTargetAtTime(0.0, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(0.0, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(1.0, now, rampTime);
         } else {
-          // "both": route equally to both ears so single-channel rips from Fandom play in both ears
-          splitter.connect(merger, 0, 0);
-          splitter.connect(merger, 1, 0);
-          splitter.connect(merger, 0, 1);
-          splitter.connect(merger, 1, 1);
+          // "both": route equally to both ears so single-channel or stereo rips play in both ears
+          graph.gainL_to_L.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(1.0, now, rampTime);
         }
-        merger.connect(ctx.destination);
       } catch (err) {
         console.warn("[AudioManager] WebAudio connectPanner error:", err);
       }

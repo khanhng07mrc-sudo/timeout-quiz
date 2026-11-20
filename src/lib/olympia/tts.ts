@@ -248,7 +248,12 @@ export function resolveMCRole(options?: SpeakTTSOptions): "khanh_vy" | "ngoc_huy
   const segment = options?.segment || "question";
   const round = options?.round || "khoiDong";
   const seatId = options?.seatId ?? 0;
-  const turnIdx = options?.segIdx ?? options?.rowIdx ?? options?.turnIdx;
+  const turnIdx =
+    round === "khoiDong"
+      ? (options?.segIdx ?? options?.turnIdx)
+      : round === "vcnv"
+      ? (options?.rowIdx ?? options?.turnIdx)
+      : options?.turnIdx;
 
   if (segment === "intro_greeting") return "khanh_vy";
   if (segment === "round_intro") {
@@ -482,11 +487,16 @@ export function speakOlympiaResult(
 ): void {
   if (!ttsEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
+  const dynamicKhoiDongRole =
+    options?.round === "khoiDong" && options?.segIdx !== undefined
+      ? resolveTurnHosts("khoiDong", options.segIdx).coHost
+      : undefined;
+
   if (isCorrect) {
     speakOlympiaTTS("Chính xác!", {
       ...options,
       segment: "result",
-      role: options?.role || "khanh_vy",
+      role: options?.role || dynamicKhoiDongRole || "khanh_vy",
     });
   } else if (answer) {
     const summary = summarizeOlympiaAnswer(answer);
@@ -494,7 +504,7 @@ export function speakOlympiaResult(
       speakOlympiaTTS(`Đáp án chính xác là: ${summary}`, {
         ...options,
         segment: "result",
-        role: options?.role || "ngoc_huy",
+        role: options?.role || dynamicKhoiDongRole || "ngoc_huy",
       });
     }
   }
@@ -694,10 +704,30 @@ export function detectSpellingError(
     return { isError: false };
   }
 
-  // 3. Consonant mash with no vowels (only applies if string contains letters)
+  // 2b. Number + unit expressions (e.g. "120 km/h", "50 m/s", "10 kg", "25 °C") are valid answers, not spelling errors
+  if (
+    /^[+-]?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?\s*(?:km\/h|m\/s|cm\/s|mm\/s|rad\/s|kg\/m3|g\/cm3|km|cm|mm|dm|nm|um|kg|mg|ml|dl|cl|kHz|MHz|GHz|Hz|mol|kcal|cal|kWh|Wh|kW|MW|mA|kV|mV|°\s*[CFK]|[mgschlNVAWJPK%])$/i.test(
+      cleanSub
+    )
+  ) {
+    return { isError: false };
+  }
+
+  // 3. Keyboard row mashes (even if they contain vowels like 'a' or 'y' in "asdfgh", "qwrty")
+  if (/(?:asdf|sdfg|dfgh|fghj|ghjk|zxcv|xcvb|cvbn|qwer|wert|erty|qwrty)/i.test(cleanSub)) {
+    return { isError: true, reason: "gibberish" };
+  }
+
+  // 3b. Short all-caps acronyms (2-5 chars, e.g. "GDP", "TNT", "BBC", "HTML", "HTTP") are valid even if non-matching
+  if (/^[A-Z0-9]{2,5}$/.test(cleanSub)) {
+    return { isError: false };
+  }
+
+  // 4. Consonant mash / vowel-less gibberish / 5+ consecutive consonants
   const hasLetters = /[a-zA-Z\u00C0-\u1EF9]/i.test(cleanSub);
   const hasVowels = /[aeiouyáàảãạâấầẩẫậăắằẳẵặéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]/i.test(cleanSub);
-  if (hasLetters && cleanSub.length >= 3 && !hasVowels) {
+  const hasLongConsonantCluster = /[bcdfghjklmnpqrstvwxz]{5,}/i.test(cleanSub);
+  if ((hasLetters && cleanSub.length >= 3 && !hasVowels) || hasLongConsonantCluster) {
     return { isError: true, reason: "gibberish" };
   }
 
@@ -899,7 +929,7 @@ export function speakCnvBells(contestantNames: string[], options?: SpeakTTSOptio
   speakOlympiaTTS(text, {
     ...options,
     segment: "cnv_bell",
-    role: options?.role || "ngoc_huy",
+    role: options?.role || (options?.rowIdx !== undefined ? undefined : "ngoc_huy"),
   });
 }
 

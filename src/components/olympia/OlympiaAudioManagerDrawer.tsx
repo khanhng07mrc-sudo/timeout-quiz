@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
-import { speakHostStealCall } from "@/lib/olympia/tts";
+import { speakHostStealCall, cancelTTS, isTtsEnabled } from "@/lib/olympia/tts";
 
 interface SoundItem {
   id: string; // e.g. "1_KhoiDong/start_round"
@@ -431,6 +431,7 @@ export default function OlympiaAudioManagerDrawer({
     stopAllAudio();
 
     if (id === "4_VeDich/host_steal_call") {
+      if (!isTtsEnabled()) return;
       setPlayingId(id);
       speakHostStealCall({
         round: "veDich",
@@ -483,6 +484,7 @@ export default function OlympiaAudioManagerDrawer({
   };
 
   const stopSound = (id: string) => {
+    cancelTTS();
     const existing = activeAudiosRef.current.get(id);
     if (existing) {
       try {
@@ -499,6 +501,7 @@ export default function OlympiaAudioManagerDrawer({
   };
 
   const stopAllAudio = () => {
+    cancelTTS();
     activeAudiosRef.current.forEach((audio) => {
       try {
         audio.pause();

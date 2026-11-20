@@ -20,7 +20,6 @@ import {
   speakTTS,
   cancelTTS,
   speakHostStealCall,
-  scheduleDramaticStealCall,
   cancelDramaticStealCall,
   speakVcnvCorrect,
   speakVcnvElimination,
@@ -3971,39 +3970,35 @@ function VeDichDeck({
   const [pkgQ3, setPkgQ3] = useState<number>(allowedPointOptions[0] ?? 20);
   const [dramaticCountdown, setDramaticCountdown] = useState<number | null>(null);
   const lastStealBuzzedRef = useRef<number | null>(null);
+  const stealerSeat = vd.steal?.buzzedSeat ?? null;
+  const stealerName = stealerSeat != null ? seatName(state, stealerSeat) : "";
 
   useEffect(() => {
-    const buzzed = vd.steal?.buzzedSeat;
-    if (buzzed != null && buzzed !== lastStealBuzzedRef.current) {
-      lastStealBuzzedRef.current = buzzed;
-      const sName = seatName(state, buzzed);
-      setDramaticCountdown(2.5);
-
-      if (isTtsEnabled()) {
-        scheduleDramaticStealCall(sName, {
-          dramaticDelayMs: 2500,
-        });
-      }
-
-      const startTime = Date.now();
-      const interval = setInterval(() => {
-        const elapsed = (Date.now() - startTime) / 1000;
-        const remaining = Math.max(0, 2.5 - elapsed);
-        setDramaticCountdown(remaining);
-        if (remaining <= 0) {
-          clearInterval(interval);
-        }
-      }, 100);
-
-      return () => {
-        clearInterval(interval);
-      };
-    } else if (buzzed == null && lastStealBuzzedRef.current != null) {
+    if (vd.phase !== "stealing" || stealerSeat == null) {
       lastStealBuzzedRef.current = null;
       setDramaticCountdown(null);
       cancelDramaticStealCall();
+      return;
     }
-  }, [vd.steal?.buzzedSeat, state]);
+
+    lastStealBuzzedRef.current = stealerSeat;
+    setDramaticCountdown(2.5);
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const remaining = Math.max(0, 2.5 - elapsed);
+      setDramaticCountdown(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(interval);
+      cancelDramaticStealCall();
+    };
+  }, [stealerSeat, vd.phase, stealerName]);
 
   useEffect(() => {
     const opts = isO22Q1 ? [20, 40] : rs.pointOptions;

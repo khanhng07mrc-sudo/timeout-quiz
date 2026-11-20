@@ -16,6 +16,9 @@ import {
   generateTangTocTimeCallout,
   generateCnvBellsAnnouncement,
   formatCnvVerdictSpoken,
+  speakOlympiaResult,
+  speakCnvBells,
+  setTtsEnabled,
   VE_DICH_DRAMATIC_STEAL_DELAY_MS,
 } from "./tts";
 
@@ -379,4 +382,111 @@ test("TTS: VE_DICH_DRAMATIC_STEAL_DELAY_MS is within the required 2.0s - 3.0s wi
     `Dramatic delay (${VE_DICH_DRAMATIC_STEAL_DELAY_MS}ms) must be between 2000ms and 3000ms`
   );
   assert.equal(VE_DICH_DRAMATIC_STEAL_DELAY_MS, 2500);
+});
+
+test("TTS: detectSpellingError catches vowel-containing keyboard mashes while exempting number+units and non-matching acronyms", () => {
+  // Keyboard mashes containing vowels and 5+ consecutive consonants must be flagged as gibberish
+  const mashes = ["asdfgh", "qwrty", "zxcvb", "bcdfgh"];
+  for (const mash of mashes) {
+    const resNoTarget = detectSpellingError(mash);
+    assert.equal(resNoTarget.isError, true, `Mash '${mash}' without target must be flagged`);
+    assert.equal(resNoTarget.reason, "gibberish", `Mash '${mash}' reason must be gibberish`);
+
+    const resWithTarget = detectSpellingError(mash, "Hà Nội");
+    assert.equal(resWithTarget.isError, true, `Mash '${mash}' with target must be flagged`);
+    assert.equal(resWithTarget.reason, "gibberish", `Mash '${mash}' with target reason must be gibberish`);
+  }
+
+  // Number + unit expressions must NEVER be flagged as gibberish or distance errors
+  assert.deepEqual(detectSpellingError("120 km/h", "100 km/h"), { isError: false });
+  assert.deepEqual(detectSpellingError("50 m/s", "60 m/s"), { isError: false });
+  assert.deepEqual(detectSpellingError("10 kg", "20 kg"), { isError: false });
+  assert.deepEqual(detectSpellingError("25 °C", "30 °C"), { isError: false });
+
+  // Short all-caps acronyms (2-5 chars) must NEVER be flagged as gibberish even when wrong
+  assert.deepEqual(detectSpellingError("GDP", "GNP"), { isError: false });
+  assert.deepEqual(detectSpellingError("GDP"), { isError: false });
+  assert.deepEqual(detectSpellingError("HTTP", "HTML"), { isError: false });
+  assert.deepEqual(detectSpellingError("TNT", "C4"), { isError: false });
+  assert.deepEqual(detectSpellingError("BBC", "CNN"), { isError: false });
+});
+
+test("TTS: VCNV row host alternation ignores leftover segIdx in options", () => {
+  assert.equal(resolveMCRole({ round: "vcnv", rowIdx: 0, segIdx: 4, segment: "question" }), "khanh_vy");
+  assert.equal(resolveMCRole({ round: "vcnv", rowIdx: 1, segIdx: 4, segment: "question" }), "ngoc_huy");
+  assert.equal(resolveMCRole({ round: "vcnv", rowIdx: 2, segIdx: 4, segment: "question" }), "khanh_vy");
+  assert.equal(resolveMCRole({ round: "vcnv", rowIdx: 3, segIdx: 4, segment: "question" }), "ngoc_huy");
+  assert.equal(resolveMCRole({ round: "vcnv", rowIdx: 0, segIdx: 4, segment: "cnv_bell" }), "ngoc_huy");
+  assert.equal(resolveMCRole({ round: "vcnv", rowIdx: 1, segIdx: 4, segment: "cnv_bell" }), "khanh_vy");
+});
+
+test("TTS: speakOlympiaResult alternates co-host per Khởi Động segment and speakCnvBells uses row co-host", () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevUtterance = (globalThis as any).SpeechSynthesisUtterance;
+  const spoken: Array<{ text: string; pitch: number }> = [];
+
+  class MockUtterance {
+    text: string;
+    lang = "";
+    pitch = 1;
+    rate = 1;
+    voice: any = null;
+    onboundary: any = null;
+    onend: any = null;
+    onerror: any = null;
+    constructor(text: string) {
+      this.text = text;
+    }
+  }
+
+  const mockStorage = {
+    getItem: () => "true",
+    setItem: () => {},
+  };
+
+  (globalThis as any).SpeechSynthesisUtterance = MockUtterance;
+  (globalThis as any).localStorage = mockStorage;
+  (globalThis as any).window = {
+    localStorage: mockStorage,
+    speechSynthesis: {
+      speaking: false,
+      pending: false,
+      getVoices: () => [],
+      cancel: () => {},
+      speak: (u: MockUtterance) => {
+        spoken.push({ text: u.text, pitch: u.pitch });
+      },
+    },
+  };
+
+  try {
+    setTtsEnabled(true);
+
+    // segIdx 0: Khánh Vy reads questions -> Ngọc Huy (0.88) confirms results
+    speakOlympiaResult(true, undefined, { round: "khoiDong", segIdx: 0 });
+    speakOlympiaResult(false, "Hà Nội", { round: "khoiDong", segIdx: 0 });
+
+    // segIdx 1: Ngọc Huy reads questions -> Khánh Vy (1.12) confirms results
+    speakOlympiaResult(true, undefined, { round: "khoiDong", segIdx: 1 });
+    speakOlympiaResult(false, "Sài Gòn", { round: "khoiDong", segIdx: 1 });
+
+    assert.equal(spoken.length, 4);
+    assert.deepEqual(spoken[0], { text: "Chính xác!", pitch: 0.88 });
+    assert.deepEqual(spoken[1], { text: "Đáp án chính xác là: Hà Nội", pitch: 0.88 });
+    assert.deepEqual(spoken[2], { text: "Chính xác!", pitch: 1.12 });
+    assert.deepEqual(spoken[3], { text: "Đáp án chính xác là: Sài Gòn", pitch: 1.12 });
+
+    // speakCnvBells chronological ordering
+    speakCnvBells(["An", "Bình"], { round: "vcnv", rowIdx: 1 });
+    assert.equal(spoken.length, 5);
+    assert.deepEqual(spoken[4], {
+      text: "Tín hiệu chuông xin trả lời Chướng ngại vật từ bạn An, tiếp theo là Bình.",
+      pitch: 1.12,
+    });
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).SpeechSynthesisUtterance = prevUtterance;
+  }
 });

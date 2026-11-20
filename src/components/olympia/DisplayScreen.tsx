@@ -42,6 +42,8 @@ import {
   summarizeOlympiaAnswer,
   handleBuzzerInterrupt,
   scheduleDramaticStealCall,
+  cancelDramaticStealCall,
+  speakCnvBells,
   groupContestantAnswers,
   generateGroupedAnswerCommentary,
   generateTangTocTimeCallout,
@@ -353,8 +355,8 @@ export default function DisplayScreen({ code }: { code: string }) {
         season: effectiveAudioSeason,
         round: state.currentRound || undefined,
         seatId: questionSeatId,
-        segIdx: state.khoiDong?.segIdx,
-        rowIdx: state.vcnv?.currentRow,
+        segIdx: state.currentRound === "khoiDong" ? state.khoiDong?.segIdx : undefined,
+        rowIdx: state.currentRound === "vcnv" ? state.vcnv?.currentRow : undefined,
       });
     } else if (!currentQ) {
       lastQuestionRef.current = "";
@@ -381,19 +383,80 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.cauHoiPhu?.qIdx,
   ]);
 
-  // Natural speech stop on contestant buzzer activation & reflex callout
-  const prevBuzzedRef = useRef<boolean>(false);
+  // VCNV chronological CNV buzzer sequence announcement
+  const prevCnvBellsLenRef = useRef<number>(0);
+  useEffect(() => {
+    if (!state || state.currentRound !== "vcnv") {
+      prevCnvBellsLenRef.current = 0;
+      return;
+    }
+    const bells = state.vcnv?.bells || [];
+    if (bells.length > prevCnvBellsLenRef.current) {
+      prevCnvBellsLenRef.current = bells.length;
+      if (ttsActive) {
+        const bellNames = bells.map(
+          (b) => state.seats[b.seat]?.name || `Thí sinh ${b.seat + 1}`
+        );
+        speakCnvBells(bellNames, {
+          season: effectiveAudioSeason,
+          round: "vcnv",
+          rowIdx: state.vcnv?.currentRow,
+        });
+      } else {
+        smoothStopOlympiaTTS(30);
+      }
+    } else if (bells.length < prevCnvBellsLenRef.current) {
+      prevCnvBellsLenRef.current = bells.length;
+    }
+  }, [
+    state?.currentRound,
+    state?.vcnv?.bells,
+    state?.vcnv?.currentRow,
+    state?.seats,
+    ttsActive,
+    effectiveAudioSeason,
+  ]);
+
+  // Cancel dramatic Về Đích steal call if stealing phase/round ends, TTS disables, or component unmounts
+  useEffect(() => {
+    if (
+      !state ||
+      !ttsActive ||
+      state.currentRound !== "veDich" ||
+      state.veDich?.phase !== "stealing" ||
+      state.veDich?.steal?.buzzedSeat == null
+    ) {
+      cancelDramaticStealCall();
+    }
+  }, [
+    ttsActive,
+    state?.currentRound,
+    state?.veDich?.phase,
+    state?.veDich?.steal?.buzzedSeat,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      cancelDramaticStealCall();
+    };
+  }, []);
+
+  // Natural speech stop on contestant buzzer activation & reflex callout (Khởi Động, Về Đích, Câu Hỏi Phụ)
+  const prevBuzzKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!state) return;
     const buzzerSeat =
-      state.khoiDong?.buzzedSeat ??
-      state.vcnv?.bells?.[state.vcnv.bells.length - 1]?.seat ??
-      state.veDich?.steal?.buzzedSeat ??
-      state.cauHoiPhu?.buzzedSeat;
+      state.currentRound === "khoiDong"
+        ? state.khoiDong?.buzzedSeat
+        : state.currentRound === "veDich" && state.veDich?.phase === "stealing"
+        ? state.veDich?.steal?.buzzedSeat
+        : state.currentRound === "cauHoiPhu"
+        ? state.cauHoiPhu?.buzzedSeat
+        : null;
 
-    const isBuzzed = buzzerSeat != null;
+    const currentBuzzKey = buzzerSeat != null ? `${state.currentRound}:${buzzerSeat}` : null;
 
-    if (isBuzzed && !prevBuzzedRef.current) {
+    if (currentBuzzKey && currentBuzzKey !== prevBuzzKeyRef.current) {
       if (ttsActive && buzzerSeat != null) {
         const contestantName = state.seats[buzzerSeat]?.name || `Thí sinh ${buzzerSeat + 1}`;
         if (state.currentRound === "veDich") {
@@ -409,10 +472,6 @@ export default function DisplayScreen({ code }: { code: string }) {
 
           if (state.currentRound === "khoiDong") {
             const hosts = resolveTurnHosts("khoiDong", state.khoiDong?.segIdx ?? 0);
-            readingHost = hosts.readingHost;
-            coHost = hosts.coHost;
-          } else if (state.currentRound === "vcnv") {
-            const hosts = resolveTurnHosts("vcnv", state.vcnv?.currentRow ?? 0);
             readingHost = hosts.readingHost;
             coHost = hosts.coHost;
           } else {
@@ -432,17 +491,16 @@ export default function DisplayScreen({ code }: { code: string }) {
         smoothStopOlympiaTTS(30);
       }
     }
-    prevBuzzedRef.current = isBuzzed;
+    prevBuzzKeyRef.current = currentBuzzKey;
   }, [
     state?.khoiDong?.buzzedSeat,
-    state?.vcnv?.bells?.length,
+    state?.veDich?.phase,
     state?.veDich?.steal?.buzzedSeat,
     state?.cauHoiPhu?.buzzedSeat,
     ttsActive,
     effectiveAudioSeason,
     state?.currentRound,
     state?.khoiDong?.segIdx,
-    state?.vcnv?.currentRow,
     state?.seats,
   ]);
 
@@ -521,14 +579,23 @@ export default function DisplayScreen({ code }: { code: string }) {
 
     // Khởi Động verdict
     if (state.currentRound === "khoiDong" && state.khoiDong?.lastVerdict) {
-      const vKey = `kd-${state.khoiDong.qIdx}-${state.khoiDong.lastVerdict}`;
+      const segIdx = state.khoiDong.segIdx ?? 0;
+      const vKey = `kd-${segIdx}-${state.khoiDong.qIdx}-${state.khoiDong.lastVerdict}`;
       if (vKey !== prevVerdictRef.current) {
         prevVerdictRef.current = vKey;
         smoothStopOlympiaTTS(20);
         if (state.khoiDong.lastVerdict === "correct") {
-          speakOlympiaResult(true, undefined, { season: effectiveAudioSeason, round: "khoiDong" });
+          speakOlympiaResult(true, undefined, {
+            season: effectiveAudioSeason,
+            round: "khoiDong",
+            segIdx: state.khoiDong.segIdx,
+          });
         } else if (state.khoiDong.lastVerdict === "wrong" && state.khoiDong.current?.a) {
-          speakOlympiaResult(false, state.khoiDong.current.a, { season: effectiveAudioSeason, round: "khoiDong" });
+          speakOlympiaResult(false, state.khoiDong.current.a, {
+            season: effectiveAudioSeason,
+            round: "khoiDong",
+            segIdx: state.khoiDong.segIdx,
+          });
         }
       }
     }
@@ -559,6 +626,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   }, [
     ttsActive,
     state?.currentRound,
+    state?.khoiDong?.segIdx,
     state?.khoiDong?.lastVerdict,
     state?.khoiDong?.qIdx,
     state?.khoiDong?.current?.a,

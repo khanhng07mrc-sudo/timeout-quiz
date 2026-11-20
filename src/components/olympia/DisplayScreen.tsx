@@ -34,6 +34,8 @@ import {
   isTtsEnabled,
   setTtsEnabled,
   speakTTS,
+  speakOlympiaTTS,
+  unlockOlympiaTTS,
   cancelTTS,
   speakSmartQuestion,
   smoothStopOlympiaTTS,
@@ -196,11 +198,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
           (window as any).__OLYMPIA_UNLOCK_AUDIO__();
         }
-        if (typeof window !== "undefined" && "speechSynthesis" in window) {
-          try {
-            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-          } catch {}
-        }
+        unlockOlympiaTTS();
       } else if (e.data?.type === "SET_TTS") {
         setTtsActive(Boolean(e.data.enabled));
         setTtsEnabled(Boolean(e.data.enabled));
@@ -238,11 +236,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
       (window as any).__OLYMPIA_UNLOCK_AUDIO__();
     }
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-      } catch {}
-    }
+    unlockOlympiaTTS();
     if (!audioOn && !isExplicitMuteParam) {
       setAudioOn(true);
     }
@@ -528,7 +522,14 @@ export default function DisplayScreen({ code }: { code: string }) {
           totalContestants: state.seats.length || 4,
         });
         if (commentary) {
-          speakTTS(commentary);
+          const vcnvHost = resolveTurnHosts("vcnv", state.vcnv.currentRow).readingHost;
+          speakOlympiaTTS(commentary, {
+            round: "vcnv",
+            role: vcnvHost,
+            segment: "answers_summary",
+            rowIdx: state.vcnv.currentRow,
+            season: effectiveAudioSeason,
+          });
         }
       }
     } else if (state.currentRound === "tangToc" && (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded")) {
@@ -551,7 +552,12 @@ export default function DisplayScreen({ code }: { code: string }) {
         const speedCommentary = generateTangTocTimeCallout(subs);
         const fullCommentary = [answerCommentary, speedCommentary].filter(Boolean).join(" ");
         if (fullCommentary) {
-          speakTTS(fullCommentary);
+          speakOlympiaTTS(fullCommentary, {
+            round: "tangToc",
+            role: "ngoc_huy",
+            segment: "answers_summary",
+            season: effectiveAudioSeason,
+          });
         }
       }
     }

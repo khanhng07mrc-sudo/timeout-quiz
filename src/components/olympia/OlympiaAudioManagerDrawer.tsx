@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
-import { speakHostStealCall, cancelTTS, isTtsEnabled } from "@/lib/olympia/tts";
+import { speakHostStealCall, cancelTTS, isTtsEnabled, playTestMCVoices, unlockOlympiaTTS } from "@/lib/olympia/tts";
 
 interface SoundItem {
   id: string; // e.g. "1_KhoiDong/start_round"
@@ -647,6 +647,25 @@ export default function OlympiaAudioManagerDrawer({
                 ➡️ Lệch phải
               </button>
             </div>
+          </div>
+
+          {/* Smart TTS MC Voice Testing */}
+          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-violet-950/30 border border-violet-500/30 text-xs">
+            <div>
+              <span className="font-bold text-violet-200">Giọng đọc MC (Smart TTS):</span>
+              <p className="text-[10px] text-slate-400">Khánh Vy & Ngọc Huy luân phiên theo lượt</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                unlockOlympiaTTS();
+                playTestMCVoices();
+              }}
+              className="px-2.5 py-1 rounded-lg font-black text-xs bg-gradient-to-r from-violet-600 to-amber-600 hover:from-violet-500 hover:to-amber-500 text-white shadow flex items-center gap-1 cursor-pointer transition active:scale-95"
+            >
+              <span>📢</span>
+              <span>Thử 2 MC</span>
+            </button>
           </div>
         </div>
 

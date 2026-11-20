@@ -420,6 +420,7 @@ export function useOlympiaCameraState(
   const needsTimedCameraTicker = Boolean(
     state?.entranceState?.active ||
       state?.introTimer ||
+      Boolean(state?.roundIntroDoneAt && getNow() < state.roundIntroDoneAt + 4500) ||
       isRoundPostIntroStandby(state, getNow()) ||
       hasActiveBuzzer ||
       isThinking ||
@@ -540,7 +541,39 @@ export function useOlympiaCameraState(
       };
     }
 
-    // Opening show intro or standby waiting for Host to begin Khởi Động:
+    // 2.8. Post-Intro Opening Round Camera Sequence (applies to all rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ):
+    // Giai đoạn sau khi kết thúc intro vòng thi (roundIntroDoneAt):
+    // - 0s -> 3.0s: Bục MC (CAM 3), push nhẹ 15% khi MC đọc lời mở đầu
+    // - >= 3.0s: Chuyển mượt (MORPH) sang Toàn Cảnh Trường Quay (CAM 1) bao quát toàn bộ thí sinh và 2 MC cho tới khi Host nhấn [BẮT ĐẦU]
+    if (state.roundIntroDoneAt && !state.banner) {
+      const isRoundNotStarted =
+        (round === "khoiDong" && !state.khoiDong?.started && (state.khoiDong?.phase === "intro" || state.khoiDong?.phase === "idle" || (state.khoiDong?.qIdx ?? -1) < 0)) ||
+        (round === "vcnv" && (state.vcnv?.phase === "grid" || (state.vcnv?.currentRow ?? -1) < 0)) ||
+        (round === "tangToc" && state.tangToc?.phase === "idle") ||
+        (round === "veDich" && state.veDich?.phase === "idle" && !state.veDich?.onStage) ||
+        (round === "cauHoiPhu" && state.cauHoiPhu?.phase === "idle") ||
+        Boolean(state.introStandby);
+
+      if (isRoundNotStarted) {
+        const postIntroElapsed = Math.max(0, (now - state.roundIntroDoneAt) / 1000);
+        if (postIntroElapsed < 3.0) {
+          return {
+            camAngle: 3,
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: Math.min(1.0, postIntroElapsed / 3.0) * 0.15,
+          };
+        }
+        return {
+          camAngle: 1, // Hết 3.0s chuyển mượt thẳng về toàn cảnh trường quay chờ Host bắt đầu
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+    }
+
+    // Opening show intro (chào đầu trận đấu trước khi vào vòng thi):
     // Focus directly on MCs (CAM 3) with dignified broadcaster framing
     if (state.introTimer || state.introStandby) {
       return {
@@ -548,27 +581,6 @@ export function useOlympiaCameraState(
         transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0.15,
-      };
-    }
-
-    // 2.8. Post-Intro Opening Round Camera Sequence (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
-    // Tối giản 2 giai đoạn: Bục MC (CAM 3, trong 3s) -> Toàn cảnh trường quay (CAM 1) chờ Host bắt đầu thi
-    if (isRoundPostIntroStandby(state, now)) {
-      const baseTime = state?.roundIntroDoneAt ?? roundEnteredAtRef.current;
-      const postIntroElapsed = Math.max(0, (now - baseTime) / 1000);
-      if (postIntroElapsed < 3.0) {
-        return {
-          camAngle: 3,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: Math.min(1.0, postIntroElapsed / 3.0) * 0.15,
-        };
-      }
-      return {
-        camAngle: 1, // Hết 3s chuyển thẳng về toàn cảnh trường quay chờ Host bắt đầu
-        transitionMode: "MORPH",
-        isOverlayHidden: false,
-        pushInProgress: 0,
       };
     }
 

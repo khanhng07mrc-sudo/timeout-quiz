@@ -98,7 +98,6 @@ export function isRoundPostIntroStandby(state: OlympiaState | null | undefined, 
   if (
     state.studioCameraManual ||
     state.summaryState?.active ||
-    state.introTimer ||
     state.entranceState?.active
   ) {
     return false;

@@ -490,3 +490,26 @@ test("TTS: speakOlympiaResult alternates co-host per Khởi Động segment and 
     (globalThis as any).SpeechSynthesisUtterance = prevUtterance;
   }
 });
+
+test("TTS: formatCnvVerdictSpoken supports single and multiple eliminated contestants", () => {
+  // Single contestant eliminated
+  const single = formatCnvVerdictSpoken(false, "Thí sinh Nguyễn Văn A");
+  assert.equal(
+    single,
+    "Rất tiếc câu trả lời chưa chính xác. Bạn Nguyễn Văn A mất quyền chơi phần thi Vượt chướng ngại vật. Các bạn còn lại tiếp tục phần thi."
+  );
+
+  // Multiple contestants eliminated
+  const multi = formatCnvVerdictSpoken(false, ["Thí sinh Nguyễn Văn A", "Bạn Trần Thị B"]);
+  assert.equal(
+    multi,
+    "Rất tiếc các câu trả lời chưa chính xác. Các bạn Nguyễn Văn A, Trần Thị B đều đã bỏ lỡ cơ hội và dừng lại tại đây. Các bạn còn lại tiếp tục phần thi Vượt chướng ngại vật."
+  );
+
+  // Correct CNV
+  const correct = formatCnvVerdictSpoken(true, "Thí sinh Lê Văn C", "VĂN MIẾU");
+  assert.equal(
+    correct,
+    "Chúc mừng bạn Lê Văn C đã trả lời chính xác Chướng ngại vật! Từ khóa là: VĂN MIẾU!"
+  );
+});

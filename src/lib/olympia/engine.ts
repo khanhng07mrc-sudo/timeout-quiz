@@ -1201,6 +1201,7 @@ export class OlympiaGame {
         st.banner = null;
         st.bannerStartedAt = null;
         st.roundIntroDoneAt = now;
+        st.introTimer = null;
         if (curRound && curRound !== "cauHoiPhu") {
           if (curRound === "khoiDong") {
             this.cue("1_KhoiDong/start_round");
@@ -1220,6 +1221,7 @@ export class OlympiaGame {
           st.banner = null;
           st.bannerStartedAt = null;
           st.roundIntroDoneAt = now;
+          st.introTimer = null;
           if (curRound && curRound !== "cauHoiPhu") {
             if (curRound === "khoiDong") {
               this.cue("1_KhoiDong/start_round");

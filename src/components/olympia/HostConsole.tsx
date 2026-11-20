@@ -23,6 +23,8 @@ import {
   cancelDramaticStealCall,
   speakVcnvCorrect,
   speakVcnvElimination,
+  playTestMCVoices,
+  unlockOlympiaTTS,
 } from "@/lib/olympia/tts";
 
 type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
@@ -456,7 +458,7 @@ export const HostConsole = React.memo(function HostConsole({
     <div className="w-full h-full min-h-full flex-1 bg-gradient-to-b from-[#0a0c1a] via-[#101226] to-[#060712] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* ── TOP HEADER BAR (CLEAN, NO OVERLAPPING) ── */}
       <header className={`border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2 sm:px-2.5 flex items-center justify-between shrink-0 gap-1.5 ${
-        isSandboxMode ? "h-8 min-h-8 py-0.5 overflow-x-auto no-scrollbar" : "min-h-10 py-1 flex-wrap gap-x-2 gap-y-1"
+        isSandboxMode ? "min-h-8 py-0.5 flex-wrap gap-x-1.5 gap-y-0.5" : "min-h-10 py-1 flex-wrap gap-x-2 gap-y-1"
       }`}>
         {/* Left: Branding & Current Round */}
         <div className="flex items-center gap-1.5 min-w-0 shrink-0">
@@ -470,7 +472,57 @@ export const HostConsole = React.memo(function HostConsole({
         </div>
 
         {/* Right: Theme Switcher, Buzzer Test, Audio Manager, Mute, Toggle Sidebar, Connection, PIN & QR */}
-        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-nowrap shrink-0 justify-end">
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap shrink-0 justify-end">
+          {/* Smart TTS Toggle & Test Button (Always Visible) */}
+          <button
+            type="button"
+            onClick={() => {
+              unlockOlympiaTTS();
+              const next = !ttsActive;
+              setTtsActive(next);
+              setTtsEnabled(next);
+              if (typeof window !== "undefined") {
+                try {
+                  window.postMessage({ type: "SET_TTS", enabled: next }, "*");
+                  document.querySelectorAll("iframe").forEach((frame) => {
+                    frame.contentWindow?.postMessage({ type: "SET_TTS", enabled: next }, "*");
+                  });
+                } catch {}
+              }
+              if (next) {
+                speakTTS("Đã bật giọng đọc MC tự động");
+              } else {
+                cancelTTS();
+              }
+            }}
+            className={`rounded font-black cursor-pointer border shrink-0 transition flex items-center gap-1 text-[10px] sm:text-xs ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            } ${
+              ttsActive
+                ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+            }`}
+            title="Bật/Tắt chế độ đọc câu hỏi tự động (TTS tiếng Việt)"
+          >
+            <span>🎙️</span>
+            <span>{ttsActive ? "TTS: BẬT" : "TTS: TẮT"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              unlockOlympiaTTS();
+              playTestMCVoices();
+            }}
+            className={`rounded font-black cursor-pointer border border-amber-400/50 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 shrink-0 transition flex items-center gap-1 text-[10px] sm:text-xs ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            }`}
+            title="Nghe thử giọng đọc luân phiên 2 MC (Khánh Vy & Ngọc Huy)"
+          >
+            <span>📢</span>
+            <span>Thử 2 MC</span>
+          </button>
+
           {/* Dual-Theme Broadcast Switcher */}
           <button
             type="button"
@@ -604,39 +656,6 @@ export const HostConsole = React.memo(function HostConsole({
           >
             <span>🎵 AUDIO</span>
             <span className="px-1 py-0.1 rounded-full bg-black/40 text-[9px] sm:text-[10px] text-yellow-300">22</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const next = !ttsActive;
-              setTtsActive(next);
-              setTtsEnabled(next);
-              if (typeof window !== "undefined") {
-                try {
-                  window.postMessage({ type: "SET_TTS", enabled: next }, "*");
-                  document.querySelectorAll("iframe").forEach((frame) => {
-                    frame.contentWindow?.postMessage({ type: "SET_TTS", enabled: next }, "*");
-                  });
-                } catch {}
-              }
-              if (next) {
-                speakTTS("Bật chế độ đọc câu hỏi");
-              } else {
-                cancelTTS();
-              }
-            }}
-            className={`rounded font-bold cursor-pointer border shrink-0 transition flex items-center gap-1 text-[10px] sm:text-xs ${
-              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
-            } ${
-              ttsActive
-                ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
-                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-            }`}
-            title="Bật/Tắt chế độ đọc câu hỏi tự động (TTS tiếng Việt)"
-          >
-            <span>🎙️</span>
-            <span className={isSandboxMode ? "hidden xl:inline" : "hidden sm:inline"}>{ttsActive ? "TTS: BẬT" : "TTS: TẮT"}</span>
           </button>
 
           <button
@@ -3458,8 +3477,15 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
               type="button"
               disabled={!v.bells || v.bells.length === 0 || isCnvJudgingPending}
               onClick={() => {
-                if (isTtsEnabled() && activeSeatName) {
-                  speakVcnvElimination(activeSeatName);
+                if (isTtsEnabled()) {
+                  const eliminatedNames = (
+                    activeCnvSeat != null
+                      ? [activeSeatName]
+                      : (v.bells || []).map((b) => seatName(state, b.seat))
+                  ).filter(Boolean);
+                  if (eliminatedNames.length > 0) {
+                    speakVcnvElimination(eliminatedNames);
+                  }
                 }
                 call("vcnv:wrongCNV", activeCnvSeat != null ? { seat: activeCnvSeat } : {});
               }}

@@ -312,6 +312,11 @@ if (typeof window !== "undefined") {
   const stored = localStorage.getItem("olympia_tts_enabled");
   if (stored !== null) {
     ttsEnabled = stored === "true" || stored === "1";
+  } else {
+    try {
+      localStorage.setItem("olympia_tts_enabled", "true");
+    } catch {}
+    ttsEnabled = true;
   }
 }
 
@@ -325,6 +330,42 @@ export function setTtsEnabled(enabled: boolean): void {
     localStorage.setItem("olympia_tts_enabled", enabled ? "true" : "false");
     if (!enabled) cancelTTS();
   }
+}
+
+let cachedViVoices: SpeechSynthesisVoice[] = [];
+
+export function refreshOlympiaVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
+  try {
+    const voices = window.speechSynthesis.getVoices();
+    cachedViVoices = voices.filter(
+      (v) => v.lang.startsWith("vi") || v.lang === "vi-VN" || v.lang === "vi_VN"
+    );
+    return cachedViVoices;
+  } catch {
+    return [];
+  }
+}
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  refreshOlympiaVoices();
+  window.speechSynthesis.onvoiceschanged = () => {
+    refreshOlympiaVoices();
+  };
+}
+
+export function unlockOlympiaTTS(): void {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    const silent = new SpeechSynthesisUtterance(" ");
+    silent.volume = 0.01;
+    silent.rate = 2.0;
+    window.speechSynthesis.speak(silent);
+    refreshOlympiaVoices();
+  } catch {}
 }
 
 let currentUtterance: SpeechSynthesisUtterance | null = null;
@@ -385,10 +426,7 @@ export function resolveMCVoiceConfig(role: "khanh_vy" | "ngoc_huy"): {
     return { voice: null, pitch: role === "khanh_vy" ? 1.12 : 0.88 };
   }
 
-  const voices = window.speechSynthesis.getVoices();
-  const viVoices = voices.filter(
-    (v) => v.lang.startsWith("vi") || v.lang === "vi-VN" || v.lang === "vi_VN"
-  );
+  const viVoices = cachedViVoices.length > 0 ? cachedViVoices : refreshOlympiaVoices();
 
   let selectedVoice: SpeechSynthesisVoice | null = null;
   if (role === "khanh_vy") {
@@ -934,18 +972,27 @@ export function speakCnvBells(contestantNames: string[], options?: SpeakTTSOptio
 }
 
 /**
- * Spoken line for CNV correct or incorrect:
+ * Spoken line for CNV correct or incorrect (supports single or multiple eliminated contestants):
  */
 export function formatCnvVerdictSpoken(
   isCorrect: boolean,
-  contestantName: string,
+  contestantNameOrNames: string | string[],
   keyword?: string
 ): string {
-  const cleanName = getContestantSpokenName(contestantName);
+  const names = Array.isArray(contestantNameOrNames)
+    ? contestantNameOrNames.map(getContestantSpokenName).filter(Boolean)
+    : [getContestantSpokenName(contestantNameOrNames)].filter(Boolean);
+
   if (isCorrect) {
+    const cleanName = names[0] || "bạn";
     const kw = keyword ? summarizeOlympiaAnswer(keyword) : "";
     return `Chúc mừng bạn ${cleanName} đã trả lời chính xác Chướng ngại vật! ${kw ? `Từ khóa là: ${kw}!` : ""}`.trim();
   }
+
+  if (names.length >= 2) {
+    return `Rất tiếc các câu trả lời chưa chính xác. Các bạn ${names.join(", ")} đều đã bỏ lỡ cơ hội và dừng lại tại đây. Các bạn còn lại tiếp tục phần thi Vượt chướng ngại vật.`;
+  }
+  const cleanName = names[0] || "bạn";
   return `Rất tiếc câu trả lời chưa chính xác. Bạn ${cleanName} mất quyền chơi phần thi Vượt chướng ngại vật. Các bạn còn lại tiếp tục phần thi.`;
 }
 
@@ -965,16 +1012,40 @@ export function speakVcnvCorrect(
 }
 
 export function speakVcnvElimination(
-  contestantName: string,
+  contestantNameOrNames: string | string[],
   onEnd?: () => void,
   options?: SpeakTTSOptions
 ): void {
-  const text = formatCnvVerdictSpoken(false, contestantName);
+  const text = formatCnvVerdictSpoken(false, contestantNameOrNames);
   speakOlympiaTTS(text, {
     ...options,
     segment: "cnv_elimination",
     role: options?.role || "khanh_vy",
     onEnd,
+  });
+}
+
+/**
+ * Audible preview demonstrating alternating voice acting of both MCs (Khánh Vy & Ngọc Huy):
+ */
+export function playTestMCVoices(onEnd?: () => void): void {
+  unlockOlympiaTTS();
+  cancelTTS();
+  const line1 = "Khánh Vy xin chào các bạn!";
+  const line2 = "Ngọc Huy xin chào các bạn và chúc các bạn thi đấu thật tốt!";
+
+  speakOlympiaTTS(line1, {
+    role: "khanh_vy",
+    segment: "intro_greeting",
+    onEnd: () => {
+      setTimeout(() => {
+        speakOlympiaTTS(line2, {
+          role: "ngoc_huy",
+          segment: "round_intro",
+          onEnd,
+        });
+      }, 300);
+    },
   });
 }
 

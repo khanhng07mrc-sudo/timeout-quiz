@@ -38,6 +38,14 @@ import HostConsole from "@/components/olympia/HostConsole";
 import { ROUND_LABELS, type ChpQuestionLimit, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
 import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { RULESET_YEAR_BUTTONS, RULESETS } from "@/lib/olympia/rulesets";
+import {
+  unlockOlympiaTTS,
+  isTtsEnabled,
+  setTtsEnabled,
+  speakTTS,
+  cancelTTS,
+  playTestMCVoices,
+} from "@/lib/olympia/tts";
 
 const CANONICAL_RULESET_MAP: Record<string, string> = {
   O27: "O26",
@@ -254,6 +262,7 @@ export default function AdminSandboxPage() {
   const [olympiaSandboxActive, setOlympiaSandboxActive] = useState<boolean>(false);
   const [olympiaActiveSeat, setOlympiaActiveSeat] = useState<number>(0);
   const [olympiaVisitedSeats, setOlympiaVisitedSeats] = useState<number[]>([]);
+  const [ttsVer, setTtsVer] = useState<number>(0);
   const olympiaAutoTurnKeyRef = useRef<string>("");
   const olympiaManualTabSelectedRef = useRef<boolean>(false);
   const [isOlympiaAutoFollowSeat, setIsOlympiaAutoFollowSeat] = useState<boolean>(true);
@@ -6939,6 +6948,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
   const forwardUnlock = useCallback(() => {
     try {
+      unlockOlympiaTTS();
       const win = displayIframeRef.current?.contentWindow as any;
       if (win) {
         if (typeof win.__OLYMPIA_UNLOCK_AUDIO__ === "function") {
@@ -12238,6 +12248,48 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      unlockOlympiaTTS();
+                      const current = isTtsEnabled();
+                      const next = !current;
+                      setTtsEnabled(next);
+                      try {
+                        window.postMessage({ type: "SET_TTS", enabled: next }, "*");
+                        displayIframeRef.current?.contentWindow?.postMessage({ type: "SET_TTS", enabled: next }, "*");
+                      } catch {}
+                      if (next) {
+                        speakTTS("Đã bật giọng đọc MC tự động");
+                      } else {
+                        cancelTTS();
+                      }
+                      setTtsVer((v) => v + 1);
+                    }}
+                    className={`px-2 py-0.5 rounded-lg border text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
+                      isTtsEnabled()
+                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/50 shadow-[0_0_8px_rgba(34,211,238,0.3)]"
+                        : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
+                    }`}
+                    title="Bật/Tắt chế độ đọc câu hỏi tự động (TTS tiếng Việt)"
+                  >
+                    <span>🎙️</span>
+                    <span>{isTtsEnabled() ? "TTS: BẬT" : "TTS: TẮT"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      unlockOlympiaTTS();
+                      playTestMCVoices();
+                    }}
+                    className="px-2 py-0.5 rounded-lg border border-amber-400/50 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 text-[11px] font-black transition flex items-center gap-1 cursor-pointer"
+                    title="Nghe thử giọng đọc luân phiên 2 MC (Khánh Vy & Ngọc Huy)"
+                  >
+                    <span>📢</span>
+                    <span>Thử 2 MC</span>
+                  </button>
+
                   <Link
                     href={`/olympia/display/${code}`}
                     target="_blank"

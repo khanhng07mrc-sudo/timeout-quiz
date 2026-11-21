@@ -35,36 +35,20 @@ async function main() {
   }
   console.log("  -> Authenticated successfully! Token acquired.");
 
-  // 2. Create Olympia Room
+  // 2. Create Olympia Sandbox Room with pre-populated contestants
   console.log("\n[2/7] Creating live Olympia broadcast room...");
-  const roomRes = await fetch(`${BASE_URL}/api/rooms`, {
+  const roomRes = await fetch(`${BASE_URL}/api/sandbox/create`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${loginData.token}`,
     },
     body: JSON.stringify({
-      name: "Đường lên đỉnh Olympia - Chung Kết Năm",
       mode: "OLYMPIA",
-      teamMode: "INDIVIDUAL",
-      teams: [
-        { name: "Nguyễn Văn A (Hà Nội)", color: "#ef4444" },
-        { name: "Trần Thị B (Đà Nẵng)", color: "#3b82f6" },
-        { name: "Lê Văn C (TP. HCM)", color: "#10b981" },
-        { name: "Phạm Thị D (Cần Thơ)", color: "#f59e0b" },
-      ],
-      config: {
-        powerupEnabled: false,
-        olympia: {
-          rulesetId: "O26",
-          playIntroOnCreate: true,
-          seatCount: 4,
-        },
-      },
+      teamCount: 4,
     }),
   });
   const roomData = await roomRes.json();
-  const roomCode = roomData.room.code;
+  const roomCode = roomData.code;
   const hostKey = roomData.hostKey;
   console.log(`  -> Room created: PIN ${roomCode}, HostKey: ${hostKey}`);
 
@@ -150,8 +134,21 @@ async function main() {
   console.log("\n[5/8] Triggering match start & contestant introduction...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const startBtn = btns.find((b) => (b.innerText || "").includes("Bắt đầu"));
+    const startBtn = btns.find((b) => (b.innerText || "").toUpperCase().includes("BẮT ĐẦU"));
     if (startBtn) startBtn.click();
+  });
+  await sleep(1500);
+  // Confirm if warning modal opens
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const contBtn = btns.find((b) => (b.innerText || "").includes("tiếp tục") || (b.innerText || "").toUpperCase().includes("XÁC NHẬN"));
+    if (contBtn) contBtn.click();
+  });
+  await sleep(1500);
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const confBtn = btns.find((b) => (b.innerText || "").toUpperCase().includes("XÁC NHẬN"));
+    if (confBtn) confBtn.click();
   });
   await sleep(3500);
 
@@ -162,10 +159,25 @@ async function main() {
 
   // Transition to Khởi Động
   console.log("\n[6/8] Transitioning to Khởi Động (Sapphire Blue Ceiling Rig & Volumetric Beams)...");
+  // Skip entrance sequence if active to land on round
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const skipBtn = btns.find((b) => (b.innerText || "").includes("Bỏ qua") || (b.innerText || "").includes("chào sân"));
+    if (skipBtn) skipBtn.click();
+  });
+  await sleep(1500);
+
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const kdBtn = btns.find((b) => (b.innerText || "").includes("Khởi Động"));
     if (kdBtn) kdBtn.click();
+  });
+  await sleep(1500);
+  // Skip round banner if present on displayPage
+  await displayPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const skipBanner = btns.find((b) => (b.innerText || "").includes("Bỏ qua intro"));
+    if (skipBanner) skipBanner.click();
   });
   await sleep(3500);
 
@@ -178,9 +190,12 @@ async function main() {
   console.log("\n[7/8] Switching Display to CAM 3 for Anatomical Mouth Visemes...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const camBtn = btns.find((b) => (b.innerText || "").includes("CAM 3"));
+    const camBtn = btns.find(
+      (b) => (b.innerText || "").includes("CAM 3") || (b.title || "").includes("CAM 3")
+    );
     if (camBtn) camBtn.click();
   });
+  await displayPage.keyboard.press("3").catch(() => {});
   await sleep(3000);
 
   // Capture Screenshot 4 on Display Page
@@ -194,6 +209,13 @@ async function main() {
     const btns = Array.from(document.querySelectorAll("button"));
     const ttBtn = btns.find((b) => (b.innerText || "").includes("Tăng Tốc"));
     if (ttBtn) ttBtn.click();
+  });
+  await sleep(1500);
+  // Skip round banner if present on displayPage
+  await displayPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const skipBanner = btns.find((b) => (b.innerText || "").includes("Bỏ qua intro"));
+    if (skipBanner) skipBanner.click();
   });
   await sleep(3500);
 

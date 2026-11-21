@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { createRequire } from "node:module";
 import path from "node:path";
 import type WebSocketType from "ws";
 
@@ -558,13 +557,24 @@ async function withWsConcurrencyLimit<T>(fn: () => Promise<T>): Promise<T> {
 
 let cachedWsConstructor: typeof WebSocketType | null = null;
 
+declare const __non_webpack_require__: NodeRequire | undefined;
+
 function loadWebSocketConstructor(): typeof WebSocketType {
   if (cachedWsConstructor) return cachedWsConstructor;
-  const req = createRequire(path.join(process.cwd(), "package.json"));
-  const pkgName = ["w", "s"].join("");
-  const loaded = req(pkgName) as typeof WebSocketType & { default?: typeof WebSocketType };
-  cachedWsConstructor = loaded.default ?? loaded;
-  return cachedWsConstructor;
+  try {
+    const req =
+      typeof __non_webpack_require__ === "function"
+        ? __non_webpack_require__
+        : // eslint-disable-next-line no-eval
+          (eval("require") as NodeRequire);
+    const loaded = req("ws") as typeof WebSocketType & { default?: typeof WebSocketType };
+    cachedWsConstructor = loaded.default ?? loaded;
+    return cachedWsConstructor;
+  } catch (err) {
+    throw new TtsUpstreamError(
+      `Cannot load WebSocket client for Edge TTS: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;

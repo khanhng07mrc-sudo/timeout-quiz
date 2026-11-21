@@ -190,16 +190,26 @@ async function main() {
   console.log("\n[7/10] Starting Khởi Động turn & revealing question for Lower-Third typography...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const startKd = btns.find((b) => (b.innerText || "").toUpperCase().includes("BẮT ĐẦU"));
+    const startKd = btns.find((b) => (b.innerText || "").includes("BẮT ĐẦU") && !(b.innerText || "").includes("TRẬN"));
     if (startKd) startKd.click();
   });
-  await sleep(1500);
+  // Wait for kd:start ready sound & startCooldownUntil to expire
+  await sleep(3500);
+  await hostPage.keyboard.press("n");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const nextQ = btns.find((b) => (b.innerText || "").toUpperCase().includes("CÂU TIẾP"));
-    if (nextQ) nextQ.click();
+    const nextQ = btns.find((b) => (b.innerText || "").includes("CÂU TIẾP") || (b.innerText || "").includes("MỞ CÂU"));
+    if (nextQ && !nextQ.disabled) nextQ.click();
   });
-  await sleep(2500);
+  await sleep(2000);
+
+  // Turn on Subject Placard if currently ẨN
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const subjBtn = btns.find((b) => (b.innerText || "").includes("Lĩnh vực: ẨN") || (b.innerText || "").includes("Đồ hoạ: ẨN"));
+    if (subjBtn) subjBtn.click();
+  });
+  await sleep(1500);
 
   // Capture Screenshot 8: Classic Theme Lower-Third & Fixed Font Size
   const p8 = path.join(EVIDENCE_DIR, "08_classic_theme_lower_third_and_fixed_font.png");

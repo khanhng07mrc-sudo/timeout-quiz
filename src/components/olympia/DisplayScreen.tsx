@@ -1487,6 +1487,7 @@ function KhoiDong({ state, serverNow, isFullscreen }: P) {
   const kdActiveTimer = isGlobalClockRule ? kd.globalTimer : null;
   const isTimerRunning = Boolean(kd.timer && kd.timer.startedAt != null);
   const kdSecondsBadgeTimer = isO23ToO26 && hasRevealedQ && isTimerRunning ? kd.timer : null;
+  const effectiveShowSubject = Boolean(state.showSubject ?? kd.showSubject);
 
   const containerClass = isFullscreen
     ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex flex-col justify-center items-center h-full min-h-0 py-4 gap-3 my-auto animate-fade-in"
@@ -1503,6 +1504,7 @@ function KhoiDong({ state, serverNow, isFullscreen }: P) {
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
           badgeLabel={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
+          subjectBadge={hasRevealedQ && effectiveShowSubject && kd.current?.subject ? kd.current.subject.toUpperCase() : null}
           questionText={hasRevealedQ ? kd.current?.q : ""}
           mediaElement={
             hasRevealedQ && kd.current?.media ? (
@@ -1555,7 +1557,7 @@ function KhoiDong({ state, serverNow, isFullscreen }: P) {
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
           questionNumberBadge={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
-          headerBadge={hasRevealedQ && Boolean(kd.showSubject) && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
+          headerBadge={hasRevealedQ && effectiveShowSubject && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
           questionText={hasRevealedQ ? kd.current?.q : ""}
           mediaElement={
             hasRevealedQ && kd.current?.media ? (
@@ -1659,6 +1661,11 @@ function TangToc({ state, serverNow }: P) {
   return <TangTocQuestionGraphic state={state} serverNow={serverNow} isSilent={tt.phase === "ranking" || tt.phase === "graded"} />;
 }
 
+function getVeDichSubject(state: OlympiaState): string | null {
+  const q = state.veDich?.current?.q;
+  return q?.subject ? q.subject.toUpperCase() : null;
+}
+
 function VeDich({ state, serverNow, isFullscreen }: P) {
   const vd = state.veDich!;
   const owner = vd.order[vd.turnIdx];
@@ -1756,6 +1763,7 @@ function VeDich({ state, serverNow, isFullscreen }: P) {
             activeSeatId={owner}
             buzzedSeatId={vd.steal?.buzzedSeat ?? null}
             badgeLabel={cur?.points ? `${cur.points} ĐIỂM` : `CÂU ${vd.qIdx + 1}/3`}
+            subjectBadge={Boolean(state.showSubject) ? getVeDichSubject(state) : null}
             hopeStarActive={vd.hopeStarActive}
             questionText={cur?.q?.q || ""}
             mediaElement={
@@ -1842,6 +1850,7 @@ function Chp({ state, serverNow, isFullscreen }: P) {
             tiedSeats={cp.tied}
             buzzedSeatId={cp.buzzedSeat || cp.winner}
             badgeLabel={chpBadgeLabel}
+            subjectBadge={q?.subject && Boolean(state.showSubject ?? state.khoiDong?.showSubject) ? q.subject.toUpperCase() : null}
             questionText={q?.q || ""}
             timer={cp.timer}
             serverNow={serverNow}
@@ -1853,7 +1862,7 @@ function Chp({ state, serverNow, isFullscreen }: P) {
           state={state}
           serverNow={serverNow}
           buzzedSeatId={cp.buzzedSeat || cp.winner}
-          headerBadge={chpBadgeLabel}
+          headerBadge={q?.subject && Boolean(state.showSubject ?? state.khoiDong?.showSubject) ? `${chpBadgeLabel} • ${q.subject.toUpperCase()}` : chpBadgeLabel}
           questionText={q.q}
           timer={cp.timer}
           showScoreTab={true}

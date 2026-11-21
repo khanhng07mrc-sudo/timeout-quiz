@@ -3048,19 +3048,23 @@ test("VCNV bells sort chronologically from left to right", () => {
   assert.equal(sorted[2].seat, 3, "Third buzz is seat 3");
 });
 
-test("Khởi Động: showSubject defaults to false and kd:toggleSubject toggles visibility", () => {
+test("Khởi Động & Global: showSubject defaults to false, kd:toggleSubject and system:toggleSubject sync visibility", () => {
   const g = game("O26", ["khoiDong"], 4);
   act(g, "game:start");
-  assert.equal(g.state.khoiDong!.showSubject, false, "Subject is hidden by default");
+  assert.equal(g.state.khoiDong!.showSubject, false, "Subject is hidden by default in kd");
+  assert.equal(Boolean(g.state.showSubject), false, "Subject is hidden by default in global state");
 
   act(g, "kd:toggleSubject");
-  assert.equal(g.state.khoiDong!.showSubject, true, "Subject becomes visible after toggle");
+  assert.equal(g.state.khoiDong!.showSubject, true, "Subject becomes visible after kd toggle");
+  assert.equal(g.state.showSubject, true, "Global state syncs to true on kd toggle");
 
-  act(g, "kd:toggleSubject");
-  assert.equal(g.state.khoiDong!.showSubject, false, "Subject is hidden after second toggle");
+  act(g, "system:toggleSubject");
+  assert.equal(g.state.showSubject, false, "Global state toggles to false via system:toggleSubject");
+  assert.equal(g.state.khoiDong!.showSubject, false, "kd.showSubject syncs to false via system:toggleSubject");
 
-  act(g, "kd:setShowSubject", { show: true });
-  assert.equal(g.state.khoiDong!.showSubject, true, "kd:setShowSubject explicitly sets visibility");
+  act(g, "system:setShowSubject", { show: true });
+  assert.equal(g.state.showSubject, true, "system:setShowSubject explicitly sets visibility to true");
+  assert.equal(g.state.khoiDong!.showSubject, true, "kd.showSubject syncs to true via system:setShowSubject");
 });
 
 test("Khởi Động O22 and timed segments: never triggers kd_bgm_1/2/3 during question advancement", () => {

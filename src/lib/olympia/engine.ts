@@ -1551,6 +1551,22 @@ export class OlympiaGame {
         }
         return OK;
       }
+      case "system:toggleSubject": {
+        const next = !Boolean(this.state.showSubject ?? this.state.khoiDong?.showSubject);
+        this.state.showSubject = next;
+        if (this.state.khoiDong) {
+          this.state.khoiDong.showSubject = next;
+        }
+        return OK;
+      }
+      case "system:setShowSubject": {
+        const val = Boolean(a.show);
+        this.state.showSubject = val;
+        if (this.state.khoiDong) {
+          this.state.khoiDong.showSubject = val;
+        }
+        return OK;
+      }
       case "system:setKdBgmMode": {
         const mode = a.mode === "manual" ? "manual" : "auto";
         if (this.state.khoiDong) {
@@ -2798,11 +2814,15 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:toggleSubject": {
-        kd.showSubject = !kd.showSubject;
+        const next = !Boolean(kd.showSubject ?? this.state.showSubject);
+        kd.showSubject = next;
+        this.state.showSubject = next;
         return OK;
       }
       case "kd:setShowSubject": {
-        kd.showSubject = Boolean(a.show);
+        const val = Boolean(a.show);
+        kd.showSubject = val;
+        this.state.showSubject = val;
         return OK;
       }
       case "kd:correct": {

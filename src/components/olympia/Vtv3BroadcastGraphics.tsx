@@ -938,8 +938,70 @@ export function EconovaSecondsBadge({
   );
 }
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * HANGING BRASS SUBJECT PLACARD (Tab Biển Đồng Treo Chủ Đề O26)
+ * Mounted at Center-Left directly onto the HorizontalBrassRod atop the classic
+ * chalkboard question frame. Features two solid bronze hanging brackets/rivets,
+ * beveled gold metallic rim, dark antique enamel plate, and glowing gold typography.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function HangingBrassSubjectPlacard({
+  subject,
+  className = "",
+}: {
+  subject: string;
+  className?: string;
+}) {
+  if (!subject) return null;
+
+  return (
+    <motion.div
+      initial={{ y: -16, opacity: 0, scale: 0.94 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      exit={{ y: -16, opacity: 0, scale: 0.94 }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      className={`absolute -top-[34px] sm:-top-[38px] left-6 sm:left-10 z-40 flex items-center pointer-events-none select-none ${className}`}
+    >
+      {/* 2 Hanging Brass Brackets connecting to rod */}
+      <div className="absolute -top-2 left-3 w-1.5 h-3 bg-gradient-to-b from-amber-400 to-amber-700 rounded-sm shadow-sm z-0" />
+      <div className="absolute -top-2 right-3 w-1.5 h-3 bg-gradient-to-b from-amber-400 to-amber-700 rounded-sm shadow-sm z-0" />
+
+      {/* Main Brass Placard */}
+      <div
+        className="relative z-10 px-3 sm:px-4 py-1 sm:py-1.5 rounded-t-lg rounded-b-md flex items-center gap-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.95)]"
+        style={{
+          background: "linear-gradient(180deg, #2b1f14 0%, #17110b 45%, #0d0a07 100%)",
+          border: "2px solid #d4af37",
+          boxShadow:
+            "0 6px 18px rgba(0,0,0,0.92), 0 0 10px rgba(212,175,55,0.4), inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.8)",
+          outline: "1.5px solid #78350f",
+          outlineOffset: "-3.5px",
+        }}
+      >
+        {/* Left Miniature Bronze Rivet */}
+        <div className="w-2.5 h-2.5 rounded-full classic-rivet-bronze shrink-0 shadow-sm" />
+
+        {/* Tag Icon & Subject Name */}
+        <div className="flex items-center gap-1.5 font-black tracking-wider uppercase text-xs sm:text-sm">
+          <span className="text-amber-400 drop-shadow-[0_1px_4px_rgba(245,158,11,0.6)]">
+            🏷️ CHỦ ĐỀ:
+          </span>
+          <span className="text-amber-200 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] font-extrabold tracking-wide">
+            {subject}
+          </span>
+        </div>
+
+        {/* Right Miniature Bronze Rivet */}
+        <div className="w-2.5 h-2.5 rounded-full classic-rivet-bronze shrink-0 shadow-sm" />
+      </div>
+    </motion.div>
+  );
+}
+
 export function Vtv3ChalkboardQuestionFrame({
   headerBadge,
+  subjectBadge,
   questionText,
   mediaElement,
   timer,
@@ -948,6 +1010,7 @@ export function Vtv3ChalkboardQuestionFrame({
   children,
 }: {
   headerBadge?: React.ReactNode;
+  subjectBadge?: string | null;
   questionText?: string | null;
   mediaElement?: React.ReactNode;
   timer?: TimerState | null;
@@ -960,6 +1023,9 @@ export function Vtv3ChalkboardQuestionFrame({
     <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto">
       {/* ── 1. Horizontal Brass Rod (Passing behind) ── */}
       <HorizontalBrassRod />
+
+      {/* ── HANGING BRASS SUBJECT PLACARD (Top Center-Left) ── */}
+      {subjectBadge && <HangingBrassSubjectPlacard subject={subjectBadge} />}
 
       {/* ── 2. Chalkboard Question Banner (Shape Layer) ── */}
       <div
@@ -1381,6 +1447,7 @@ export interface ClassicUnifiedLowerThirdProps {
   round: "khoiDong" | "vcnv" | "tangToc" | "veDich" | "cauHoiPhu";
   questionText?: string | null;
   badgeLabel?: string | null;
+  subjectBadge?: string | null;
   mediaElement?: React.ReactNode;
   timer?: TimerState | null;
   activeSeatId?: number | null;
@@ -1602,6 +1669,7 @@ export function ClassicUnifiedLowerThird({
   round,
   questionText,
   badgeLabel,
+  subjectBadge,
   mediaElement,
   timer,
   activeSeatId,
@@ -1637,6 +1705,9 @@ export function ClassicUnifiedLowerThird({
     >
       {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
+
+      {/* ── HANGING BRASS SUBJECT PLACARD (Top Center-Left) ── */}
+      {subjectBadge && <HangingBrassSubjectPlacard subject={subjectBadge} />}
 
       {/* Floating Hope Star Badge rising above question board */}
       {hopeStarActive && (

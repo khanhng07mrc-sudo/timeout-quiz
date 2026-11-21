@@ -1345,18 +1345,20 @@ function renderLedScreenToCanvas(
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Dynamic Floating Glossy Scientific Symbols & Stardust Backdrop (R5)
+  // 2. Dynamic Floating Glossy Scientific Symbols & Stardust Backdrop (Math & Science Board)
   const idleSymbols = [
-    { text: "∑", x: 0.16, y: 0.22, size: Math.round(width * 0.046) },
-    { text: "sin", x: 0.34, y: 0.16, size: Math.round(width * 0.034) },
-    { text: "m²", x: 0.66, y: 0.20, size: Math.round(width * 0.035) },
-    { text: "Δ", x: 0.84, y: 0.26, size: Math.round(width * 0.042) },
-    { text: "µ", x: 0.14, y: 0.75, size: Math.round(width * 0.038) },
-    { text: "kg", x: 0.32, y: 0.82, size: Math.round(width * 0.034) },
-    { text: "Ω", x: 0.68, y: 0.80, size: Math.round(width * 0.040) },
-    { text: "π", x: 0.86, y: 0.74, size: Math.round(width * 0.038) },
-    { text: "cos", x: 0.50, y: 0.14, size: Math.round(width * 0.032) },
-    { text: "ml", x: 0.50, y: 0.86, size: Math.round(width * 0.032) },
+    { text: "∑", x: 0.15, y: 0.20, size: Math.round(width * 0.088) },
+    { text: "E=mc²", x: 0.35, y: 0.18, size: Math.round(width * 0.068) },
+    { text: "∫ f(x)dx", x: 0.65, y: 0.18, size: Math.round(width * 0.065) },
+    { text: "Δλ", x: 0.86, y: 0.22, size: Math.round(width * 0.078) },
+    { text: "F=ma", x: 0.16, y: 0.78, size: Math.round(width * 0.068) },
+    { text: "π", x: 0.85, y: 0.76, size: Math.round(width * 0.086) },
+    { text: "Ω", x: 0.68, y: 0.82, size: Math.round(width * 0.078) },
+    { text: "√x", x: 0.12, y: 0.48, size: Math.round(width * 0.075) },
+    { text: "∞", x: 0.88, y: 0.48, size: Math.round(width * 0.080) },
+    { text: "sin θ", x: 0.36, y: 0.82, size: Math.round(width * 0.065) },
+    { text: "H₂O", x: 0.50, y: 0.15, size: Math.round(width * 0.066) },
+    { text: "v=s/t", x: 0.50, y: 0.84, size: Math.round(width * 0.064) },
   ];
 
   ctx.save();
@@ -1367,13 +1369,16 @@ function renderLedScreenToCanvas(
     const driftY = (s.y * height) + Math.cos(timeSec * 0.7 + idx * 1.1) * 9;
     ctx.save();
     ctx.translate(driftX, driftY);
-    ctx.font = `italic 900 ${s.size}px "Plus Jakarta Sans", sans-serif`;
-    ctx.shadowColor = fadeProgress > 0.5 ? "#ff1a40" : "#00f0ff";
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 60, 90, 0.28)" : "rgba(56, 189, 248, 0.28)";
+    ctx.font = `italic 900 ${s.size}px "Plus Jakarta Sans", "Cambria Math", sans-serif`;
+    ctx.shadowColor = fadeProgress > 0.5 ? "#f43f5e" : "#0284c7";
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 220, 230, 0.90)" : "rgba(224, 242, 254, 0.92)";
     ctx.fillText(s.text, 0, 0);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(225, 29, 72, 0.85)" : "rgba(14, 165, 233, 0.85)";
+    ctx.lineWidth = 2.4;
+    ctx.strokeText(s.text, 0, 0);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
+    ctx.lineWidth = 1.0;
     ctx.strokeText(s.text, -0.6, -0.8);
     ctx.restore();
   });
@@ -3209,100 +3214,114 @@ export function CentralLedWall({
         </mesh>
       </group>
 
-      {/* ── 2. STAGE RIGHT WING: ELEVATED LANDSCAPE 16:9 SCREEN (XOAY -65° VỀ MẶT THÍ SINH + 3 LỚP VIỀN GIẬT CẤP) ── */}
-      {/* Đặt tại [5.8, 3.2, -2.2], xoay -65° [-1.134 rad] hướng thẳng góc nhìn của các thí sinh */}
-      <group position={[5.8, 3.2, -2.2]} rotation={[0, -1.134, 0]}>
+      {/* ── 2. STAGE RIGHT WING: EXPANDED LANDSCAPE 16:9 SCREEN (XOAY -65° VỀ MẶT THÍ SINH + PHỦ SÁT CỬA BỤC MC + 3 LỚP VIỀN GIẬT CẤP) ── */}
+      {/* Đặt tại [5.05, 3.25, -3.15], xoay -65° [-1.134 rad] hướng thẳng góc nhìn của các thí sinh & mở rộng sát cửa bục MC */}
+      <group position={[5.05, 3.25, -3.15]} rotation={[0, -1.134, 0]}>
         {/* Structural Truss Columns behind the Screen */}
-        <mesh position={[-2.2, -1.2, -0.28]}>
-          <boxGeometry args={[0.22, 4.2, 0.22]} />
+        <mesh position={[-2.95, -1.2, -0.28]}>
+          <boxGeometry args={[0.22, 5.0, 0.22]} />
           <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[2.2, -1.2, -0.28]}>
-          <boxGeometry args={[0.22, 4.2, 0.22]} />
+        <mesh position={[2.95, -1.2, -0.28]}>
+          <boxGeometry args={[0.22, 5.0, 0.22]} />
           <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
         </mesh>
 
-        {/* Horizontal LED wall slats behind screen */}
-        {[-0.9, -0.45, 0.0, 0.45, 0.9].map((slatY, sIdx) => (
+        {/* Lower backing wall panel spanning underneath screen to floor */}
+        <mesh position={[0, -1.9, -0.36]}>
+          <boxGeometry args={[10.6, 3.4, 0.12]} />
+          <meshStandardMaterial color="#040d22" roughness={0.35} metalness={0.7} />
+        </mesh>
+
+        {/* Continuous Horizontal Glowing Neon Tubes Underneath Elevated Screen down to stage floor (spans 10.5m) */}
+        {[-3.0, -2.5, -2.0, -1.5].map((slatY, sIdx) => (
+          <mesh key={`lower-slat-${sIdx}`} position={[0, slatY, -0.32]}>
+            <boxGeometry args={[10.5, 0.045, 0.045]} />
+            <meshBasicMaterial color={neonColor} />
+          </mesh>
+        ))}
+
+        {/* Horizontal LED wall slats behind screen (widened to 9.8m) */}
+        {[-1.2, -0.6, 0.0, 0.6, 1.2].map((slatY, sIdx) => (
           <mesh key={`slat-${sIdx}`} position={[0, slatY, -0.32]}>
-            <boxGeometry args={[5.6, 0.05, 0.05]} />
+            <boxGeometry args={[9.8, 0.05, 0.05]} />
             <meshBasicMaterial color={neonColor} />
           </mesh>
         ))}
 
         {/* ── 3 LỚP VIỀN GIẬT CẤP (3-TIER STEPPED CONCENTRIC BEZELS WITH NEON TUBING) ── */}
-        {/* Lớp viền 1 (Outer Bezel Tier): 5.3m x 3.2m x 0.10m tại Z = -0.14 */}
+        {/* Lớp viền 1 (Outer Bezel Tier): 6.92m x 4.33m x 0.10m tại Z = -0.14 */}
         <mesh position={[0, 0, -0.14]}>
-          <boxGeometry args={[5.3, 3.2, 0.10]} />
+          <boxGeometry args={[6.92, 4.33, 0.10]} />
           <meshStandardMaterial color="#070d1e" metalness={0.92} roughness={0.18} />
         </mesh>
         {/* Viền Neon Lớp 1 */}
-        <mesh position={[0, 1.6, -0.09]}>
-          <boxGeometry args={[5.3, 0.035, 0.035]} />
+        <mesh position={[0, 2.165, -0.09]}>
+          <boxGeometry args={[6.92, 0.035, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.6, -0.09]}>
-          <boxGeometry args={[5.3, 0.035, 0.035]} />
+        <mesh position={[0, -2.165, -0.09]}>
+          <boxGeometry args={[6.92, 0.035, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-2.65, 0, -0.09]}>
-          <boxGeometry args={[0.035, 3.2, 0.035]} />
+        <mesh position={[-3.46, 0, -0.09]}>
+          <boxGeometry args={[0.035, 4.33, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[2.65, 0, -0.09]}>
-          <boxGeometry args={[0.035, 3.2, 0.035]} />
+        <mesh position={[3.46, 0, -0.09]}>
+          <boxGeometry args={[0.035, 4.33, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* Lớp viền 2 (Middle Bezel Tier): 5.0m x 2.9m x 0.12m tại Z = -0.06 */}
+        {/* Lớp viền 2 (Middle Bezel Tier): 6.52m x 3.93m x 0.12m tại Z = -0.06 */}
         <mesh position={[0, 0, -0.06]}>
-          <boxGeometry args={[5.0, 2.9, 0.12]} />
+          <boxGeometry args={[6.52, 3.93, 0.12]} />
           <meshStandardMaterial color="#0f172a" metalness={0.90} roughness={0.20} />
         </mesh>
         {/* Viền Neon Lớp 2 */}
-        <mesh position={[0, 1.45, 0.00]}>
-          <boxGeometry args={[5.0, 0.03, 0.03]} />
+        <mesh position={[0, 1.965, 0.00]}>
+          <boxGeometry args={[6.52, 0.03, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.45, 0.00]}>
-          <boxGeometry args={[5.0, 0.03, 0.03]} />
+        <mesh position={[0, -1.965, 0.00]}>
+          <boxGeometry args={[6.52, 0.03, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-2.50, 0, 0.00]}>
-          <boxGeometry args={[0.03, 2.9, 0.03]} />
+        <mesh position={[-3.26, 0, 0.00]}>
+          <boxGeometry args={[0.03, 3.93, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[2.50, 0, 0.00]}>
-          <boxGeometry args={[0.03, 2.9, 0.03]} />
+        <mesh position={[3.26, 0, 0.00]}>
+          <boxGeometry args={[0.03, 3.93, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* Lớp viền 3 (Inner Bezel Tier): 4.7m x 2.65m x 0.12m tại Z = 0.02 */}
+        {/* Lớp viền 3 (Inner Bezel Tier): 6.12m x 3.53m x 0.12m tại Z = 0.02 */}
         <mesh position={[0, 0, 0.02]}>
-          <boxGeometry args={[4.7, 2.65, 0.12]} />
+          <boxGeometry args={[6.12, 3.53, 0.12]} />
           <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.22} />
         </mesh>
         {/* Viền Neon Lớp 3 */}
-        <mesh position={[0, 1.325, 0.08]}>
-          <boxGeometry args={[4.7, 0.025, 0.025]} />
+        <mesh position={[0, 1.765, 0.08]}>
+          <boxGeometry args={[6.12, 0.025, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.325, 0.08]}>
-          <boxGeometry args={[4.7, 0.025, 0.025]} />
+        <mesh position={[0, -1.765, 0.08]}>
+          <boxGeometry args={[6.12, 0.025, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-2.35, 0, 0.08]}>
-          <boxGeometry args={[0.025, 2.65, 0.025]} />
+        <mesh position={[-3.06, 0, 0.08]}>
+          <boxGeometry args={[0.025, 3.53, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[2.35, 0, 0.08]}>
-          <boxGeometry args={[0.025, 2.65, 0.025]} />
+        <mesh position={[3.06, 0, 0.08]}>
+          <boxGeometry args={[0.025, 3.53, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* LED Screen Display Plane (Aspect Ratio 16:9) */}
+        {/* LED Screen Display Plane (Expanded Aspect Ratio 16:9, 5.92m x 3.33m) */}
         <mesh position={[0, 0, 0.085]}>
-          <planeGeometry args={[4.56, 2.52]} />
+          <planeGeometry args={[5.92, 3.33]} />
           {texture ? (
             <meshBasicMaterial map={texture} toneMapped={false} />
           ) : (

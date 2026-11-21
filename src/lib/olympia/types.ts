@@ -664,6 +664,8 @@ export interface OlympiaState {
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
   /** Broadcast Theme: "v3_arrow" (Econova Chevron Arrow Lower-Third) or "o26_classic" (Authentic VTV3 Chalkboard) */
   themeMode?: "v3_arrow" | "o26_classic";
+  /** Whether question subject/topic badge should be displayed on broadcast graphics across rounds */
+  showSubject?: boolean;
   /** Buzzer test mode across rounds with buzzers */
   bellTestMode?: boolean;
   bellTestLogs?: { seat: number; at: number; order: number }[];

@@ -232,6 +232,7 @@ export const HostConsole = React.memo(function HostConsole({
 
   const [activeSpeaker, setActiveSpeaker] = useState<"khanh_vy" | "ngoc_huy" | null>(null);
   const [ttsPaused, setTtsPaused] = useState(false);
+  const effectiveShowSubject = Boolean(state?.showSubject ?? state?.khoiDong?.showSubject);
   const [ttsVolume, setTtsVolume] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const v = window.localStorage?.getItem("olympia_tts_volume");
@@ -1329,9 +1330,24 @@ export const HostConsole = React.memo(function HostConsole({
 
               {/* Cyan / Sky box: LĨNH VỰC (if available) */}
               {getSubjectText(state) && (
-                <div className="rounded-lg bg-sky-950/40 border border-sky-400/35 px-2.5 py-1 text-xs text-sky-200 flex items-center gap-2">
-                  <span className="font-black text-sky-400 shrink-0 text-[11px] uppercase tracking-wider">LĨNH VỰC:</span>
-                  <span className="font-semibold text-sky-100 text-[11px] select-text">{getSubjectText(state)}</span>
+                <div className="rounded-lg bg-sky-950/40 border border-sky-400/35 px-2.5 py-1 text-xs text-sky-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="font-black text-sky-400 shrink-0 text-[11px] uppercase tracking-wider">LĨNH VỰC:</span>
+                    <span className="font-semibold text-sky-100 text-[11px] select-text truncate">{getSubjectText(state)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => call("system:toggleSubject")}
+                    title="Bật/tắt hiển thị lĩnh vực câu hỏi trên màn hình đồ hoạ phát sóng"
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                      effectiveShowSubject
+                        ? "bg-amber-400 text-slate-950 border-amber-300 shadow-sm font-black"
+                        : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                    }`}
+                  >
+                    <span>📚 Đồ hoạ:</span>
+                    <span>{effectiveShowSubject ? "HIỆN" : "ẨN"}</span>
+                  </button>
                 </div>
               )}
 
@@ -3008,6 +3024,7 @@ function KhoiDongDeck({
   serverNow: () => number;
 }) {
   const kd = state.khoiDong!;
+  const effectiveShowSubject = Boolean(state?.showSubject ?? state?.khoiDong?.showSubject);
   const seg = kd.segments[kd.segIdx];
   const isSolo = seg.kind === "solo";
   const isO22 = state.rulesetId === "O22";
@@ -3083,16 +3100,16 @@ function KhoiDongDeck({
 
           <button
             type="button"
-            onClick={() => call("kd:toggleSubject")}
+            onClick={() => call("system:toggleSubject")}
             title="Bật/tắt hiển thị lĩnh vực câu hỏi trên màn hình đồ hoạ phát sóng"
             className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 ${
-              kd.showSubject
+              effectiveShowSubject
                 ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md font-black"
                 : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/10"
             }`}
           >
             <span>📚 Lĩnh vực:</span>
-            <span>{kd.showSubject ? "HIỆN" : "ẨN"}</span>
+            <span>{effectiveShowSubject ? "HIỆN" : "ẨN"}</span>
           </button>
         </div>
 
@@ -4404,6 +4421,7 @@ function VeDichDeck({
   setO22Quarter: (q: O22Quarter) => void;
 }) {
   const vd = state.veDich!;
+  const effectiveShowSubject = Boolean(state?.showSubject ?? state?.khoiDong?.showSubject);
   const isO22 = state.rulesetId === "O22";
   const isO22Q1 = isO22 && o22Quarter === 1;
   const rs = RULESETS[state.rulesetId]?.veDich || RULESETS.O26.veDich;
@@ -4498,6 +4516,19 @@ function VeDichDeck({
               className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow cursor-pointer"
             >
               Trở về vị trí
+            </button>
+            <button
+              type="button"
+              onClick={() => call("system:toggleSubject")}
+              title="Bật/tắt hiển thị lĩnh vực câu hỏi trên màn hình đồ hoạ phát sóng"
+              className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center justify-center gap-1 ${
+                effectiveShowSubject
+                  ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md font-black"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+              }`}
+            >
+              <span>📚 Lĩnh vực:</span>
+              <span>{effectiveShowSubject ? "HIỆN" : "ẨN"}</span>
             </button>
           </div>
 
@@ -4819,6 +4850,7 @@ function VeDichDeck({
 // ───────────────────────────────────────────────────────────
 function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call; seats: Seat[] }) {
   const cp = state.cauHoiPhu!;
+  const effectiveShowSubject = Boolean(state?.showSubject ?? state?.khoiDong?.showSubject);
   const [selectedSeats, setSelectedSeats] = useState<number[]>(cp.tied ?? [0, 1]);
 
   return (
@@ -4948,6 +4980,20 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
         >
           <span>Câu tiếp (N)</span>
           <span>⏭</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => call("system:toggleSubject")}
+          title="Bật/tắt hiển thị lĩnh vực câu hỏi trên màn hình đồ hoạ phát sóng"
+          className={`w-full py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            effectiveShowSubject
+              ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md font-black"
+              : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+          }`}
+        >
+          <span>📚 Lĩnh vực trên đồ hoạ:</span>
+          <span>{effectiveShowSubject ? "HIỆN" : "ẨN"}</span>
         </button>
       </div>
 

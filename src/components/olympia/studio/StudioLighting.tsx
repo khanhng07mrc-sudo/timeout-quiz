@@ -1142,9 +1142,9 @@ function VolumetricLightBeam({
   start,
   target,
   color = "#ffffff",
-  opacity = 0.045,
-  radiusTop = 0.018,
-  radiusBottom = 0.24,
+  opacity = 0.020,
+  radiusTop = 0.008,
+  radiusBottom = 0.065,
 }: {
   start: [number, number, number];
   target: [number, number, number];
@@ -1193,19 +1193,19 @@ function VolumetricLightBeam({
         varying vec3 vViewPosition;
 
         void main() {
-          // Soft vertical falloff: fade in from fixture, fade out before touching floor/podium
-          float vFade = smoothstep(0.0, 0.32, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
-          // Radial/Fresnel edge feathering: eliminates harsh polygon silhouette
+          // Extremely soft vertical falloff: fade in from fixture, fade out before touching floor/podium
+          float vFade = smoothstep(0.0, 0.22, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
+          // Radial Fresnel edge feathering: eliminates flat solid cone silhouette
           vec3 normal = normalize(vNormal);
           vec3 viewDir = normalize(vViewPosition);
-          float edgeFade = pow(clamp(abs(dot(normal, viewDir)), 0.0, 1.0), 1.5);
+          float edgeFade = pow(clamp(abs(dot(normal, viewDir)), 0.0, 1.0), 2.2);
           float alpha = uOpacity * vFade * edgeFade;
           gl_FragColor = vec4(uColor, alpha);
         }
       `,
       transparent: true,
       blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide,
       depthWrite: false,
       toneMapped: false,
     });
@@ -1213,7 +1213,7 @@ function VolumetricLightBeam({
 
   return (
     <mesh position={center} quaternion={quaternion} material={material}>
-      <cylinderGeometry args={[radiusTop, radiusBottom, height, 24, 1, true]} />
+      <cylinderGeometry args={[radiusTop, radiusBottom, height, 16, 1, true]} />
     </mesh>
   );
 }
@@ -1482,7 +1482,7 @@ export function StudioCeilingRig({
                 targetPosition={[tx, ty, tz]}
                 intensity={(isDimmed ? 1.8 : 5.5 * roundLightingTheme.intensityMultiplier) * liveFactor}
                 color={roundLightingTheme.spotColor}
-                angle={0.35}
+                angle={0.25}
                 penumbra={0.7}
                 distance={14}
                 decay={1.2}
@@ -1492,9 +1492,9 @@ export function StudioCeilingRig({
                 start={[px, py, pz]}
                 target={[tx, ty, tz]}
                 color="#ffffff"
-                opacity={isDimmed ? 0.02 : 0.045 * liveFactor}
-                radiusTop={0.018}
-                radiusBottom={0.25}
+                opacity={isDimmed ? 0.010 : 0.020 * liveFactor}
+                radiusTop={0.008}
+                radiusBottom={0.075}
               />
             </React.Fragment>
           ))}
@@ -3309,15 +3309,15 @@ function KhoiDongBulbFixture({
   const lensMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const spotRef = useRef<THREE.SpotLight>(null);
 
-  // Fixture mounted on ceiling truss rail in front of podium (R_rig = 4.8m, Y = 6.8m)
-  // Podium is at R_podium = 6.65m, Y = 0.22m, Z_center = -0.5m
+  // Fixture mounted on ceiling truss rail at Y = 6.20m (matching StudioCeilingRig Y = 6.2m)
+  // Positioned slightly forward of podium to project cleanly down onto contestant desk
+  // Remaining 100% in front of backdrop and walls
   const fixturePos = useMemo<[number, number, number]>(() => {
     const px = podiumPos[0];
     const pz = podiumPos[2];
-    const ratio = 4.80 / 6.65;
-    const fx = +(px * ratio).toFixed(3);
-    const fz = +(-0.5 + (pz - (-0.5)) * ratio).toFixed(3);
-    return [fx, 6.80, fz];
+    const fx = +(px * 0.88).toFixed(3);
+    const fz = +(pz * 0.88 + 0.35).toFixed(3);
+    return [fx, 6.20, fz];
   }, [podiumPos]);
 
   // Target aims directly at contestant desk & podium face (Y = 0.90m)
@@ -3412,22 +3412,22 @@ function KhoiDongBulbFixture({
         target={targetObj}
         color="#ffffff"
         intensity={isKD ? 8.5 : 0}
-        angle={0.42}
-        penumbra={0.65}
+        angle={0.35}
+        penumbra={0.75}
         distance={15.0}
         decay={1.15}
         castShadow={false}
       />
 
-      {/* 4. Subtle Volumetric Light Beam Cone from ceiling bulb down to podium */}
+      {/* 4. Delicate misty pencil beam from ceiling fixture down to podium */}
       {isKD && (
         <VolumetricLightBeam
           start={[0, 0, 0]}
           target={localTarget}
           color="#ffffff"
-          opacity={0.045}
-          radiusTop={0.018}
-          radiusBottom={0.24}
+          opacity={0.020}
+          radiusTop={0.008}
+          radiusBottom={0.065}
         />
       )}
     </group>
@@ -3449,15 +3449,12 @@ export function KhoiDongCeilingBeams({
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   serverNow?: () => number;
 }) {
+  const count = Math.min(8, Math.max(1, totalSeats));
   const beamPositions = useMemo(() => {
-    const count = Math.min(8, Math.max(1, totalSeats));
-    return Array.from({ length: 8 }, (_, idx) => {
-      if (idx < count) {
-        return getContestantPodiumWorldPos(idx, count, 0.22);
-      }
-      return CONTESTANT_POSITIONS[idx];
+    return Array.from({ length: count }, (_, idx) => {
+      return getContestantPodiumWorldPos(idx, count, 0.22);
     });
-  }, [totalSeats]);
+  }, [count]);
 
   return (
     <group name="khoi-dong-ceiling-beams">

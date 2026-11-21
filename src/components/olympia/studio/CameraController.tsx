@@ -418,6 +418,20 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   27: getContestantCameraPreset(6, 8),
   28: getContestantCameraPreset(7, 8),
   29: getWideStageLeftTiltedPreset(4),
+  30: {
+    id: 30,
+    label: "Toàn Cảnh Bục Vinh Quang & 2 MC",
+    pos: [0.00, 2.20, 5.20],
+    target: [0.00, 1.20, -0.60],
+    fov: 46,
+  },
+  31: {
+    id: 31,
+    label: "Cận Cảnh Bục Vinh Quang",
+    pos: [0.00, 1.65, 3.20],
+    target: [0.00, 1.35, -0.60],
+    fov: 38,
+  },
 };
 
 interface CameraControllerProps {
@@ -689,10 +703,12 @@ export function CameraController({
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
       const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
-      // Subtle optical zoom capped at 1.12x (general) and 1.15x (CAM 18 Score Summary)
+      // Optical zoom: For CAM 18 (Score Summary) and CAM 31 (Podium Close), zoom from 0.75x (wide) to 1.25x (close)
       const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
-      const maxPushMultiplier = camAngle === 18 ? 0.15 : 0.12;
-      const zoomFactor = 1.0 + activePush * maxPushMultiplier;
+      const isDynamicZoomCam = camAngle === 18 || camAngle === 31;
+      const zoomFactor = isDynamicZoomCam
+        ? 0.75 + activePush * 0.50
+        : 1.0 + activePush * 0.12;
       const pushFov = opticalFov / zoomFactor;
       if (transitionMode === "CUT" && (isCamChanged || isNewQuestion || (pushInProgress === 0 && smoothPushRef.current === 0))) {
         camera.fov = Math.min(85, Math.max(12, pushFov));

@@ -881,6 +881,18 @@ export default function OlympiaQuestionStudioModal({
                         />
                       </div>
 
+                      <textarea
+                        rows={2}
+                        value={item.explanation || ""}
+                        onChange={(e) => {
+                          const copy = [...currentKdList];
+                          copy[idx] = { ...item, explanation: e.target.value || undefined };
+                          setKdList(copy);
+                        }}
+                        placeholder="Giải thích đáp án (tùy chọn, dùng cho MC đọc thêm)..."
+                        className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 resize-y"
+                      />
+
                       <div className="flex flex-wrap items-center gap-2">
                         <input
                           value={item.media || ""}
@@ -1005,6 +1017,17 @@ export default function OlympiaQuestionStudioModal({
                           className="bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-300"
                         />
                       </div>
+                      <textarea
+                        rows={2}
+                        value={r.explanation || ""}
+                        onChange={(e) =>
+                          updateDraft((d) => {
+                            d.vcnv.rows[i].explanation = e.target.value || undefined;
+                          })
+                        }
+                        placeholder="Giải thích đáp án hàng ngang (tùy chọn, dùng cho MC đọc thêm)..."
+                        className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 resize-y"
+                      />
                     </div>
                   ))}
 
@@ -1019,8 +1042,8 @@ export default function OlympiaQuestionStudioModal({
                         onChange={(e) =>
                           updateDraft((d) => {
                             d.vcnv.centerQuestion = {
+                              ...(d.vcnv.centerQuestion ?? { q: "", a: "" }),
                               q: e.target.value,
-                              a: d.vcnv.centerQuestion?.a || "",
                             };
                           })
                         }
@@ -1032,7 +1055,7 @@ export default function OlympiaQuestionStudioModal({
                         onChange={(e) =>
                           updateDraft((d) => {
                             d.vcnv.centerQuestion = {
-                              q: d.vcnv.centerQuestion?.q || "",
+                              ...(d.vcnv.centerQuestion ?? { q: "", a: "" }),
                               a: e.target.value.toUpperCase(),
                             };
                           })
@@ -1041,6 +1064,20 @@ export default function OlympiaQuestionStudioModal({
                         className="bg-slate-950 border border-amber-400/40 rounded-lg px-3 py-1.5 text-xs font-bold text-amber-300"
                       />
                     </div>
+                    <textarea
+                      rows={2}
+                      value={draft.vcnv.centerQuestion?.explanation || ""}
+                      onChange={(e) =>
+                        updateDraft((d) => {
+                          d.vcnv.centerQuestion = {
+                            ...(d.vcnv.centerQuestion ?? { q: "", a: "" }),
+                            explanation: e.target.value || undefined,
+                          };
+                        })
+                      }
+                      placeholder="Giải thích đáp án Ô Trung Tâm (tùy chọn, dùng cho MC đọc thêm)..."
+                      className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 resize-y"
+                    />
                   </div>
                 </div>
               </div>
@@ -1204,6 +1241,18 @@ export default function OlympiaQuestionStudioModal({
                       className="bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-300"
                     />
                   </div>
+
+                  <textarea
+                    rows={2}
+                    value={ttQ.explanation || ""}
+                    onChange={(e) =>
+                      updateDraft((d) => {
+                        d.tangToc[idx].explanation = e.target.value || undefined;
+                      })
+                    }
+                    placeholder="Giải thích đáp án Tăng Tốc (tùy chọn, dùng cho MC đọc thêm)..."
+                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 resize-y"
+                  />
 
                   <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -1451,6 +1500,17 @@ export default function OlympiaQuestionStudioModal({
                           className="bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-300"
                         />
                       </div>
+                      <textarea
+                        rows={2}
+                        value={item.explanation || ""}
+                        onChange={(e) => {
+                          const copy = [...currentVdList];
+                          copy[idx] = { ...item, explanation: e.target.value || undefined };
+                          setVdList(copy);
+                        }}
+                        placeholder="Giải thích đáp án Về Đích (tùy chọn, dùng cho MC đọc thêm)..."
+                        className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 resize-y"
+                      />
                     </div>
                   );
                 })}
@@ -1485,51 +1545,64 @@ export default function OlympiaQuestionStudioModal({
               {draft.cauHoiPhu.map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-xl border border-white/10 bg-slate-900/75 grid md:grid-cols-4 gap-2 items-center text-xs"
+                  className="p-3 rounded-xl border border-white/10 bg-slate-900/75 space-y-2 text-xs"
                 >
-                  <input
-                    value={item.q}
-                    onChange={(e) =>
-                      updateDraft((d) => {
-                        d.cauHoiPhu[idx].q = e.target.value;
-                      })
-                    }
-                    className="md:col-span-2 bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5"
-                  />
-                  <input
-                    value={item.a}
-                    onChange={(e) =>
-                      updateDraft((d) => {
-                        d.cauHoiPhu[idx].a = e.target.value;
-                      })
-                    }
-                    className="bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-1.5 font-bold text-emerald-300"
-                  />
-                  <div className="flex items-center justify-end gap-3">
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(item.used)}
-                        onChange={(e) =>
-                          updateDraft((d) => {
-                            d.cauHoiPhu[idx].used = e.target.checked;
-                          })
-                        }
-                      />
-                      <span>{item.used ? "Đã dùng" : "Chưa dùng"}</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
+                  <div className="grid md:grid-cols-4 gap-2 items-center">
+                    <input
+                      value={item.q}
+                      onChange={(e) =>
                         updateDraft((d) => {
-                          d.cauHoiPhu = d.cauHoiPhu.filter((_, i) => i !== idx);
+                          d.cauHoiPhu[idx].q = e.target.value;
                         })
                       }
-                      className="text-rose-400 hover:text-rose-300 font-bold"
-                    >
-                      Xóa
-                    </button>
+                      className="md:col-span-2 bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5"
+                    />
+                    <input
+                      value={item.a}
+                      onChange={(e) =>
+                        updateDraft((d) => {
+                          d.cauHoiPhu[idx].a = e.target.value;
+                        })
+                      }
+                      className="bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-1.5 font-bold text-emerald-300"
+                    />
+                    <div className="flex items-center justify-end gap-3">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(item.used)}
+                          onChange={(e) =>
+                            updateDraft((d) => {
+                              d.cauHoiPhu[idx].used = e.target.checked;
+                            })
+                          }
+                        />
+                        <span>{item.used ? "Đã dùng" : "Chưa dùng"}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateDraft((d) => {
+                            d.cauHoiPhu = d.cauHoiPhu.filter((_, i) => i !== idx);
+                          })
+                        }
+                        className="text-rose-400 hover:text-rose-300 font-bold"
+                      >
+                        Xóa
+                      </button>
+                    </div>
                   </div>
+                  <textarea
+                    rows={2}
+                    value={item.explanation || ""}
+                    onChange={(e) =>
+                      updateDraft((d) => {
+                        d.cauHoiPhu[idx].explanation = e.target.value || undefined;
+                      })
+                    }
+                    placeholder="Giải thích đáp án Câu Hỏi Phụ (tùy chọn, dùng cho MC đọc thêm)..."
+                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 resize-y"
+                  />
                 </div>
               ))}
             </div>

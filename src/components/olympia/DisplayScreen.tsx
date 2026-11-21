@@ -28,6 +28,7 @@ import {
   V3SingleAnswerBar,
   Olympia22BackgroundBackdrop,
   BroadcastRoundIntroOverlay,
+  AwardsCeremonyLowerThird,
 } from "./Vtv3BroadcastGraphics";
 import { preloadOlympiaIntroVideos } from "@/lib/olympia/assetCache";
 import {
@@ -1016,6 +1017,11 @@ export default function DisplayScreen({ code }: { code: string }) {
           ) : (
             <SummaryLowerThirdGraphic state={state} />
           )
+        )}
+
+        {/* ── 7. AWARDS LOWER-THIRD GRAPHIC (LỄ TRAO GIẢI THƯỞNG) ── */}
+        {state.awardsState?.active && (
+          <AwardsCeremonyLowerThird state={state} />
         )}
       </div>
     </div>

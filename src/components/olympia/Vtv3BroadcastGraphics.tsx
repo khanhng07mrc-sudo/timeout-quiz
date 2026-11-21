@@ -4051,28 +4051,60 @@ export function Vtv3ClassicSummaryGraphic({
   const sm = state.summaryState;
   if (!sm || !sm.active || sm.orderedSeats.length === 0) return null;
 
-  // 1. Sort ascending by score (lowest to highest), tie-break by seatId ascending
-  const sorted = [...sm.orderedSeats].sort((a, b) => {
-    const sa = state.seats[a]?.score ?? 0;
-    const sb = state.seats[b]?.score ?? 0;
-    if (sa !== sb) return sa - sb;
-    return a - b;
-  });
+  const isPostMatch = Boolean(sm.isPostMatch);
+  const isMcIntro = isPostMatch && (sm.focusTarget === "mc" || sm.currentIndex === -1);
 
-  const [localIdx, setLocalIdx] = useState(sm.currentIndex ?? 0);
+  // 1. Sort ascending by score for inter-round, or preserve seat order 1->X for post-match
+  const sorted = isPostMatch
+    ? [...sm.orderedSeats]
+    : [...sm.orderedSeats].sort((a, b) => {
+        const sa = state.seats[a]?.score ?? 0;
+        const sb = state.seats[b]?.score ?? 0;
+        if (sa !== sb) return sa - sb;
+        return a - b;
+      });
+
+  const [localIdx, setLocalIdx] = useState(sm.currentIndex >= 0 ? sm.currentIndex : 0);
 
   useEffect(() => {
-    if (sm.currentIndex != null) {
+    if (sm.currentIndex != null && sm.currentIndex >= 0) {
       setLocalIdx(sm.currentIndex);
     }
   }, [sm.currentIndex]);
+
+  if (isMcIntro) {
+    return (
+      <div className="absolute inset-x-0 bottom-6 z-50 flex flex-col items-center justify-end px-4 pointer-events-none select-none animate-fade-in">
+        <div
+          className="rounded-2xl px-8 py-4 flex items-center gap-4 shadow-2xl backdrop-blur-md"
+          style={{
+            background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+            border: "3px solid #d4af37",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.95), 0 0 25px rgba(212,175,55,0.4)",
+          }}
+        >
+          <span className="text-3xl">🏆</span>
+          <div className="text-center">
+            <div className="text-xs sm:text-sm font-bold text-amber-400 uppercase tracking-widest">
+              ĐƯỜNG LÊN ĐỈNH OLYMPIA
+            </div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase drop-shadow">
+              TỔNG KẾT ĐIỂM CHUNG CUỘC
+            </div>
+          </div>
+          <span className="text-3xl">🏆</span>
+        </div>
+      </div>
+    );
+  }
 
   const currentIdx = Math.min(localIdx, sorted.length - 1);
   const currentSeatId = sorted[currentIdx];
   const currentSeat = state.seats[currentSeatId];
   const currentScore = currentSeat?.score ?? 0;
   const currentName = currentSeat?.name || `THÍ SINH ${currentSeatId + 1}`;
-  const isLast = currentIdx >= sorted.length - 1;
+  const rank = isPostMatch ? (sm.seatRanks?.[currentSeatId] ?? (currentIdx + 1)) : (sorted.length - currentIdx);
+  const isLast = isPostMatch ? (rank === 1) : (currentIdx >= sorted.length - 1);
 
   const handleNext = useCallback(() => {
     if (onNext) {
@@ -4231,28 +4263,60 @@ export function SummaryLowerThirdGraphic({
     );
   }
 
-  // 1. Sort ascending by score (lowest to highest), tie-break by seatId ascending
-  const sorted = [...sm.orderedSeats].sort((a, b) => {
-    const sa = state.seats[a]?.score ?? 0;
-    const sb = state.seats[b]?.score ?? 0;
-    if (sa !== sb) return sa - sb;
-    return a - b;
-  });
+  const isPostMatch = Boolean(sm.isPostMatch);
+  const isMcIntro = isPostMatch && (sm.focusTarget === "mc" || sm.currentIndex === -1);
 
-  const [localIdx, setLocalIdx] = useState(sm.currentIndex ?? 0);
+  // 1. Sort ascending by score for inter-round, or preserve seat order 1->X for post-match
+  const sorted = isPostMatch
+    ? [...sm.orderedSeats]
+    : [...sm.orderedSeats].sort((a, b) => {
+        const sa = state.seats[a]?.score ?? 0;
+        const sb = state.seats[b]?.score ?? 0;
+        if (sa !== sb) return sa - sb;
+        return a - b;
+      });
+
+  const [localIdx, setLocalIdx] = useState(sm.currentIndex >= 0 ? sm.currentIndex : 0);
 
   useEffect(() => {
-    if (sm.currentIndex != null) {
+    if (sm.currentIndex != null && sm.currentIndex >= 0) {
       setLocalIdx(sm.currentIndex);
     }
   }, [sm.currentIndex]);
+
+  if (isMcIntro) {
+    return (
+      <div className="absolute inset-x-0 bottom-6 z-50 flex flex-col items-center justify-end px-4 pointer-events-none select-none animate-fade-in">
+        <div
+          className="rounded-2xl px-8 py-4 flex items-center gap-4 shadow-2xl backdrop-blur-md"
+          style={{
+            background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+            border: "3px solid #d4af37",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.95), 0 0 25px rgba(212,175,55,0.4)",
+          }}
+        >
+          <span className="text-3xl">🏆</span>
+          <div className="text-center">
+            <div className="text-xs sm:text-sm font-bold text-amber-400 uppercase tracking-widest">
+              ĐƯỜNG LÊN ĐỈNH OLYMPIA
+            </div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase drop-shadow">
+              TỔNG KẾT ĐIỂM CHUNG CUỘC
+            </div>
+          </div>
+          <span className="text-3xl">🏆</span>
+        </div>
+      </div>
+    );
+  }
 
   const currentIdx = Math.min(localIdx, sorted.length - 1);
   const currentSeatId = sorted[currentIdx];
   const currentSeat = state.seats[currentSeatId];
   const currentScore = currentSeat?.score ?? 0;
   const currentName = currentSeat?.name || `THÍ SINH ${currentSeatId + 1}`;
-  const isLast = currentIdx >= sorted.length - 1;
+  const rank = isPostMatch ? (sm.seatRanks?.[currentSeatId] ?? (currentIdx + 1)) : (sorted.length - currentIdx);
+  const isLast = isPostMatch ? (rank === 1) : (currentIdx >= sorted.length - 1);
 
   const handleNext = () => {
     if (onNext) {
@@ -4685,6 +4749,122 @@ function FlexAutoFitTabLabel({
     >
       {text}
     </span>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AWARDS CEREMONY LOWER-THIRD (LỄ TRAO GIẢI THƯỞNG)
+ * Renders television broadcast graphic during Victory Podium ceremony
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function AwardsCeremonyLowerThird({ state }: { state: OlympiaState }) {
+  const aw = state.awardsState;
+  if (!aw || !aw.active) return null;
+
+  const { activeTier, tiers, laurelCrowned } = aw;
+
+  return (
+    <div className="absolute inset-x-0 bottom-6 z-50 flex flex-col items-center justify-end px-4 pointer-events-none select-none animate-fade-in">
+      <div
+        className="w-full max-w-5xl rounded-2xl p-4 sm:p-5 flex flex-col gap-2 shadow-2xl backdrop-blur-md"
+        style={{
+          background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+          border: "3px solid #d4af37",
+          boxShadow: "0 16px 50px rgba(0,0,0,0.95), 0 0 25px rgba(212,175,55,0.4)",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🥇</span>
+            <span className="font-black text-xs sm:text-sm uppercase tracking-widest text-amber-300">
+              LỄ TRAO GIẢI THƯỞNG — ĐƯỜNG LÊN ĐỈNH OLYMPIA
+            </span>
+          </div>
+          {laurelCrowned && (
+            <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/30 border border-amber-400/60 text-amber-200 text-xs font-black animate-pulse">
+              <span>👑</span> VÒNG NGUYỆT QUẾ VINH QUANG
+            </div>
+          )}
+        </div>
+
+        {/* Content based on activeTier */}
+        <div className="py-1">
+          {activeTier === "first" ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs sm:text-sm font-black text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span>👑</span> QUÁN QUÂN ĐƯỜNG LÊN ĐỈNH OLYMPIA
+                </div>
+                <div className="text-2xl sm:text-4xl font-black text-white uppercase mt-0.5 drop-shadow">
+                  {tiers.first.map((id) => state.seats[id]?.name || `Thí sinh ${id + 1}`).join(", ")}
+                </div>
+                {tiers.first[0] != null && state.seats[tiers.first[0]]?.school && (
+                  <div className="text-sm sm:text-base text-amber-200/80 font-bold">
+                    {state.seats[tiers.first[0]].school}
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-xs font-bold text-amber-400/80 uppercase">ĐIỂM CHUNG CUỘC</div>
+                <div className="text-3xl sm:text-4xl font-black text-amber-300">
+                  {tiers.first[0] != null ? (state.seats[tiers.first[0]]?.score ?? 0) : 0}
+                </div>
+              </div>
+            </div>
+          ) : activeTier === "second" ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-widest flex items-center gap-1.5">
+                  <span>🥈</span> GIẢI NHÌ
+                </div>
+                <div className="text-xl sm:text-3xl font-black text-white uppercase mt-0.5 drop-shadow">
+                  {tiers.second.map((id) => state.seats[id]?.name || `Thí sinh ${id + 1}`).join(", ")}
+                </div>
+                {tiers.second[0] != null && state.seats[tiers.second[0]]?.school && (
+                  <div className="text-sm sm:text-base text-cyan-200/80 font-bold">
+                    {state.seats[tiers.second[0]].school}
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-xs font-bold text-cyan-300/80 uppercase">ĐIỂM CHUNG CUỘC</div>
+                <div className="text-2xl sm:text-3xl font-black text-cyan-300">
+                  {tiers.second[0] != null ? (state.seats[tiers.second[0]]?.score ?? 0) : 0}
+                </div>
+              </div>
+            </div>
+          ) : activeTier === "third" ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs sm:text-sm font-black text-blue-300 uppercase tracking-widest flex items-center gap-1.5">
+                  <span>🥉</span> ĐỒNG GIẢI BA
+                </div>
+                <div className="text-xl sm:text-3xl font-black text-white uppercase mt-0.5 drop-shadow">
+                  {tiers.third.map((id) => state.seats[id]?.name || `Thí sinh ${id + 1}`).join(", ")}
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-xs font-bold text-blue-300/80 uppercase">SỐ THÍ SINH</div>
+                <div className="text-2xl sm:text-3xl font-black text-blue-300">
+                  {tiers.third.length}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <div className="text-lg sm:text-xl font-black text-amber-200 uppercase tracking-wider">
+                CHÀO MỪNG ĐOÀN LEO NÚI BƯỚC VÀO LỄ TRAO GIẢI THƯỞNG
+              </div>
+              <div className="text-xs sm:text-sm text-slate-300">
+                Host chuẩn bị gọi tên các vị trí Giải Ba, Giải Nhì và Quán quân bước lên Bục Vinh Quang
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

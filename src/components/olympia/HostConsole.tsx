@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
-import { normalizeAnswer, cleanVcnvWord, getVcnvUnit, parseVcnvAnswer } from "@/lib/olympia/engine";
+import { normalizeAnswer, cleanVcnvWord, getVcnvUnit, parseVcnvAnswer, isPostMatchSummaryContext } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import { BoundedText } from "./Vtv3BroadcastGraphics";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
@@ -1264,6 +1264,27 @@ export const HostConsole = React.memo(function HostConsole({
                 <span>🏆</span>
                 <span>{state.summaryState?.active ? "DỪNG TỔNG KẾT (B)" : "TỔNG KẾT ĐIỂM (B)"}</span>
               </button>
+              {(isPostMatchSummaryContext(state) || state.awardsState?.active) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (state.awardsState?.active) {
+                      call("awards:stop");
+                    } else {
+                      call("awards:start");
+                    }
+                  }}
+                  className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
+                    state.awardsState?.active
+                      ? "bg-amber-500/35 border-amber-300 text-amber-100 shadow-[0_0_15px_rgba(251,191,36,0.4)] ring-1 ring-amber-400 animate-pulse cursor-pointer"
+                      : "bg-amber-500/15 border-amber-400/40 text-amber-200 hover:bg-amber-500/25 cursor-pointer"
+                  }`}
+                  title={state.awardsState?.active ? "Kết thúc Lễ Trao Giải" : "Mở Lễ Trao Giải Thưởng với Bục Vinh Quang 3D"}
+                >
+                  <span>🥇</span>
+                  <span>{state.awardsState?.active ? "DỪNG TRAO GIẢI" : "TRAO GIẢI THƯỞNG"}</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => call("studio:toggle")}
@@ -1277,7 +1298,7 @@ export const HostConsole = React.memo(function HostConsole({
                 <span>💎</span>
                 <span className="truncate">{state.showStageGraphics ? "TRƯỜNG QUAY 3D: BẬT" : "TRƯỜNG QUAY 3D (H)"}</span>
               </button>
-              {!state.summaryState?.active && (
+              {!state.summaryState?.active && !state.awardsState?.active && (
                 <button
                   type="button"
                   onClick={() => call("display:overlayMode")}
@@ -1296,76 +1317,272 @@ export const HostConsole = React.memo(function HostConsole({
 
             {/* Summary Controls Toolbar when Summary is active */}
             {state.summaryState?.active && (
-              <div className="rounded-xl border border-amber-500/60 bg-gradient-to-r from-amber-950/80 via-slate-950/95 to-amber-950/80 p-2.5 shadow-xl flex flex-wrap items-center justify-between gap-2 backdrop-blur-md animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-400 font-black text-xs uppercase tracking-wider flex items-center gap-1">
-                    <span>🏆</span> TỔNG KẾT ĐIỂM:
-                  </span>
-                  <span className="text-[11px] font-bold text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
-                    Thí sinh {state.summaryState.currentIndex + 1}/{state.summaryState.orderedSeats.length}
-                    {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]] && (
-                      <span className="ml-1 text-white font-black">
-                        ({state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].name} - {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].score}đ)
+              <div className="rounded-xl border border-amber-500/60 bg-gradient-to-r from-amber-950/80 via-slate-950/95 to-amber-950/80 p-2.5 shadow-xl flex flex-col gap-2 backdrop-blur-md animate-fade-in">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/20 pb-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-amber-400 font-black text-xs uppercase tracking-wider flex items-center gap-1">
+                      <span>🏆</span> {state.summaryState.isPostMatch ? "TỔNG KẾT CUỐI TRẬN (1→X):" : "TỔNG KẾT ĐIỂM:"}
+                    </span>
+                    {state.summaryState.isPostMatch ? (
+                      state.summaryState.focusTarget === "mc" || state.summaryState.currentIndex === -1 ? (
+                        <span className="text-[11px] font-bold text-amber-200 bg-amber-500/25 px-2 py-0.5 rounded border border-amber-400/40">
+                          🎤 Đang ở Cam MC (C3) — MC dẫn mở lời
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                          Thí sinh {state.summaryState.currentIndex + 1}/{state.summaryState.orderedSeats.length}
+                          {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]] && (
+                            <span className="ml-1 text-white font-black">
+                              (TS{state.summaryState.orderedSeats[state.summaryState.currentIndex] + 1}: {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].name} - Hạng {state.summaryState.seatRanks?.[state.summaryState.orderedSeats[state.summaryState.currentIndex]] ?? (state.summaryState.currentIndex + 1)} - {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].score}đ)
+                            </span>
+                          )}
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[11px] font-bold text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                        Thí sinh {state.summaryState.currentIndex + 1}/{state.summaryState.orderedSeats.length}
+                        {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]] && (
+                          <span className="ml-1 text-white font-black">
+                            ({state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].name} - {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].score}đ)
+                          </span>
+                        )}
                       </span>
                     )}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {state.summaryState.isAuto ? "⏱ Tự động 3.5s" : "✋ Thủ công"}
-                  </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {state.summaryState.isAuto ? "⏱ Tự động 3.5s" : "✋ Thủ công (Host bấm từng người)"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {state.summaryState.isPostMatch && (
+                      <button
+                        type="button"
+                        onClick={() => call("awards:start")}
+                        className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black border border-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.5)] cursor-pointer transition flex items-center gap-1"
+                      >
+                        <span>🥇</span>
+                        <span>MỞ TRAO GIẢI THƯỞNG</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => call("summary:stop")}
+                      className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-xs font-black text-white shadow cursor-pointer"
+                      title="Kết thúc tổng kết điểm và quay về toàn cảnh CAM 10"
+                    >
+                      🏁 Về toàn cảnh
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
+
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {state.summaryState.isPostMatch && (
+                      <button
+                        type="button"
+                        onClick={() => call("summary:focusMc")}
+                        className={`px-2.5 py-1 rounded text-xs font-black border transition cursor-pointer flex items-center gap-1 ${
+                          state.summaryState.focusTarget === "mc" || state.summaryState.currentIndex === -1
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.6)] ring-2 ring-amber-300"
+                            : "bg-slate-800/80 hover:bg-slate-700 text-amber-200 border-amber-500/40"
+                        }`}
+                        title="Chuyển sang Cam MC (CAM 3) để MC dẫn lời"
+                      >
+                        <span>🎤</span>
+                        <span>Cam MC (C3)</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => call("summary:prev")}
+                      className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 cursor-pointer"
+                      title="Thí sinh trước"
+                    >
+                      ◀ Trước
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("summary:next")}
+                      className="px-2.5 py-1 rounded bg-amber-500/40 hover:bg-amber-500/60 text-xs font-black text-amber-100 border border-amber-400/60 cursor-pointer shadow"
+                      title="Thí sinh tiếp theo"
+                    >
+                      ▶ Tiếp
+                    </button>
+
+                    {/* Direct clickable contestant buttons in post-match summary */}
+                    {state.summaryState.isPostMatch && state.summaryState.orderedSeats.map((seatId, idx) => {
+                      const seat = state.seats[seatId];
+                      if (!seat) return null;
+                      const rank = state.summaryState?.seatRanks?.[seatId] ?? (idx + 1);
+                      const isCurrent = state.summaryState?.currentIndex === idx && state.summaryState?.focusTarget === "contestant";
+                      return (
+                        <button
+                          key={seatId}
+                          type="button"
+                          onClick={() => call("summary:focusSeat", { seatId })}
+                          className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer flex items-center gap-1 ${
+                            isCurrent
+                              ? "bg-amber-400 text-slate-950 border-amber-300 font-black shadow-[0_0_12px_rgba(251,191,36,0.6)] ring-2 ring-amber-300"
+                              : "bg-slate-800/80 hover:bg-slate-700/80 text-amber-200 border-amber-500/30"
+                          }`}
+                          title={`Chuyển góc quay zoom 0.75x->1.25x vào ${seat.name || `TS${seatId + 1}`}`}
+                        >
+                          <span>TS{seatId + 1}</span>
+                          <span className="text-[10px] opacity-80">(#{rank} - {seat.score}đ)</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {!state.summaryState.isPostMatch && (
+                      <button
+                        type="button"
+                        onClick={() => call("summary:toggleAuto")}
+                        className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
+                          state.summaryState.isAuto
+                            ? "bg-amber-600/40 text-amber-200 border-amber-500/60"
+                            : "bg-emerald-600/40 text-emerald-200 border-emerald-500/60"
+                        }`}
+                        title="Tạm dừng / Bật tự động chuyển thí sinh sau 3.5s"
+                      >
+                        {state.summaryState.isAuto ? "⏸ Tạm dừng" : "▶ Tiếp tục"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => call("summary:setMode", { mode: (state.summaryState?.mode || state.summaryMode) === "cinematic_o27" ? "graphic" : "cinematic_o27" })}
+                      className="px-2 py-1 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 text-xs font-bold border border-amber-500/40 cursor-pointer transition"
+                      title="Chuyển đổi kiểu tổng kết: Cận cảnh 3D kiểu mới O27 hoặc Bảng đồ họa 2D"
+                    >
+                      {(state.summaryState?.mode || state.summaryMode) === "cinematic_o27" ? "🎥 Kiểu mới O27" : "📊 Đồ họa 2D"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("summary:toggleFullscreen")}
+                      className="px-2 py-1 rounded bg-purple-600/40 hover:bg-purple-600/60 text-purple-200 text-xs font-bold border border-purple-500/50 cursor-pointer"
+                      title="Chuyển chế độ Toàn Màn / 1/3 Dưới"
+                    >
+                      {state.summaryState.isFullscreen ? "📺 1/3 Dưới" : "⛶ Toàn màn"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Awards Controls Toolbar when Awards Ceremony is active */}
+            {state.awardsState?.active && (
+              <div className="rounded-xl border border-amber-400/80 bg-gradient-to-r from-amber-950/90 via-slate-950/95 to-amber-950/90 p-3 shadow-2xl flex flex-col gap-2 backdrop-blur-md animate-fade-in">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/30 pb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-amber-300 font-black text-sm uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🥇</span> LỄ TRAO GIẢI THƯỞNG — BỤC VINH QUANG 3D
+                    </span>
+                    {state.awardsState.activeTier && (
+                      <span className="text-xs font-black px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50 uppercase">
+                        Đang gọi: {state.awardsState.activeTier === "first" ? "Quán quân Giải Nhất" : state.awardsState.activeTier === "second" ? "Giải Nhì" : "Đồng Giải Ba"}
+                      </span>
+                    )}
+                    {state.awardsState.laurelCrowned && (
+                      <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 flex items-center gap-1">
+                        <span>👑</span> Đã Trao Vòng Nguyệt Quế & Pháo Giấy
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
-                    onClick={() => call("summary:prev")}
-                    className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 cursor-pointer"
-                    title="Thí sinh trước"
-                  >
-                    ◀ Trước
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("summary:next")}
-                    className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 cursor-pointer"
-                    title="Thí sinh tiếp theo"
-                  >
-                    ▶ Tiếp
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("summary:toggleAuto")}
-                    className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
-                      state.summaryState.isAuto
-                        ? "bg-amber-600/40 text-amber-200 border-amber-500/60"
-                        : "bg-emerald-600/40 text-emerald-200 border-emerald-500/60"
-                    }`}
-                    title="Tạm dừng / Bật tự động chuyển thí sinh sau 3.5s"
-                  >
-                    {state.summaryState.isAuto ? "⏸ Tạm dừng" : "▶ Tiếp tục"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("summary:setMode", { mode: (state.summaryState?.mode || state.summaryMode) === "cinematic_o27" ? "graphic" : "cinematic_o27" })}
-                    className="px-2 py-1 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 text-xs font-bold border border-amber-500/40 cursor-pointer transition"
-                    title="Chuyển đổi kiểu tổng kết: Cận cảnh 3D kiểu mới O27 hoặc Bảng đồ họa 2D"
-                  >
-                    {(state.summaryState?.mode || state.summaryMode) === "cinematic_o27" ? "🎥 Kiểu mới O27" : "📊 Đồ họa 2D"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("summary:toggleFullscreen")}
-                    className="px-2 py-1 rounded bg-purple-600/40 hover:bg-purple-600/60 text-purple-200 text-xs font-bold border border-purple-500/50 cursor-pointer"
-                    title="Chuyển chế độ Toàn Màn / 1/3 Dưới"
-                  >
-                    {state.summaryState.isFullscreen ? "📺 1/3 Dưới" : "⛶ Toàn màn"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("summary:stop")}
+                    onClick={() => call("awards:stop")}
                     className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-xs font-black text-white shadow cursor-pointer"
-                    title="Kết thúc tổng kết điểm và quay về toàn cảnh CAM 10"
                   >
-                    🏁 Về toàn cảnh
+                    ⏹ Kết thúc Trao Giải
                   </button>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-300">Gọi giải:</span>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:callTier", { tier: "third" })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition cursor-pointer flex items-center gap-1.5 ${
+                        state.awardsState.revealedTiers.includes("third")
+                          ? "bg-blue-600/50 text-blue-100 border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.4)]"
+                          : "bg-blue-900/30 text-blue-200 border-blue-500/40 hover:bg-blue-800/40"
+                      }`}
+                    >
+                      <span>🥉</span>
+                      <span>1. GỌI GIẢI BA</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:callTier", { tier: "second" })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition cursor-pointer flex items-center gap-1.5 ${
+                        state.awardsState.revealedTiers.includes("second")
+                          ? "bg-cyan-600/50 text-cyan-100 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                          : "bg-cyan-900/30 text-cyan-200 border-cyan-500/40 hover:bg-cyan-800/40"
+                      }`}
+                    >
+                      <span>🥈</span>
+                      <span>2. GỌI GIẢI NHÌ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:callTier", { tier: "first" })}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition cursor-pointer flex items-center gap-1.5 ${
+                        state.awardsState.revealedTiers.includes("first")
+                          ? "bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.6)] ring-2 ring-amber-300"
+                          : "bg-amber-600/40 text-amber-100 border-amber-400 hover:bg-amber-500/50 shadow"
+                      }`}
+                    >
+                      <span>🥇</span>
+                      <span>3. GỌI QUÁN QUÂN & TRAO VÒNG NGUYỆT QUẾ</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400">Góc quay:</span>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:setCamera", { mode: "auto" })}
+                      className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
+                        state.awardsState.cameraMode === "auto"
+                          ? "bg-amber-500 text-slate-950 border-amber-400 font-black shadow"
+                          : "bg-slate-800/80 text-slate-300 border-white/20 hover:bg-slate-700"
+                      }`}
+                    >
+                      🤖 Tự động
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:setCamera", { mode: "mc" })}
+                      className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
+                        state.awardsState.cameraMode === "mc"
+                          ? "bg-amber-500 text-slate-950 border-amber-400 font-black shadow"
+                          : "bg-slate-800/80 text-slate-300 border-white/20 hover:bg-slate-700"
+                      }`}
+                    >
+                      🎤 Cam MC
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:setCamera", { mode: "podium_wide" })}
+                      className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
+                        state.awardsState.cameraMode === "podium_wide"
+                          ? "bg-amber-500 text-slate-950 border-amber-400 font-black shadow"
+                          : "bg-slate-800/80 text-slate-300 border-white/20 hover:bg-slate-700"
+                      }`}
+                    >
+                      🏟️ Toàn cảnh Bục
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("awards:setCamera", { mode: "podium_close" })}
+                      className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
+                        state.awardsState.cameraMode === "podium_close"
+                          ? "bg-amber-500 text-slate-950 border-amber-400 font-black shadow"
+                          : "bg-slate-800/80 text-slate-300 border-white/20 hover:bg-slate-700"
+                      }`}
+                    >
+                      🎥 Cận Bục
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-import { OlympiaGame, stripVcnvLetterCount, getVcnvUnit } from "./engine";
+import { OlympiaGame, computeFinalSeatRanks, isPostMatchSummaryContext, stripVcnvLetterCount, getVcnvUnit } from "./engine";
+import { exportOlympiaSetToSheets, parseJsonSet, parseSheets } from "./excel-import";
 import { isPriorityInstantCue } from "../../components/olympia/hooks";
 
 import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
@@ -211,6 +212,7 @@ test("O13–O21 Tăng Tốc uses 30s for all 4 questions", () => {
 test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20 in O13, 10 in O14)", () => {
 
   const g13 = game("O13", ["vcnv"], 2);
+  act(g13, "tts:setEnabled", { enabled: false });
 
   act(g13, "game:start");
 
@@ -239,6 +241,7 @@ test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20
 
 
   const g14 = game("O14", ["vcnv"], 2);
+  act(g14, "tts:setEnabled", { enabled: false });
 
   act(g14, "game:start");
 
@@ -788,6 +791,7 @@ test("Tăng Tốc grading uses X-based table and unique-time tiers", () => {
 test("VCNV: row points, keyword points by opened rows, elimination on wrong CNV", () => {
 
   const g = game("O26", ["vcnv"], 2);
+  act(g, "tts:setEnabled", { enabled: false });
 
   act(g, "game:start");
 
@@ -917,8 +921,6 @@ test("timers expire on tick", () => {
 
 
 import * as XLSX from "xlsx";
-
-import { parseSheets, parseJsonSet } from "./excel-import";
 
 import { RULESET_YEAR_BUTTONS } from "./rulesets";
 
@@ -3720,6 +3722,7 @@ test("M1: VCNV Center Keyword Auto-Reveal and view() non-host visibility", () =>
 
   // Scenario 2: CNV is solved on row 0 -> center question and keyword are automatically revealed
   const g2 = game("O26", ["vcnv"], 4);
+  act(g2, "tts:setEnabled", { enabled: false });
   act(g2, "game:start");
   act(g2, "vcnv:selectRow", { row: 0 });
   g2.playerBuzz(0, 1000);
@@ -3809,6 +3812,337 @@ test("M2: Sandbox system:setRuleset hot-reloads ruleset in-place without room ex
   assert.match(resInvalid.error!, /không hợp lệ/);
   // Stays on O13
   assert.equal(g.state.rulesetId, "O13");
+});
+
+test("M3: Room name hydration, game:reset preservation, and TTS controls/clamping", () => {
+  const g = game("O26", ["khoiDong"], 4, { name: "Chung kết Olympia 2026" });
+  assert.equal(g.state.name, "Chung kết Olympia 2026");
+  assert.equal(g.state.ttsSettings?.enabled, true);
+  assert.equal(g.state.ttsSettings?.baseRate, 1.0);
+  assert.equal(g.state.ttsSeq, 0);
+
+  act(g, "tts:setRate", { baseRate: 2.5 }, 100);
+  assert.equal(g.state.ttsSettings?.baseRate, 1.5, "Rate clamps to 1.5");
+  act(g, "tts:setRate", { baseRate: 0.3 }, 200);
+  assert.equal(g.state.ttsSettings?.baseRate, 0.75, "Rate clamps to 0.75");
+  act(g, "tts:setRate", { baseRate: 1.15 }, 300);
+  assert.equal(g.state.ttsSettings?.baseRate, 1.15);
+
+  act(g, "tts:command", { action: "opening_duo", role: "khanh_vy", text: "Xin chào" }, 400);
+  assert.equal(g.state.ttsCommand?.seq, 1);
+  assert.equal(g.state.ttsCommand?.action, "opening_duo");
+  assert.equal(g.state.ttsCommand?.role, "khanh_vy");
+  assert.equal(g.state.ttsCommand?.text, "Xin chào");
+
+  // Player view redacts ttsCommand, display/host keep it
+  assert.equal(g.view("display").ttsCommand?.seq, 1);
+  assert.equal(g.view("player", 0).ttsCommand, null);
+
+  act(g, "tts:stop", {}, 500);
+  assert.equal(g.state.ttsCommand?.seq, 2);
+  assert.equal(g.state.ttsCommand?.action, "stop");
+
+  act(g, "game:reset", {}, 600);
+  assert.equal(g.state.name, "Chung kết Olympia 2026", "game:reset preserves room name");
+  assert.equal(g.state.ttsSettings?.baseRate, 1.15);
+});
+
+test("M3: VCNV CNV deferred commit when TTS ON + tts:cnvRevealDone + stale seq + 15s fallback + wrongCNV", () => {
+  // 1. Wrong CNV leaves remaining contestants able to play & emits cnv_result (isCorrect: false)
+  const g1 = game("O26", ["vcnv"], 4);
+  act(g1, "game:start");
+  act(g1, "vcnv:selectRow", { row: 0 }, 100);
+  g1.playerBuzz(1, 200);
+  act(g1, "vcnv:wrongCNV", { seat: 1 }, 300);
+  assert.equal(g1.state.ttsCommand?.action, "cnv_result");
+  assert.equal(g1.state.ttsCommand?.meta?.isCorrect, false);
+  act(g1, "vcnv:clearBells", {}, 400);
+  assert.deepEqual(g1.state.vcnv?.eliminatedSeats, [1]);
+
+  // Seat 0 can still ring bell and solve CNV (with TTS ON deferred)
+  g1.playerBuzz(0, 500);
+  act(g1, "vcnv:correctCNV", { seat: 0 }, 600);
+  const seq1 = g1.state.pendingCnvWin?.seq;
+  assert.ok(g1.state.pendingCnvWin, "pendingCnvWin populated while TTS ON");
+  assert.equal(g1.state.pendingCnvWin?.seatId, 0);
+  assert.equal(g1.state.ttsCommand?.action, "cnv_result");
+  assert.equal(g1.state.ttsCommand?.meta?.isCorrect, true);
+  assert.equal(g1.state.seats[0].score, 0, "Score NOT mutated before revealDone");
+  assert.notEqual(g1.state.vcnv?.phase, "done", "Phase NOT done before revealDone");
+  assert.equal(g1.state.vcnv?.rows.every((r) => r.opened), false);
+
+  // View redaction: display sees pendingCnvWin + ttsCommand; player does NOT
+  assert.equal(g1.view("display").pendingCnvWin?.keyword, SAMPLE_QUESTION_SET.vcnv.answer);
+  assert.equal(g1.view("player", 0).pendingCnvWin, null);
+  assert.equal(g1.view("player", 0).ttsCommand, null);
+
+  // Stale seq is ignored
+  act(g1, "tts:cnvRevealDone", { seq: (seq1 ?? 0) + 99 }, 700);
+  assert.ok(g1.state.pendingCnvWin, "Stale seq does not commit");
+  assert.equal(g1.state.seats[0].score, 0);
+
+  // Matching seq commits immediately & idempotently
+  act(g1, "tts:cnvRevealDone", { seq: seq1 }, 800);
+  assert.equal(g1.state.pendingCnvWin, null);
+  assert.equal(g1.state.seats[0].score, 60);
+  assert.equal(g1.state.vcnv?.phase, "done");
+  assert.equal(g1.state.vcnv?.rows.every((r) => r.opened), true);
+  assert.equal(g1.state.vcnv?.piecesRevealed.every(Boolean), true);
+  assert.equal(g1.state.cue?.sound, "2_VuotChuongNgaiVat/cnv_correct");
+
+  // Idempotent second call
+  act(g1, "tts:cnvRevealDone", { seq: seq1 }, 900);
+  assert.equal(g1.state.seats[0].score, 60);
+
+  // 2. 15,000ms server safety timeout commits pendingCnvWin
+  const g2 = game("O26", ["vcnv"], 2);
+  act(g2, "game:start");
+  act(g2, "vcnv:selectRow", { row: 0 }, 100);
+  g2.playerBuzz(0, 200);
+  act(g2, "vcnv:correctCNV", { seat: 0 }, 1000);
+  assert.ok(g2.state.pendingCnvWin);
+  assert.equal(g2.tick(15999), false);
+  assert.ok(g2.state.pendingCnvWin);
+  assert.equal(g2.tick(16000), true);
+  assert.equal(g2.state.pendingCnvWin, null);
+  assert.equal(g2.state.seats[0].score, 60);
+  assert.equal(g2.state.vcnv?.phase, "done");
+});
+
+test("M3: Ve Dich timer expiration stops cleanly at 0 without auto-steal or auto-steal TTS", () => {
+  const g = game("O26", ["veDich"], 2);
+  act(g, "game:start");
+  act(g, "vd:showPackageGraphic", {}, 0);
+  act(g, "vd:choosePackage", { points: [20, 20, 20] }, 100);
+  act(g, "vd:startQuestion", {}, 200);
+  const seqBefore = g.state.ttsSeq ?? 0;
+  act(g, "vd:timer", {}, 1000);
+  // 10pt question thinkMs is 15000ms -> expire at 16000ms
+  assert.equal(g.tick(16000), true);
+  assert.equal(g.state.veDich?.timer.remainingMs, 0);
+  assert.equal(g.state.veDich?.timer.startedAt, null);
+  assert.equal(g.state.veDich?.steal, null, "No auto-open steal on timer expiry");
+  assert.equal(g.state.veDich?.phase, "thinking");
+  assert.equal(g.state.ttsSeq ?? 0, seqBefore, "No auto-steal TTS emitted on timeout");
+});
+
+test("M3 R6: Post-match manual summary (TS1..TSX, CAM 3 MC start, summary_rank_1..4 + playbackRate for 5-8 seats)", () => {
+  // Inter-round summary remains unchanged (score ascending, auto)
+  const gInter = game("O26", ["khoiDong", "veDich"], 4);
+  act(gInter, "game:start");
+  gInter.state.seats[0].score = 90;
+  gInter.state.seats[1].score = 30;
+  gInter.state.seats[2].score = 60;
+  gInter.state.seats[3].score = 10;
+  gInter.state.introTimer = null;
+  gInter.state.roundStatus.khoiDong = "done";
+  assert.equal(isPostMatchSummaryContext(gInter.state), false);
+  act(gInter, "summary:start", { isAuto: true }, 1000);
+  assert.equal(gInter.state.summaryState?.isPostMatch, false);
+  assert.equal(gInter.state.summaryState?.isAuto, true);
+  assert.deepEqual(gInter.state.summaryState?.orderedSeats, [3, 1, 2, 0]);
+  assert.equal(gInter.state.cue?.sound, "6_NhacKhac/summary");
+
+  // Post-match 6 seats: seat order ascending TS1..TS6, CAM 3 start, manual focus, rank cues & playbackRate
+  const gPost = game("O26", ["veDich"], 6);
+  act(gPost, "game:start");
+  // Scores: TS1=40 (rank 4), TS2=120 (rank 1), TS3=10 (rank 6), TS4=90 (rank 2), TS5=20 (rank 5), TS6=70 (rank 3)
+  gPost.state.seats[0].score = 40;
+  gPost.state.seats[1].score = 120;
+  gPost.state.seats[2].score = 10;
+  gPost.state.seats[3].score = 90;
+  gPost.state.seats[4].score = 20;
+  gPost.state.seats[5].score = 70;
+  act(gPost, "game:end", {}, 5000);
+  assert.equal(isPostMatchSummaryContext(gPost.state), true);
+
+  act(gPost, "summary:start", {}, 6000);
+  const sm = gPost.state.summaryState!;
+  assert.equal(sm.active, true);
+  assert.equal(sm.isPostMatch, true);
+  assert.equal(sm.isAuto, false);
+  assert.equal(sm.currentIndex, -1);
+  assert.equal(sm.focusTarget, "mc");
+  assert.equal(gPost.state.studioCamera, 3);
+  assert.deepEqual(sm.orderedSeats, [0, 1, 2, 3, 4, 5]);
+  assert.deepEqual(sm.seatRanks, { 0: 4, 1: 1, 2: 6, 3: 2, 4: 5, 5: 3 });
+
+  // tick must NOT auto-advance post-match summary
+  assert.equal(gPost.tick(20000), false);
+  assert.equal(gPost.state.summaryState?.currentIndex, -1);
+
+  // Next -> TS1 (seat 0, rank 4)
+  act(gPost, "summary:next", {}, 21000);
+  assert.equal(gPost.state.summaryState?.currentIndex, 0);
+  assert.equal(gPost.state.summaryState?.focusTarget, "contestant");
+  assert.equal(gPost.state.studioCamera, seatToStudioCamera(0));
+  assert.equal(gPost.state.cue?.sound, "6_NhacKhac/summary_rank_4");
+  assert.equal(gPost.state.cue?.kind, "bgm");
+  assert.equal(gPost.state.cue?.playbackRate, 1.0);
+
+  // Next -> TS2 (seat 1, rank 1)
+  act(gPost, "summary:next", {}, 22000);
+  assert.equal(gPost.state.cue?.sound, "6_NhacKhac/summary_rank_1");
+  assert.equal(gPost.state.cue?.playbackRate, 1.0);
+
+  // Next -> TS3 (seat 2, rank 6 -> summary_rank_4 with 0.96 playbackRate)
+  act(gPost, "summary:next", {}, 23000);
+  assert.equal(gPost.state.studioCamera, seatToStudioCamera(2));
+  assert.equal(gPost.state.cue?.sound, "6_NhacKhac/summary_rank_4");
+  assert.equal(gPost.state.cue?.playbackRate, 0.96);
+
+  // Focus MC, then jump straight to TS5 (seat 4, rank 5 -> 0.98)
+  act(gPost, "summary:focusMc", {}, 24000);
+  assert.equal(gPost.state.summaryState?.currentIndex, -1);
+  assert.equal(gPost.state.summaryState?.focusTarget, "mc");
+  assert.equal(gPost.state.studioCamera, 3);
+
+  act(gPost, "summary:focusSeat", { seatId: 4 }, 25000);
+  assert.equal(gPost.state.summaryState?.currentIndex, 4);
+  assert.equal(gPost.state.studioCamera, seatToStudioCamera(4));
+  assert.equal(gPost.state.cue?.sound, "6_NhacKhac/summary_rank_4");
+  assert.equal(gPost.state.cue?.playbackRate, 0.98);
+});
+
+test("M3 R8: Awards state machine (2-8 seats, cauHoiPhu.winner priority, tiers third/second/first, no Giải Tư)", () => {
+  const g = game("O26", ["veDich"], 6);
+  act(g, "game:start");
+  // Seat 1 & Seat 3 tied at 150, CHP winner = Seat 3 -> Seat 3 is rank 1, Seat 1 is rank 2, others in third!
+  g.state.seats[0].score = 100; // rank 3
+  g.state.seats[1].score = 150; // rank 2 (lost CHP)
+  g.state.seats[2].score = 80;  // rank 4
+  g.state.seats[3].score = 150; // rank 1 (won CHP)
+  g.state.seats[4].score = 40;  // rank 5
+  g.state.seats[5].score = 40;  // rank 5
+  g.state.cauHoiPhu = {
+    tied: [1, 3],
+    qIdx: 0,
+    phase: "result",
+    timer: { totalMs: 15000, remainingMs: 0, startedAt: null },
+    buzzOpen: false,
+    buzzedSeat: 3,
+    buzzedThisQuestion: [3],
+    winner: 3,
+    questions: [],
+  };
+  g.state.stage = "finished";
+
+  const ranks = computeFinalSeatRanks(g.state);
+  assert.deepEqual(ranks, { 3: 1, 1: 2, 0: 3, 2: 4, 4: 5, 5: 5 });
+
+  act(g, "awards:start", {}, 1000);
+  const aw = g.state.awardsState!;
+  assert.equal(aw.active, true);
+  assert.equal(aw.cameraMode, "mc");
+  assert.equal(g.state.studioCamera, 3);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/prize_award");
+  assert.equal(g.state.cue?.kind, "bgm");
+  assert.deepEqual(aw.tiers.first, [3]);
+  assert.deepEqual(aw.tiers.second, [1]);
+  assert.deepEqual(aw.tiers.third, [0, 2, 4, 5], "Ranks 3+ all grouped into Giải Ba (never Giải Tư)");
+  assert.equal(aw.laurelCrowned, false);
+
+  act(g, "awards:callTier", { tier: "third" }, 2000);
+  assert.equal(aw.activeTier, "third");
+  assert.deepEqual(aw.revealedTiers, ["third"]);
+  assert.equal(aw.seatWalkStartedAt[0], 2000);
+  assert.equal(aw.seatWalkStartedAt[5], 2000);
+  assert.equal(g.state.ttsCommand?.action, "final_awards");
+  assert.equal(g.state.ttsCommand?.meta?.tier, "third");
+
+  act(g, "awards:setCamera", { mode: "podium_wide" }, 2500);
+  assert.equal(aw.cameraMode, "podium_wide");
+  assert.equal(g.state.studioCamera, 30);
+
+  act(g, "awards:setCamera", { mode: "podium_close" }, 2600);
+  assert.equal(aw.cameraMode, "podium_close");
+  assert.equal(g.state.studioCamera, 31);
+
+  act(g, "awards:callTier", { tier: "second" }, 3000);
+  assert.equal(aw.activeTier, "second");
+  assert.deepEqual(aw.revealedTiers, ["third", "second"]);
+  assert.equal(aw.laurelCrowned, false);
+
+  act(g, "awards:callTier", { tier: "first" }, 4000);
+  assert.equal(aw.activeTier, "first");
+  assert.deepEqual(aw.revealedTiers, ["third", "second", "first"]);
+  assert.equal(aw.laurelCrowned, true);
+  assert.equal(aw.seatWalkStartedAt[3], 4000);
+
+  act(g, "awards:stop", {}, 5000);
+  assert.equal(aw.active, false);
+  assert.equal(g.state.cue?.kind, "stop");
+});
+
+test("M3: Question explanation propagation, player view redaction, and Excel/JSON round-trip", () => {
+  // 1. Excel export -> parseSheets round-trip & JSON parseJsonSet round-trip
+  const sheets = exportOlympiaSetToSheets(SAMPLE_QUESTION_SET);
+  const reimported = parseSheets(sheets, "RoundTrip");
+  assert.equal(
+    reimported.set.khoiDong.solo["1"][0].explanation,
+    SAMPLE_QUESTION_SET.khoiDong.solo["1"][0].explanation
+  );
+  assert.equal(
+    reimported.set.vcnv.rows[1].explanation,
+    SAMPLE_QUESTION_SET.vcnv.rows[1].explanation
+  );
+  assert.equal(
+    reimported.set.vcnv.centerQuestion?.explanation,
+    SAMPLE_QUESTION_SET.vcnv.centerQuestion?.explanation
+  );
+  assert.equal(
+    reimported.set.tangToc[0].explanation,
+    SAMPLE_QUESTION_SET.tangToc[0].explanation
+  );
+  assert.equal(
+    reimported.set.veDich["40"][0].explanation,
+    SAMPLE_QUESTION_SET.veDich["40"][0].explanation
+  );
+  assert.equal(
+    reimported.set.cauHoiPhu[0].explanation,
+    SAMPLE_QUESTION_SET.cauHoiPhu[0].explanation
+  );
+
+  const jsonImported = parseJsonSet(JSON.parse(JSON.stringify(SAMPLE_QUESTION_SET)));
+  assert.equal(
+    jsonImported.set.vcnv.rows[2].explanation,
+    SAMPLE_QUESTION_SET.vcnv.rows[2].explanation
+  );
+  assert.equal(
+    jsonImported.set.tangToc[2].explanation,
+    SAMPLE_QUESTION_SET.tangToc[2].explanation
+  );
+
+  // 2. Engine propagation + player view redaction
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc"], 2);
+  act(g, "game:start");
+  act(g, "kd:next", {}, 100);
+  assert.ok(g.state.khoiDong?.current, "KD current populated");
+  const kdExp = g.state.khoiDong?.current?.explanation;
+  if (kdExp) {
+    assert.equal(g.view("display").khoiDong?.current?.explanation, kdExp);
+    assert.equal(g.view("player", 0).khoiDong?.current?.explanation, undefined);
+  }
+
+  act(g, "round:next", {}, 200);
+  assert.equal(
+    g.state.vcnv?.rows[1].explanation,
+    SAMPLE_QUESTION_SET.vcnv.rows[1].explanation
+  );
+  assert.equal(g.view("player", 0).vcnv?.rows[1].explanation, undefined);
+  assert.equal(
+    g.view("display").vcnv?.rows[1].explanation,
+    SAMPLE_QUESTION_SET.vcnv.rows[1].explanation
+  );
+
+  act(g, "round:next", {}, 300);
+  act(g, "tt:selectQuestion", { qIdx: 0 }, 310);
+  act(g, "tt:show", {}, 320);
+  assert.equal(
+    g.view("display").tangToc?.questions[0].explanation,
+    SAMPLE_QUESTION_SET.tangToc[0].explanation
+  );
+  assert.equal(g.view("player", 0).tangToc?.questions[0].explanation, undefined);
 });
 
 // Import Smart TTS test suite

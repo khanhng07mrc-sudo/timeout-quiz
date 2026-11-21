@@ -24,6 +24,7 @@ const strip = (s: string) =>
     .replace(/[^a-z0-9]/g, "");
 
 const str = (v: unknown) => (v == null ? "" : String(v).trim());
+const readExp = (r: Row) => str(r.explanation ?? r.giaithich ?? r.ghichu ?? r.note);
 
 const boolVal = (v: unknown): boolean => {
   if (typeof v === "boolean") return v;
@@ -54,11 +55,15 @@ function qa(r: Row): QA | null {
   const kdZone = str(r.phanvung ?? r.phanvungkd ?? r.kdzone) as KdZoneId | "";
   const vdZone = str(r.phanvung ?? r.phanvungvd ?? r.vdzone) as VdZoneId | "";
   const used = boolVal(r.dadung ?? r.used ?? r.trangthai);
+  const explanation = readExp(r);
+  const hint = str(r.hint);
   return tagQAWithAI(
     {
       q,
       a,
       ...(subject ? { subject } : {}),
+      ...(explanation ? { explanation } : {}),
+      ...(hint ? { hint } : {}),
       ...(kdZone ? { kdZone: kdZone as KdZoneId } : {}),
       ...(vdZone ? { vdZone: vdZone as VdZoneId } : {}),
       ...(used ? { used: true } : {}),
@@ -179,18 +184,22 @@ export function parseSheets(sheets: Record<string, Row[]>, name = "Bộ đề Ex
       }
       if (hangStr === "5" || hangStr === "otrungtam" || hangStr === "trungtam") {
         const m = str(r.media ?? r.mediatrungtam);
+        const exp = readExp(r);
         set.vcnv.centerQuestion = {
           q: str(r.goiy ?? r.cauhoi ?? r.cauhoitrungtam),
           a: str(r.dapan ?? r.dapantrungtam),
+          ...(exp ? { explanation: exp } : {}),
           ...(m ? { media: m, mediaType: detectMediaType(m) } : {}),
         };
         continue;
       }
       if (str(r.goiy) || str(r.dapan)) {
         const media = str(r.media);
+        const exp = readExp(r);
         rows.push({
           hint: str(r.goiy),
           answer: str(r.dapan),
+          ...(exp ? { explanation: exp } : {}),
           used: boolVal(r.dadung ?? r.used),
           ...(media ? { media, mediaType: detectMediaType(media) } : {}),
         });
@@ -198,9 +207,11 @@ export function parseSheets(sheets: Record<string, Row[]>, name = "Bộ đề Ex
       if (str(r.dapancnv ?? r.tukhoacnv) && !set.vcnv.answer) set.vcnv.answer = str(r.dapancnv ?? r.tukhoacnv);
       if (str(r.cauhoitrungtam) && !set.vcnv.centerQuestion) {
         const m = str(r.mediatrungtam);
+        const centerExp = str(r.giaithichtrungtam ?? r.explanationtrungtam);
         set.vcnv.centerQuestion = {
           q: str(r.cauhoitrungtam),
           a: str(r.dapantrungtam),
+          ...(centerExp ? { explanation: centerExp } : {}),
           ...(m ? { media: m, mediaType: detectMediaType(m) } : {}),
         };
       }
@@ -229,10 +240,12 @@ export function parseSheets(sheets: Record<string, Row[]>, name = "Bộ đề Ex
             ? "iq"
             : undefined;
     const clueImages = parseClueImagesString(str(r.anhgoiy ?? r.clueimages));
+    const explanation = readExp(r);
     return {
       answer,
       duration: Number(r.thoigian) || undefined,
       ...(qText ? { q: qText } : {}),
+      ...(explanation ? { explanation } : {}),
       ...(category ? { category } : {}),
       ...(clueImages ? { clueImages } : {}),
       ...(boolVal(r.dadung ?? r.used) ? { used: true } : {}),
@@ -325,11 +338,15 @@ export function parseJsonSet(raw: unknown): ImportResult {
 
   const toQA = (x: any): QA => {
     const media = str(x?.media);
+    const explanation = str(x?.explanation);
+    const hint = str(x?.hint);
     return tagQAWithAI(
       {
         q: str(x?.q ?? x?.cauHoi),
         a: str(x?.a ?? x?.dapAn),
         ...(x?.subject ? { subject: str(x.subject) } : {}),
+        ...(explanation ? { explanation } : {}),
+        ...(hint ? { hint } : {}),
         ...(x?.kdZone ? { kdZone: x.kdZone as KdZoneId } : {}),
         ...(x?.vdZone ? { vdZone: x.vdZone as VdZoneId } : {}),
         ...(x?.used ? { used: Boolean(x.used) } : {}),
@@ -349,9 +366,11 @@ export function parseJsonSet(raw: unknown): ImportResult {
     set.vcnv.mysteryImage = str(j.vcnv.mysteryImage) || undefined;
     set.vcnv.rows = (j.vcnv.rows ?? []).slice(0, 4).map((r: any) => {
       const m = str(r.media);
+      const explanation = str(r?.explanation);
       return {
         hint: str(r.hint),
         answer: str(r.answer),
+        ...(explanation ? { explanation } : {}),
         ...(r.used ? { used: Boolean(r.used) } : {}),
         ...(m ? { media: m, mediaType: detectMediaType(m) } : {}),
       };
@@ -361,10 +380,12 @@ export function parseJsonSet(raw: unknown): ImportResult {
   if (Array.isArray(j.tangToc)) {
     set.tangToc = j.tangToc.map((t: any) => {
       const media = str(t.media);
+      const explanation = str(t?.explanation);
       return {
         answer: str(t.answer),
         duration: Number(t.duration) || undefined,
         ...(t.q ? { q: str(t.q) } : {}),
+        ...(explanation ? { explanation } : {}),
         ...(t.category ? { category: t.category } : {}),
         ...(Array.isArray(t.clueImages) ? { clueImages: t.clueImages } : {}),
         ...(t.used ? { used: Boolean(t.used) } : {}),
@@ -402,6 +423,7 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
         "Phân vùng": q.kdZone ?? "",
         "Câu hỏi": q.q,
         "Đáp án": q.a,
+        "Giải thích": q.explanation ?? "",
         "File": q.media ?? "",
         "Đã dùng": q.used ? "Đã dùng" : "",
       });
@@ -413,6 +435,7 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
     "Phân vùng": q.kdZone ?? "",
     "Câu hỏi": q.q,
     "Đáp án": q.a,
+    "Giải thích": q.explanation ?? "",
     "File": q.media ?? "",
     "Đã dùng": q.used ? "Đã dùng" : "",
   }));
@@ -423,11 +446,13 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
       "Hàng": i + 1,
       "Gợi ý": r?.hint ?? "",
       "Đáp án": r?.answer ?? "",
+      "Giải thích": r?.explanation ?? "",
       "File": r?.media ?? "",
       "Từ khóa CNV": i === 0 ? tagged.vcnv.answer : "",
       "Ảnh Chướng ngại vật": i === 0 ? (tagged.vcnv.mysteryImage ?? "") : "",
       "Câu hỏi trung tâm": i === 0 ? (tagged.vcnv.centerQuestion?.q ?? "") : "",
       "Đáp án trung tâm": i === 0 ? (tagged.vcnv.centerQuestion?.a ?? "") : "",
+      "Giải thích trung tâm": i === 0 ? (tagged.vcnv.centerQuestion?.explanation ?? "") : "",
       "Đã dùng": r?.used ? "Đã dùng" : "",
     };
   });
@@ -438,6 +463,7 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
     "Câu hỏi": t.q ?? "",
     "File": t.media ?? "",
     "Đáp án": t.answer,
+    "Giải thích": t.explanation ?? "",
     "Đã dùng": t.used ? "Đã dùng" : "",
   }));
 
@@ -451,6 +477,7 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
     "Câu hỏi": (t.q ?? "").replace(/^\s*\((dự phòng|du phong)\)\s*/i, "").trim(),
     "File": t.media ?? "",
     "Đáp án": t.answer,
+    "Giải thích": t.explanation ?? "",
     "Đã dùng": t.used ? "Đã dùng" : "",
   }));
 
@@ -464,6 +491,7 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
         "Loại câu hỏi": q.type === "practice" ? "Thực hành" : "Lý thuyết",
         "Câu hỏi": q.q,
         "Đáp án": q.a,
+        "Giải thích": q.explanation ?? "",
         "File": q.media ?? "",
         "Đã dùng": q.used ? "Đã dùng" : "",
       });
@@ -475,6 +503,7 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
     "Phân vùng": q.vdZone ?? "",
     "Câu hỏi": q.q,
     "Đáp án": q.a,
+    "Giải thích": q.explanation ?? "",
     "File": q.media ?? "",
     "Đã dùng": q.used ? "Đã dùng" : "",
   }));

@@ -20,7 +20,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
           "kdZone": "MATH_IT",
           "vdZone": "KHTN",
           "q": "Số nguyên tố chẵn duy nhất là số nào?",
-          "a": "2"
+          "a": "2",
+          "explanation": "Số 2 chỉ chia hết cho 1 và chính nó; mọi số chẵn lớn hơn 2 đều chia hết cho 2 nên là hợp số."
         },
         {
           "subject": "Toán",
@@ -41,7 +42,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Kim loại nào tồn tại ở trạng thái lỏng ở điều kiện nhiệt độ và áp suất phòng?",
-          "a": "Thủy ngân"
+          "a": "Thủy ngân",
+          "explanation": "Thủy ngân (kí hiệu Hg) có nhiệt độ nóng chảy khoảng -38,8 °C nên là kim loại duy nhất ở thể lỏng tại nhiệt độ phòng."
         },
         {
           "subject": "Văn",
@@ -178,7 +180,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Nguyên tố hoá học nhẹ nhất trong bảng tuần hoàn là gì?",
-          "a": "Hydro"
+          "a": "Hydro",
+          "explanation": "Hydro (H) đứng ở ô số 1 trong bảng tuần hoàn với nguyên tử khối xấp xỉ 1 u, là nguyên tố nhẹ nhất."
         },
         {
           "subject": "Sinh",
@@ -250,7 +253,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Kim loại nào có khả năng dẫn điện tốt nhất ở điều kiện thường?",
-          "a": "Bạc"
+          "a": "Bạc",
+          "explanation": "Bạc (Ag) có độ dẫn điện cao nhất trong các kim loại ở điều kiện thường, cao hơn cả đồng và vàng."
         },
         {
           "subject": "Sinh",
@@ -545,7 +549,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Loài bạch tuộc có tất cả bao nhiêu trái tim trong cơ thể?",
-          "a": "3"
+          "a": "3",
+          "explanation": "Bạch tuộc có 3 tim: 1 tim chính bơm máu đi khắp cơ thể và 2 tim phụ bơm máu qua mang."
         },
         {
           "subject": "Văn",
@@ -597,14 +602,16 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "kdZone": "MATH_IT",
         "vdZone": "KHTN",
         "q": "Tổng số đo các góc trong của một hình tứ giác lồi trên mặt phẳng Euclid luôn bằng bao nhiêu độ?",
-        "a": "360"
+        "a": "360",
+        "explanation": "Mỗi tứ giác lồi có thể chia thành 2 tam giác, nên tổng số đo các góc trong bằng 2 × 180° = 360°."
       },
       {
         "subject": "Toán",
         "kdZone": "MATH_IT",
         "vdZone": "KHTN",
         "q": "Số nguyên tố lớn nhất có hai chữ số trong tập hợp các số tự nhiên là số nào?",
-        "a": "97"
+        "a": "97",
+        "explanation": "99 chia hết cho 3, 98 là số chẵn, còn 97 chỉ chia hết cho 1 và chính nó nên là số nguyên tố lớn nhất có hai chữ số."
       },
       {
         "subject": "Toán",
@@ -618,7 +625,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "kdZone": "NATURAL_SCI",
         "vdZone": "KHTN",
         "q": "Trọng lượng của một vật trên bề mặt Mặt Trăng bằng khoảng một phần mấy trọng lượng của nó trên Trái Đất?",
-        "a": "1/6"
+        "a": "1/6",
+        "explanation": "Gia tốc trọng trường trên Mặt Trăng khoảng 1,62 m/s², xấp xỉ bằng 1/6 gia tốc trọng trường trên Trái Đất (9,8 m/s²)."
       },
       {
         "subject": "Lý",
@@ -639,7 +647,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "kdZone": "NATURAL_SCI",
         "vdZone": "KHTN",
         "q": "Trong hóa học, dung dịch có độ pH = 7 ở nhiệt độ 25°C mang tính chất gì?",
-        "a": "Trung tính"
+        "a": "Trung tính",
+        "explanation": "Ở 25°C, dung dịch có pH = 7 có nồng độ ion H+ bằng OH-, mang môi trường trung tính."
       },
       {
         "subject": "Hóa",
@@ -667,7 +676,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "kdZone": "NATURAL_SCI",
         "vdZone": "KHTN",
         "q": "Nhóm máu nào được gọi là nhóm máu chuyên cho trong hệ thống nhóm máu ABO?",
-        "a": "Nhóm O"
+        "a": "Nhóm O",
+        "explanation": "Hồng cầu nhóm máu O không có kháng nguyên A và B trên bề mặt nên không bị kháng thể của người nhận ngưng kết."
       },
       {
         "subject": "Sinh",
@@ -730,7 +740,8 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "kdZone": "SOCIAL_SCI",
         "vdZone": "KHXH",
         "q": "Kênh đào Panama nối liền hai đại dương lớn nào trên thế giới?",
-        "a": "Thái Bình Dương và Đại Tây Dương"
+        "a": "Thái Bình Dương và Đại Tây Dương",
+        "explanation": "Kênh đào Panama dài khoảng 82 km cắt qua eo đất Panama, nối liền Thái Bình Dương với Đại Tây Dương."
       },
       {
         "subject": "Địa",
@@ -849,20 +860,24 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       },
       {
         "hint": "Theo Quyết định số 05/2020/QĐ-TTg, cấp ... lũ được phân thành ba cấp căn cứ vào độ lớn mực nước lũ và mức độ tác động đến an toàn đê điều (7 chữ cái).",
-        "answer": "BÁO ĐỘNG"
+        "answer": "BÁO ĐỘNG",
+        "explanation": "Hệ thống phòng chống thiên tai Việt Nam chia lũ thành 3 cấp báo động I, II và III theo mực nước tại các trạm thủy văn."
       },
       {
         "hint": "Từ nào còn thiếu trong hai câu thơ của Tản Đà: 'Non xanh đã biết hay chưa? / ... đi ra bể lại mưa về nguồn' (4 chữ cái)?",
-        "answer": "NƯỚC"
+        "answer": "NƯỚC",
+        "explanation": "Đây là hai câu trích trong bài thơ nổi tiếng 'Thề non nước' của thi sĩ Tản Đà."
       },
       {
         "hint": "Trong mạng điện gia đình, aptomat là thiết bị tự động có chức năng thay thế cho cả cầu chì và thiết bị đóng ngắt điện nào (6 chữ cái)?",
-        "answer": "CẦU DAO"
+        "answer": "CẦU DAO",
+        "explanation": "Aptomat vừa đóng cắt mạch điện như cầu dao thông thường, vừa tự động ngắt mạch khi quá tải hoặc ngắn mạch như cầu chì."
       }
     ],
     "centerQuestion": {
       "q": "Câu hỏi số 5 (Ô trung tâm): Khi phát hiện hỏa hoạn, bước đầu tiên trong quy trình 4 bước xử lý khẩn cấp là hô hoán, báo động gấp cho mọi người xung quanh biết có sự cố gì?",
-      "a": "CHÁY"
+      "a": "CHÁY",
+      "explanation": "Theo Tiêu lệnh chữa cháy 4 bước: bước 1 là báo động gấp khi có cháy, tiếp theo là ngắt điện, dùng phương tiện chữa cháy tại chỗ và gọi 114."
     }
   },
   "tangToc": [
@@ -872,6 +887,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau1_iq.png",
       "answer": "34",
+      "explanation": "Đây là dãy số theo quy luật Fibonacci: mỗi số sau bằng tổng hai số đứng liền trước nó, nên số cần tìm là 13 + 21 = 34.",
       "answerImage": "/olympia/media/tangtoc_cau1_answer.png",
       "duration": 20
     },
@@ -881,6 +897,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau2_clue1.png",
       "answer": "Vịnh Hạ Long",
+      "explanation": "Vịnh Hạ Long thuộc tỉnh Quảng Ninh, được UNESCO hai lần công nhận là Di sản thiên nhiên thế giới vào các năm 1994 và 2000.",
       "answerImage": "/olympia/media/tangtoc_cau2_answer.png",
       "duration": 20,
       "clueImages": [
@@ -912,6 +929,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau3_arrange.png",
       "answer": "246135",
+      "explanation": "Thứ tự từ gần Mặt Trời nhất ra xa dần là: Sao Thủy (2) – Sao Kim (4) – Trái Đất (6) – Sao Hỏa (1) – Sao Mộc (3) – Sao Thổ (5).",
       "answerImage": "/olympia/media/tangtoc_cau3_answer.png",
       "duration": 30
     },
@@ -921,6 +939,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "video",
       "media": "/olympia/media/tangtoc_cau4_video.webm",
       "answer": "Isaac Newton",
+      "explanation": "Isaac Newton công bố kiệt tác 'Principia' năm 1687, đặt nền móng cho cơ học cổ điển và thiên văn học hiện đại.",
       "answerImage": "/olympia/media/tangtoc_cau4_isaac_newton.png",
       "duration": 30
     }
@@ -941,6 +960,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Vòi 1 chảy một mình 3 giờ đầy bể, vòi 2 chảy một mình 6 giờ đầy bể. Mở cả hai vòi cùng lúc thì sau mấy giờ đầy bể?",
         "a": "2 giờ",
+        "explanation": "Trong 1 giờ, hai vòi chảy được 1/3 + 1/6 = 1/2 bể, nên cùng chảy sẽ đầy bể sau 2 giờ.",
         "type": "theory"
       },
       {
@@ -949,6 +969,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Đơn vị đo tần số dao động (Hz) được đặt theo tên của nhà vật lý học người nước nào?",
         "a": "Đức (Heinrich Hertz)",
+        "explanation": "Đơn vị Hertz (Hz) được đặt theo tên nhà vật lý người Đức Heinrich Hertz, người chứng minh sự tồn tại của sóng điện từ.",
         "type": "theory"
       },
       {
@@ -1015,6 +1036,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Nhà toán học De Morgan sinh ở thế kỷ XIX từng đố: 'Tôi x tuổi vào năm x bình phương'. Ông sinh vào năm nào?",
         "a": "1806 (43 tuổi vào năm 1849)",
+        "explanation": "Trong thế kỷ XIX chỉ có 43² = 1849 là số chính phương, nên ông 43 tuổi vào năm 1849 và sinh năm 1849 - 43 = 1806.",
         "type": "theory"
       },
       {
@@ -1023,6 +1045,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Nhờ có đồng thời hai tính chất vật lý đặc biệt nào mà vật liệu Indium Tin Oxide (ITO) được dùng làm màn hình cảm ứng điện thoại?",
         "a": "Dẫn điện và trong suốt với ánh sáng",
+        "explanation": "ITO là oxit dẫn điện trong suốt, vừa cho ánh sáng hiển thị xuyên qua vừa dẫn tín hiệu điện từ thao tác chạm.",
         "type": "practice"
       },
       {
@@ -1081,6 +1104,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Màu xanh lam quý hiếm của viên kim cương 'The De Beers Blue' được tạo nên bởi sự hiện diện của nguyên tố hóa học nào trong mạng tinh thể cacbon?",
         "a": "Bo (Boron)",
+        "explanation": "Nguyên tố Bo (B) thay thế một số nguyên tử cacbon trong mạng tinh thể đã hấp thụ ánh sáng đỏ và tạo ra sắc xanh lam cho kim cương.",
         "type": "theory"
       },
       {
@@ -1089,6 +1113,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Một hệ thống gồm 8 đèn. Mỗi đèn sáng xanh 2 phút rồi chuyển sang đỏ 2 phút. Đèn 1 bật xanh lúc 0s, cứ sau 10s đèn tiếp theo bật xanh. Trong 3 phút đầu, cả 8 đèn cùng sáng xanh trong bao nhiêu giây?",
         "a": "50 giây",
+        "explanation": "Đèn thứ 8 bắt đầu bật xanh ở giây thứ 70, trong khi đèn thứ 1 tắt xanh ở giây thứ 120, nên cả 8 đèn cùng xanh từ giây 70 đến giây 120, tức 50 giây.",
         "type": "theory"
       },
       {
@@ -1155,6 +1180,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN",
         "q": "Hạt cơ bản nào được tiên đoán bởi nhà vật lý Peter Higgs năm 1964 và được xác nhận tại máy gia tốc LHC (CERN) năm 2012?",
         "a": "Boson Higgs",
+        "explanation": "Hạt Boson Higgs gắn với trường Higgs giúp các hạt cơ bản có khối lượng và được công bố phát hiện tại CERN ngày 4/7/2012.",
         "type": "theory"
       },
       {
@@ -1163,6 +1189,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHXH",
         "q": "Hội nghị thành lập Đảng Cộng sản Việt Nam đầu năm 1930 do Nguyễn Ái Quốc chủ trì diễn ra tại bán đảo nào thuộc Hương Cảng (Trung Quốc)?",
         "a": "Cửu Long",
+        "explanation": "Hội nghị hợp nhất thành lập Đảng Cộng sản Việt Nam diễn ra từ ngày 6/1 đến 7/2/1930 tại bán đảo Cửu Long, Hương Cảng.",
         "type": "theory"
       }
     ]
@@ -1173,42 +1200,48 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "kdZone": "SOCIAL_SCI",
       "vdZone": "KHXH",
       "q": "Triều đại phong kiến nào tồn tại lâu dài nhất trong lịch sử chế độ quân chủ Việt Nam (kéo dài 356 năm)?",
-      "a": "Nhà Hậu Lê"
+      "a": "Nhà Hậu Lê",
+      "explanation": "Nhà Hậu Lê là triều đại phong kiến tồn tại lâu dài nhất lịch sử Việt Nam (356 năm, gồm hai giai đoạn Lê sơ và Lê trung hưng)."
     },
     {
       "subject": "Hóa",
       "kdZone": "NATURAL_SCI",
       "vdZone": "KHTN",
       "q": "Kim loại nào có nhiệt độ nóng chảy cao nhất trong tất cả các kim loại nguyên chất (3.422°C), thường dùng làm dây tóc bóng đèn?",
-      "a": "Vonfram (Tungsten / W)"
+      "a": "Vonfram (Tungsten / W)",
+      "explanation": "Vonfram (kí hiệu W) có nhiệt độ nóng chảy 3.422°C, cao nhất trong các kim loại nguyên chất nên chịu được nhiệt độ phát sáng của dây tóc bóng đèn."
     },
     {
       "subject": "Địa",
       "kdZone": "SOCIAL_SCI",
       "vdZone": "KHXH",
       "q": "Quốc gia nào có số lượng múi giờ nhiều nhất thế giới (tính cả các vùng lãnh thổ hải ngoại)?",
-      "a": "Pháp"
+      "a": "Pháp",
+      "explanation": "Nhờ các vùng lãnh thổ và tỉnh hải ngoại rải khắp các đại dương, nước Pháp sử dụng tới 12 múi giờ khác nhau, nhiều nhất thế giới."
     },
     {
       "subject": "Toán",
       "kdZone": "MATH_IT",
       "vdZone": "KHTN",
       "q": "Một năm thế kỷ (kết thúc bằng hai chữ số 00) chỉ là năm nhuận khi nó chia hết cho số tự nhiên nào?",
-      "a": "400"
+      "a": "400",
+      "explanation": "Theo lịch Gregory, năm tròn thế kỷ phải chia hết cho 400 mới là năm nhuận (ví dụ năm 2000 là năm nhuận, còn năm 1900 không phải)."
     },
     {
       "subject": "Văn",
       "kdZone": "SOCIAL_SCI",
       "vdZone": "KHXH",
       "q": "Bài thơ 'Tây Tiến' của nhà thơ Quang Dũng được sáng tác vào năm nào tại Phù Lưu Chanh?",
-      "a": "1948"
+      "a": "1948",
+      "explanation": "Quang Dũng sáng tác bài thơ 'Tây Tiến' vào cuối năm 1948 tại làng Phù Lưu Chanh (Hà Nam) khi nhớ về đồng đội cũ."
     },
     {
       "subject": "Lĩnh vực khác",
       "kdZone": "GENERAL",
       "vdZone": "HBC",
       "q": "Trụ sở chính của Tổ chức Giáo dục, Khoa học và Văn hóa Liên Hợp Quốc (UNESCO) đặt tại thành phố nào?",
-      "a": "Paris (Pháp)"
+      "a": "Paris (Pháp)",
+      "explanation": "Trụ sở chính của UNESCO đặt tại quảng trường Fontenoy ở thủ đô Paris, Cộng hòa Pháp."
     }
   ]
 };

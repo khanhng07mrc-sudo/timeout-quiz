@@ -1281,6 +1281,9 @@ export function useOlympiaAudio(
         try {
           const srcNode = ctx.createBufferSource();
           srcNode.buffer = buffer;
+          if (cue.playbackRate && cue.playbackRate > 0) {
+            srcNode.playbackRate.value = cue.playbackRate;
+          }
           const gainNode = ctx.createGain();
           gainNode.gain.value = 0.85;
           srcNode.connect(gainNode);
@@ -1315,6 +1318,12 @@ export function useOlympiaAudio(
           : new Audio(primaryUrl);
       a.currentTime = 0;
       a.volume = 0.85;
+      if (cue.playbackRate && cue.playbackRate > 0) {
+        a.playbackRate = cue.playbackRate;
+        (a as any).preservesPitch = false;
+        (a as any).mozPreservesPitch = false;
+        (a as any).webkitPreservesPitch = false;
+      }
       connectPanner(a, activePan);
       registerActive(a);
       a.play().catch(() => {});
@@ -1465,6 +1474,12 @@ export function useOlympiaAudio(
       const defaultSfxVol = isOpenQuestion ? 0.95 : 0.85;
       a.loop = looping;
       a.volume = (isBgmCue && !isCountdown && !isIntroTrack) ? 0 : defaultSfxVol;
+      if (cue.playbackRate && cue.playbackRate > 0) {
+        a.playbackRate = cue.playbackRate;
+        (a as any).preservesPitch = false;
+        (a as any).mozPreservesPitch = false;
+        (a as any).webkitPreservesPitch = false;
+      }
       connectPanner(a, currentChannel);
       registerActive(a);
 

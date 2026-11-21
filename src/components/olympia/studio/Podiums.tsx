@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { OlympiaState } from "@/lib/olympia/types";
 import { isSeatBuzzedIn3D, computeTargetLightingMode } from "./useOlympiaLightingState";
 import { getContestantArcParams } from "./CameraController";
+import { getVictoryPodiumSlotWorldPos } from "./VictoryPodium3D";
 import {
   DESK_STAND_RADIUS,
   ENTRANCE_CORRIDOR_RADIUS,
@@ -1519,7 +1520,6 @@ export function ContestantFigure({
 
   // Micro-breathing & natural student signature gestures / walking animation via useFrame
   useFrame(({ clock }) => {
-    if (quality === "LIGHT") return;
     const t = clock.getElapsedTime();
     const effProgress = gestureProgressRef?.current !== undefined ? gestureProgressRef.current : gestureProgress;
 
@@ -3259,7 +3259,37 @@ export function McPresenters({
     let isGreeting = false;
     let greetingBell = 0;
 
-    if (isEntranceActive) {
+    const isAwardsActive = Boolean(state?.awardsState?.active);
+    if (isAwardsActive) {
+      const awStart = state?.awardsState?.startedAt || now;
+      const elapsedAw = Math.max(0, now - awStart);
+      const kvTarget = [-2.35, 0.22, -0.35];
+      const nhTarget = [2.35, 0.22, -0.35];
+      if (elapsedAw < 4000) {
+        const u = Math.min(1.0, elapsedAw / 4000);
+        const s = u * u * (3 - 2 * u);
+        isWalking = u > 0.02 && u < 0.98;
+        walkPhase = u * Math.PI * 12;
+        kvX = THREE.MathUtils.lerp(KV_DESK_POS[0], kvTarget[0], s);
+        kvY = 0.22;
+        kvZ = THREE.MathUtils.lerp(KV_DESK_POS[2], kvTarget[2], s);
+        nhX = THREE.MathUtils.lerp(NH_DESK_POS[0], nhTarget[0], s);
+        nhY = 0.22;
+        nhZ = THREE.MathUtils.lerp(NH_DESK_POS[2], nhTarget[2], s);
+        kvRotY = THREE.MathUtils.lerp(MC_DESK_ROT_Y, 0.35, s);
+        nhRotY = THREE.MathUtils.lerp(MC_DESK_ROT_Y, -0.35, s);
+      } else {
+        kvX = kvTarget[0];
+        kvY = 0.22;
+        kvZ = kvTarget[2];
+        nhX = nhTarget[0];
+        nhY = 0.22;
+        nhZ = nhTarget[2];
+        kvRotY = 0.35;
+        nhRotY = -0.35;
+        isWalking = false;
+      }
+    } else if (isEntranceActive) {
       const entranceStart = state?.entranceState?.startedAt || now;
       const elapsedEntrance = Math.max(0, now - entranceStart);
 
@@ -3534,9 +3564,33 @@ export function McPresenters({
       nhRightWristRef.current.rotation.z = -0.06;
     }
 
-    // Hide handheld folders when MC is positioned behind the desk
-    if (kvFolderRef.current) kvFolderRef.current.visible = !isAtDesk;
-    if (nhFolderRef.current) nhFolderRef.current.visible = !isAtDesk;
+    // Hide handheld folders when MC is positioned behind the desk or during awards
+    if (kvFolderRef.current) kvFolderRef.current.visible = !isAtDesk && !isAwardsActive;
+    if (nhFolderRef.current) nhFolderRef.current.visible = !isAtDesk && !isAwardsActive;
+
+    if (isAwardsActive && !isWalking) {
+      const clapPhase = now * 0.012;
+      const clapMotion = Math.sin(clapPhase) * 0.18;
+      if (kvLeftArmRef.current) { kvLeftArmRef.current.rotation.set(-0.65, 0.35, -0.15); }
+      if (kvLeftForearmRef.current) { kvLeftForearmRef.current.rotation.set(-1.15 + clapMotion, 0.40, 0.20); }
+      if (kvRightArmRef.current) { kvRightArmRef.current.rotation.set(-0.65, -0.35, 0.15); }
+      if (kvRightForearmRef.current) { kvRightForearmRef.current.rotation.set(-1.15 - clapMotion, -0.40, -0.20); }
+
+      if (nhLeftArmRef.current) { nhLeftArmRef.current.rotation.set(-0.65, 0.35, -0.15); }
+      if (nhLeftForearmRef.current) { nhLeftForearmRef.current.rotation.set(-1.15 + clapMotion, 0.40, 0.20); }
+      if (nhRightArmRef.current) { nhRightArmRef.current.rotation.set(-0.65, -0.35, 0.15); }
+      if (nhRightForearmRef.current) { nhRightForearmRef.current.rotation.set(-1.15 - clapMotion, -0.40, -0.20); }
+    } else if (isEntranceActive && elapsedEntrance >= 6000 && !isAwardsActive) {
+      const curSeat = state?.entranceState?.currentSeatIdx ?? 0;
+      const isKvIntro = curSeat % 2 === 0;
+      if (isKvIntro) {
+        if (kvRightArmRef.current) { kvRightArmRef.current.rotation.set(-0.75, -0.45, 0.35); }
+        if (kvRightForearmRef.current) { kvRightForearmRef.current.rotation.set(-0.35, 0.25, -0.15); }
+      } else {
+        if (nhLeftArmRef.current) { nhLeftArmRef.current.rotation.set(-0.75, 0.45, -0.35); }
+        if (nhLeftForearmRef.current) { nhLeftForearmRef.current.rotation.set(-0.35, -0.25, 0.15); }
+      }
+    }
 
     // Presenter greeting bow/nod facing audience & contestants during isGreeting
     if (isGreeting) {
@@ -6354,6 +6408,65 @@ export function PersistentContestantEntity({
           setGesture(curG);
         }
       } else {
+        if (lastGestureRef.current !== "none") {
+          lastGestureRef.current = "none";
+          setGesture("none");
+        }
+      }
+      return;
+    }
+
+    // ── 2.5 AWARDS CEREMONY (Walk from booth to Victory Podium) ──
+    if (state?.awardsState?.active) {
+      const aw = state.awardsState;
+      const walkStart = aw.seatWalkStartedAt?.[seatId];
+      const isCalled = walkStart != null;
+      const slotPos = getVictoryPodiumSlotWorldPos(seatId, aw, totalSeats);
+
+      if (isCalled) {
+        const elapsed = Math.max(0, (now - walkStart) / 1000);
+        const WALK_DUR = 3.6;
+        if (elapsed < WALK_DUR) {
+          const rawT = elapsed / WALK_DUR;
+          const u = rawT * rawT * (3 - 2 * rawT);
+          const bounce = Math.abs(Math.sin(u * Math.PI * 14)) * 0.024;
+          const curX = THREE.MathUtils.lerp(deskWorldX, slotPos[0], u);
+          const curY = THREE.MathUtils.lerp(deskWorldY, slotPos[1], u) + bounce;
+          const curZ = THREE.MathUtils.lerp(deskWorldZ, slotPos[2], u);
+          const walkAngle = Math.atan2(slotPos[0] - deskWorldX, slotPos[2] - deskWorldZ);
+          root.position.set(curX, curY, curZ);
+          root.rotation.y = THREE.MathUtils.lerp(walkAngle, 0.0, Math.min(1.0, u * 1.5));
+          if (!lastWalkingRef.current) {
+            lastWalkingRef.current = true;
+            setIsWalking(true);
+          }
+          walkPhaseRef.current = u * Math.PI * 14;
+        } else {
+          // Standing on podium step
+          root.position.set(slotPos[0], slotPos[1], slotPos[2]);
+          root.rotation.y = 0.0;
+          if (lastWalkingRef.current) {
+            lastWalkingRef.current = false;
+            setIsWalking(false);
+          }
+          const isChampion = aw.tiers.first.includes(seatId);
+          const targetG: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = isChampion
+            ? (aw.laurelCrowned ? "fist_pump" : "wave")
+            : "desk_bow";
+          if (lastGestureRef.current !== targetG) {
+            lastGestureRef.current = targetG;
+            setGesture(targetG);
+          }
+          gestureProgressRef.current = 1.0;
+        }
+      } else {
+        // Still at booth waiting to be called
+        root.position.set(deskWorldX, deskWorldY, deskWorldZ);
+        root.rotation.y = deskRotY;
+        if (lastWalkingRef.current) {
+          lastWalkingRef.current = false;
+          setIsWalking(false);
+        }
         if (lastGestureRef.current !== "none") {
           lastGestureRef.current = "none";
           setGesture("none");

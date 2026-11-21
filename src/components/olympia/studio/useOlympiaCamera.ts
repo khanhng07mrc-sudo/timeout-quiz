@@ -460,7 +460,29 @@ export function useOlympiaCameraState(
     // Cleanly drives contestant close-ups (CAM 5..8 or CAM 25..28) or wide podium view (CAM 10 in fullscreen)
     // unless the director explicitly clicks a manual camera button AFTER summary started.
     if (state.summaryState?.active) {
-      const isGraphic = state.summaryState.mode === "graphic" || state.summaryState.isFullscreen;
+      const sm = state.summaryState;
+      if (sm.isPostMatch) {
+        if (sm.focusTarget === "mc" || sm.currentIndex === -1) {
+          return {
+            camAngle: 3,
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: 0,
+          };
+        }
+        const seatStart = sm.seatEnteredAt || sm.lastAdvanceAt || now;
+        const elapsedOnSeat = Math.max(0, (now - seatStart) / 1000);
+        const push = Math.min(1.0, elapsedOnSeat / 1.8);
+        const easedPush = push * push * (3 - 2 * push);
+        return {
+          camAngle: 18,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: easedPush,
+        };
+      }
+
+      const isGraphic = sm.mode === "graphic" || sm.isFullscreen;
       if (isGraphic) {
         return {
           camAngle: 10,
@@ -469,10 +491,10 @@ export function useOlympiaCameraState(
           pushInProgress: 0,
         };
       }
-      const idx = state.summaryState.currentIndex ?? 0;
-      const ordered = state.summaryState.orderedSeats ?? [];
+      const idx = sm.currentIndex ?? 0;
+      const ordered = sm.orderedSeats ?? [];
       const currentSeat = ordered[idx] ?? idx;
-      const seatStart = state.summaryState.seatEnteredAt || state.summaryState.lastAdvanceAt || now;
+      const seatStart = sm.seatEnteredAt || sm.lastAdvanceAt || now;
       const elapsedOnSeat = Math.max(0, (now - seatStart) / 1000);
 
       // Phase 1 (0.0s -> 0.8s): Hold still at wide scoreboard framing to read score
@@ -483,12 +505,40 @@ export function useOlympiaCameraState(
         const t = Math.min(1.0, (elapsedOnSeat - 0.8) / 1.2);
         push = t * t * (3 - 2 * t);
       }
-      const isO27 = state.summaryState.mode === "cinematic_o27" || state.summaryMode === "cinematic_o27";
+      const isO27 = sm.mode === "cinematic_o27" || state.summaryMode === "cinematic_o27";
       return {
         camAngle: 18, // Preset 18: wide_with_podium for activeSeat (zooms 0.75x -> 1.50x aimed at torso)
         transitionMode: "CUT",
         isOverlayHidden: isO27,
         pushInProgress: push,
+      };
+    }
+
+    // Awards ceremony directing
+    if (state.awardsState?.active) {
+      const aw = state.awardsState;
+      if (aw.cameraMode === "mc") {
+        return { camAngle: 3, transitionMode: "CUT", isOverlayHidden: false, pushInProgress: 0 };
+      }
+      if (aw.cameraMode === "podium_wide") {
+        return { camAngle: 30, transitionMode: "CUT", isOverlayHidden: false, pushInProgress: 0 };
+      }
+      if (aw.cameraMode === "podium_close") {
+        return { camAngle: 31, transitionMode: "CUT", isOverlayHidden: false, pushInProgress: 1.0 };
+      }
+      // Auto camera mode during awards
+      if (!aw.activeTier) {
+        return { camAngle: 30, transitionMode: "CUT", isOverlayHidden: false, pushInProgress: 0 };
+      }
+      const callStart = aw.startedAt || now;
+      const elapsedCall = Math.max(0, (now - callStart) / 1000);
+      const push = Math.min(1.0, elapsedCall / 2.0);
+      const easedPush = push * push * (3 - 2 * push);
+      return {
+        camAngle: 31,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: easedPush,
       };
     }
 
@@ -923,6 +973,10 @@ export function useOlympiaCameraState(
     state?.summaryState?.active,
     state?.summaryState?.currentIndex,
     state?.summaryState?.isFullscreen,
+    state?.summaryState?.focusTarget,
+    state?.awardsState?.active,
+    state?.awardsState?.cameraMode,
+    state?.awardsState?.activeTier,
     state?.khoiDong?.started,
     state?.khoiDong?.questionRevealed,
     state?.khoiDong?.startCooldownUntil,

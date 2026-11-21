@@ -7,68 +7,150 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const baseDir = path.join(__dirname, '..', 'public', 'olympia-audio');
-const seasons = ['O13-21', 'O22', 'O24-25', 'O26'];
+const seasons = ['O13-21', 'O20', 'O22', 'O23', 'O24-25', 'O26'];
 
-let totalFilesChecked = 0;
-let silentEarCount = 0;
-const silentFiles = [];
+const PEAK_THRESHOLD_DB = -50;
+const RMS_THRESHOLD_DB = -65;
+const DOMINANCE_TOLERANCE_DB = 3;
 
-function checkFile(filePath) {
-  try {
-    const res = spawnSync('ffmpeg', [
-      '-i', filePath,
-      '-af', 'astats',
-      '-f', 'null', '-'
-    ], { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
-
-    const stderr = res.stderr || '';
-    const ch1PeakMatch = stderr.match(/Channel: 1[\s\S]*?Peak level dB:\s*([-\d.inf]+)/);
-    const ch2PeakMatch = stderr.match(/Channel: 2[\s\S]*?Peak level dB:\s*([-\d.inf]+)/);
-
-    const ch1Peak = ch1PeakMatch ? ch1PeakMatch[1] : null;
-    const ch2Peak = ch2PeakMatch ? ch2PeakMatch[1] : null;
-
-    const p1 = ch1Peak === '-inf' ? -Infinity : parseFloat(ch1Peak);
-    const p2 = ch2Peak === '-inf' ? -Infinity : parseFloat(ch2Peak);
-
-    if (p1 <= -50 || p2 <= -50 || ch1Peak === '-inf' || ch2Peak === '-inf') {
-      silentEarCount++;
-      silentFiles.push({ file: path.relative(baseDir, filePath), ch1Peak, ch2Peak });
-      console.error(`[SILENT/WEAK EAR] ${path.relative(baseDir, filePath)}: ch1=${ch1Peak}, ch2=${ch2Peak}`);
-    } else {
-      totalFilesChecked++;
-    }
-  } catch (err) {
-    console.error(`Error analyzing ${filePath}:`, err.message);
-  }
+function parseDbValue(raw) {
+  if (!raw || raw === '-inf' || raw === 'inf') return -Infinity;
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : -Infinity;
 }
 
-function walkDir(dir) {
+function analyzeAudioFile(filePath) {
+  const res = spawnSync(
+    'ffmpeg',
+    ['-i', filePath, '-af', 'astats', '-f', 'null', '-'],
+    { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }
+  );
+
+  const stderr = res.stderr || '';
+  const ch1Section = stderr.match(/Channel:\s*1([\s\S]*?)(?=Channel:\s*2|Overall|$)/);
+  const ch2Section = stderr.match(/Channel:\s*2([\s\S]*?)(?=Overall|$)/);
+
+  const extractStats = (section) => {
+    if (!section) return { peak: -Infinity, rms: -Infinity };
+    const text = section[1];
+    const peakMatch = text.match(/Peak level dB:\s*([-\d.inf]+)/i);
+    const rmsMatch = text.match(/RMS level dB:\s*([-\d.inf]+)/i);
+    return {
+      peak: parseDbValue(peakMatch?.[1]),
+      rms: parseDbValue(rmsMatch?.[1]),
+    };
+  };
+
+  return {
+    l: extractStats(ch1Section),
+    r: extractStats(ch2Section),
+  };
+}
+
+function isChannelActive(ch) {
+  return ch.peak > PEAK_THRESHOLD_DB && ch.rms > RMS_THRESHOLD_DB;
+}
+
+function walkBaseMp3s(dir, results = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      walkDir(fullPath);
-    } else if (entry.isFile() && (entry.name.endsWith('_left.mp3') || entry.name.endsWith('_right.mp3'))) {
-      checkFile(fullPath);
+      walkBaseMp3s(fullPath, results);
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith('.mp3') &&
+      !entry.name.endsWith('_left.mp3') &&
+      !entry.name.endsWith('_right.mp3')
+    ) {
+      results.push(fullPath);
     }
   }
+  return results;
 }
 
-for (const s of seasons) {
-  const seasonDir = path.join(baseDir, s);
-  if (fs.existsSync(seasonDir)) {
-    walkDir(seasonDir);
+let totalBases = 0;
+let passedBases = 0;
+const failures = [];
+
+for (const season of seasons) {
+  const seasonDir = path.join(baseDir, season);
+  if (!fs.existsSync(seasonDir)) {
+    failures.push({ file: season, reason: 'Season directory missing' });
+    continue;
+  }
+
+  const baseFiles = walkBaseMp3s(seasonDir).sort();
+  for (const basePath of baseFiles) {
+    totalBases++;
+    const relBase = path.relative(baseDir, basePath);
+    const leftPath = basePath.replace(/\.mp3$/i, '_left.mp3');
+    const rightPath = basePath.replace(/\.mp3$/i, '_right.mp3');
+    const relLeft = path.relative(baseDir, leftPath);
+    const relRight = path.relative(baseDir, rightPath);
+
+    let ok = true;
+
+    const baseStats = analyzeAudioFile(basePath);
+    if (!isChannelActive(baseStats.l) || !isChannelActive(baseStats.r)) {
+      ok = false;
+      failures.push({
+        file: relBase,
+        reason: `Base track not balanced stereo (L peak=${baseStats.l.peak}, rms=${baseStats.l.rms}; R peak=${baseStats.r.peak}, rms=${baseStats.r.rms})`,
+      });
+    }
+
+    if (!fs.existsSync(leftPath)) {
+      ok = false;
+      failures.push({ file: relLeft, reason: 'Missing _left.mp3 variant' });
+    } else {
+      const leftStats = analyzeAudioFile(leftPath);
+      const lActive = isChannelActive(leftStats.l);
+      const lDominant =
+        leftStats.l.rms >= leftStats.r.rms - DOMINANCE_TOLERANCE_DB &&
+        leftStats.l.peak >= leftStats.r.peak - DOMINANCE_TOLERANCE_DB;
+      if (!lActive || !lDominant) {
+        ok = false;
+        failures.push({
+          file: relLeft,
+          reason: `_left.mp3 failed check (L peak=${leftStats.l.peak}, rms=${leftStats.l.rms}; R peak=${leftStats.r.peak}, rms=${leftStats.r.rms})`,
+        });
+      }
+    }
+
+    if (!fs.existsSync(rightPath)) {
+      ok = false;
+      failures.push({ file: relRight, reason: 'Missing _right.mp3 variant' });
+    } else {
+      const rightStats = analyzeAudioFile(rightPath);
+      const rActive = isChannelActive(rightStats.r);
+      const rDominant =
+        rightStats.r.rms >= rightStats.l.rms - DOMINANCE_TOLERANCE_DB &&
+        rightStats.r.peak >= rightStats.l.peak - DOMINANCE_TOLERANCE_DB;
+      if (!rActive || !rDominant) {
+        ok = false;
+        failures.push({
+          file: relRight,
+          reason: `_right.mp3 failed check (L peak=${rightStats.l.peak}, rms=${rightStats.l.rms}; R peak=${rightStats.r.peak}, rms=${rightStats.r.rms})`,
+        });
+      }
+    }
+
+    if (ok) passedBases++;
   }
 }
 
-console.log(`\n=== Verification Summary ===`);
-console.log(`Total _left/_right files checked: ${totalFilesChecked + silentEarCount}`);
-console.log(`Healthy Dual-Mono files (both ears have audio): ${totalFilesChecked}`);
-console.log(`Silent ear files (-inf dB in one channel): ${silentEarCount}`);
-if (silentFiles.length > 0) {
-  console.log(`Files with silent ears:`, silentFiles);
+console.log(`\n=== 3-Channel Audio Verification Summary (All 6 Seasons) ===`);
+console.log(`Seasons scanned: ${seasons.join(', ')}`);
+console.log(`Total base tracks checked: ${totalBases}`);
+console.log(`Tracks passing all 3 channels (base, _left, _right): ${passedBases}`);
+console.log(`Failures: ${failures.length}`);
+
+if (failures.length > 0) {
+  for (const f of failures) {
+    console.error(`[FAIL] ${f.file}: ${f.reason}`);
+  }
   process.exit(1);
 } else {
-  console.log(`SUCCESS: 100% of tested files play clearly in BOTH ears!`);
+  console.log(`SUCCESS: 100% of ${totalBases} base tracks (${totalBases * 3} files) pass 3-channel verification!`);
 }

@@ -151,6 +151,8 @@ export interface TangTocQuestion {
   q?: string;
   answer: string;
   acceptedAnswers?: string[];
+  /** optional explanation for answer */
+  explanation?: string;
   duration?: number;
   /** question category (O13+: iq = Câu 1 IQ, data = Câu 2 & 4 Dữ kiện, arrange = Câu 3 Sắp xếp 6 mảnh 1..6) */
   category?: "iq" | "data" | "arrange";
@@ -165,6 +167,8 @@ export interface TangTocQuestion {
 export interface VcnvRowDef {
   hint: string;
   answer: string;
+  /** optional explanation for row answer */
+  explanation?: string;
   /** Character count of the primary keyword */
   letterCount?: number;
   /** optional list of alternate accepted answers/synonyms (must match character length) */
@@ -314,10 +318,18 @@ export interface Cue {
   pan?: "both" | "left" | "right";
   bgmSound?: string;
   isManual?: boolean;
+  /** Optional playback speed/pitch rate (e.g., 0.98..0.92 for summary_rank_4 on ranks 5..8) */
+  playbackRate?: number;
 }
+
+export type AudioCue = Cue;
 
 export interface OlympiaConfig {
   rulesetId: RulesetId;
+  /** Optional room / competition display name */
+  name?: string;
+  /** Initial server-side TTS enabled flag (defaults to true) */
+  ttsEnabled?: boolean;
   /** user-selected rounds (without cauHoiPhu) */
   rounds: RoundId[];
   questionSet: OlympiaQuestionSet;
@@ -368,6 +380,8 @@ export interface KhoiDongState {
     q: string;
     a: string;
     subject?: string;
+    explanation?: string;
+    hint?: string;
     kdZone?: KdZoneId;
     vdZone?: VdZoneId;
     media?: string;
@@ -666,14 +680,86 @@ export interface OlympiaState {
   };
   /** Manual Audio Mode: when true, automatic cues are suppressed and host controls playback manually */
   manualAudioMode?: boolean;
+  /** TTS synchronization settings (authoritative on server, spoken on DisplayScreen only) */
+  ttsSettings?: TtsSettingsState;
+  /** Latest TTS command event issued by Host / engine */
+  ttsCommand?: TtsCommandEvent | null;
+  /** Monotonic sequence counter for ttsCommand */
+  ttsSeq?: number;
+  /** Deferred VCNV keyword win waiting for Display TTS completion or 15s fallback */
+  pendingCnvWin?: PendingCnvWinState | null;
+  /** Post-match 3D Victory Podium awards ceremony state */
+  awardsState?: OlympiaAwardsState | null;
+}
+
+export type TtsCommandAction =
+  | "lobby_greeting"
+  | "opening_duo"
+  | "contestant_intro"
+  | "round_intro"
+  | "reread_question"
+  | "ve_dich_steal_call"
+  | "hype_filler"
+  | "explain_answer"
+  | "cnv_result"
+  | "score_summary"
+  | "final_awards"
+  | "closing_farewell"
+  | "test_voices"
+  | "custom"
+  | "stop";
+
+export interface TtsSettingsState {
+  enabled: boolean;
+  baseRate: number;
+}
+
+export interface TtsCommandEvent {
+  seq: number;
+  action: TtsCommandAction;
+  issuedAt: number;
+  round?: RoundId;
+  text?: string;
+  role?: "khanh_vy" | "ngoc_huy";
+  skipAnimation?: boolean;
+  meta?: Record<string, unknown>;
+}
+
+export interface PendingCnvWinState {
+  seatId: number;
+  seatName: string;
+  keyword: string;
+  requestedAt: number;
+  seq: number;
+}
+
+export type OlympiaAwardTier = "third" | "second" | "first";
+
+export interface OlympiaAwardsState {
+  active: boolean;
+  startedAt: number;
+  revealedTiers: OlympiaAwardTier[];
+  activeTier: OlympiaAwardTier | null;
+  seatWalkStartedAt: Record<number, number>;
+  tiers: {
+    first: number[];
+    second: number[];
+    third: number[];
+  };
+  cameraMode: "auto" | "mc" | "podium_wide" | "podium_close";
+  laurelCrowned: boolean;
 }
 
 export interface OlympiaSummaryState {
   active: boolean;
+  isPostMatch?: boolean;
   currentIndex: number;
   orderedSeats: number[];
+  seatRanks?: Record<number, number>;
+  focusTarget?: "mc" | "contestant";
   isAuto: boolean;
   isFullscreen?: boolean;
+  startedAt?: number;
   lastAdvanceAt?: number;
   mode?: "graphic" | "cinematic_o27";
   holdDurationMs?: number;

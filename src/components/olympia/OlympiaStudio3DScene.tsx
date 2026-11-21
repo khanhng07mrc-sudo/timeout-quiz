@@ -71,6 +71,7 @@ import {
 } from "./studio/CameraController";
 import { CentralLedWall } from "./studio/CentralLedWall";
 import { Podiums } from "./studio/Podiums";
+import { VictoryPodium3D } from "./studio/VictoryPodium3D";
 import { LaurelWreathVitrine } from "./studio/LaurelWreathVitrine";
 import { StudioLighting } from "./studio/StudioLighting";
 
@@ -471,6 +472,11 @@ export function OlympiaStudio3DScene({
           isIdle={isIdle}
           isContestantDimmed={isContestantDimmed}
           activeMainContestantSeat={activeMainContestantSeat}
+        />
+
+        <VictoryPodium3D
+          awardsState={state?.awardsState}
+          totalSeats={state?.seats?.length ?? 4}
         />
 
         <LaurelWreathVitrine

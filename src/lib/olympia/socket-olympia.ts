@@ -38,11 +38,11 @@ async function loadGame(code: string): Promise<GameEntry | null> {
   if (pending) return pending;
 
   const p = (async () => {
-    let room: { id: string; mode: string; config: unknown; hostKey: string | null; quizBankId?: string | null } | null = null;
+    let room: { id: string; name?: string | null; mode: string; config: unknown; hostKey: string | null; quizBankId?: string | null } | null = null;
     try {
       room = await prisma.room.findUnique({
         where: { code },
-        select: { id: true, mode: true, config: true, hostKey: true, quizBankId: true },
+        select: { id: true, name: true, mode: true, config: true, hostKey: true, quizBankId: true },
       });
     } catch {
       // Prisma offline or DATABASE_URL not set
@@ -96,10 +96,18 @@ async function loadGame(code: string): Promise<GameEntry | null> {
       const preset = getPresetOlympiaBanks().find((b) => b.id === bankId);
       olympia.questionSet = preset ? preset.set : SAMPLE_QUESTION_SET;
     }
-    const game = new OlympiaGame(code, olympia);
+    const gameCfg: OlympiaConfig = {
+      ...olympia,
+      name: room.name ?? olympia.name,
+    };
+    const game = new OlympiaGame(code, gameCfg);
     const snap = cfg.olympiaSnapshot as OlympiaState | undefined;
     if (snap && snap.code === code) {
       game.state = snap;
+      if (room.name) game.state.name = room.name;
+      if (!game.state.ttsSettings) {
+        game.state.ttsSettings = { enabled: gameCfg.ttsEnabled ?? true, baseRate: 1.0 };
+      }
       game.state.seats.forEach((s) => (s.connected = false));
     }
     const entry: GameEntry = {
@@ -326,6 +334,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
         (action?.type === "banner:hide" ||
           action?.type === "banner:skip" ||
           action?.type === "media:close" ||
+          action?.type === "tts:cnvRevealDone" ||
           action?.type === "studio:toggle" ||
           action?.type === "studio:camera" ||
           action?.type === "studio:camera:auto" ||
@@ -349,6 +358,16 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
         }
       }
       const res = entry.game.hostAction(action as never, Date.now());
+      ack?.(res);
+      if (res.ok) broadcast(info.code);
+    });
+
+    socket.on("display:tts_done", (payload: { seq?: number } | undefined, ack?: (r: { ok: boolean; error?: string }) => void) => {
+      const entry = withEntry();
+      if (!entry || !info || (info.role !== "display" && info.role !== "host")) {
+        return ack?.({ ok: false, error: "Không có quyền" });
+      }
+      const res = entry.game.hostAction({ type: "tts:cnvRevealDone", seq: payload?.seq }, Date.now());
       ack?.(res);
       if (res.ok) broadcast(info.code);
     });

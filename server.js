@@ -103012,7 +103012,8 @@ var RAW_SAMPLE_QUESTION_SET = {
           "kdZone": "MATH_IT",
           "vdZone": "KHTN",
           "q": "S\u1ED1 nguy\xEAn t\u1ED1 ch\u1EB5n duy nh\u1EA5t l\xE0 s\u1ED1 n\xE0o?",
-          "a": "2"
+          "a": "2",
+          "explanation": "S\u1ED1 2 ch\u1EC9 chia h\u1EBFt cho 1 v\xE0 ch\xEDnh n\xF3; m\u1ECDi s\u1ED1 ch\u1EB5n l\u1EDBn h\u01A1n 2 \u0111\u1EC1u chia h\u1EBFt cho 2 n\xEAn l\xE0 h\u1EE3p s\u1ED1."
         },
         {
           "subject": "To\xE1n",
@@ -103033,7 +103034,8 @@ var RAW_SAMPLE_QUESTION_SET = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Kim lo\u1EA1i n\xE0o t\u1ED3n t\u1EA1i \u1EDF tr\u1EA1ng th\xE1i l\u1ECFng \u1EDF \u0111i\u1EC1u ki\u1EC7n nhi\u1EC7t \u0111\u1ED9 v\xE0 \xE1p su\u1EA5t ph\xF2ng?",
-          "a": "Th\u1EE7y ng\xE2n"
+          "a": "Th\u1EE7y ng\xE2n",
+          "explanation": "Th\u1EE7y ng\xE2n (k\xED hi\u1EC7u Hg) c\xF3 nhi\u1EC7t \u0111\u1ED9 n\xF3ng ch\u1EA3y kho\u1EA3ng -38,8 \xB0C n\xEAn l\xE0 kim lo\u1EA1i duy nh\u1EA5t \u1EDF th\u1EC3 l\u1ECFng t\u1EA1i nhi\u1EC7t \u0111\u1ED9 ph\xF2ng."
         },
         {
           "subject": "V\u0103n",
@@ -103170,7 +103172,8 @@ var RAW_SAMPLE_QUESTION_SET = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Nguy\xEAn t\u1ED1 ho\xE1 h\u1ECDc nh\u1EB9 nh\u1EA5t trong b\u1EA3ng tu\u1EA7n ho\xE0n l\xE0 g\xEC?",
-          "a": "Hydro"
+          "a": "Hydro",
+          "explanation": "Hydro (H) \u0111\u1EE9ng \u1EDF \xF4 s\u1ED1 1 trong b\u1EA3ng tu\u1EA7n ho\xE0n v\u1EDBi nguy\xEAn t\u1EED kh\u1ED1i x\u1EA5p x\u1EC9 1 u, l\xE0 nguy\xEAn t\u1ED1 nh\u1EB9 nh\u1EA5t."
         },
         {
           "subject": "Sinh",
@@ -103242,7 +103245,8 @@ var RAW_SAMPLE_QUESTION_SET = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Kim lo\u1EA1i n\xE0o c\xF3 kh\u1EA3 n\u0103ng d\u1EABn \u0111i\u1EC7n t\u1ED1t nh\u1EA5t \u1EDF \u0111i\u1EC1u ki\u1EC7n th\u01B0\u1EDDng?",
-          "a": "B\u1EA1c"
+          "a": "B\u1EA1c",
+          "explanation": "B\u1EA1c (Ag) c\xF3 \u0111\u1ED9 d\u1EABn \u0111i\u1EC7n cao nh\u1EA5t trong c\xE1c kim lo\u1EA1i \u1EDF \u0111i\u1EC1u ki\u1EC7n th\u01B0\u1EDDng, cao h\u01A1n c\u1EA3 \u0111\u1ED3ng v\xE0 v\xE0ng."
         },
         {
           "subject": "Sinh",
@@ -103537,7 +103541,8 @@ var RAW_SAMPLE_QUESTION_SET = {
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN",
           "q": "Lo\xE0i b\u1EA1ch tu\u1ED9c c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu tr\xE1i tim trong c\u01A1 th\u1EC3?",
-          "a": "3"
+          "a": "3",
+          "explanation": "B\u1EA1ch tu\u1ED9c c\xF3 3 tim: 1 tim ch\xEDnh b\u01A1m m\xE1u \u0111i kh\u1EAFp c\u01A1 th\u1EC3 v\xE0 2 tim ph\u1EE5 b\u01A1m m\xE1u qua mang."
         },
         {
           "subject": "V\u0103n",
@@ -103589,14 +103594,16 @@ var RAW_SAMPLE_QUESTION_SET = {
         "kdZone": "MATH_IT",
         "vdZone": "KHTN",
         "q": "T\u1ED5ng s\u1ED1 \u0111o c\xE1c g\xF3c trong c\u1EE7a m\u1ED9t h\xECnh t\u1EE9 gi\xE1c l\u1ED3i tr\xEAn m\u1EB7t ph\u1EB3ng Euclid lu\xF4n b\u1EB1ng bao nhi\xEAu \u0111\u1ED9?",
-        "a": "360"
+        "a": "360",
+        "explanation": "M\u1ED7i t\u1EE9 gi\xE1c l\u1ED3i c\xF3 th\u1EC3 chia th\xE0nh 2 tam gi\xE1c, n\xEAn t\u1ED5ng s\u1ED1 \u0111o c\xE1c g\xF3c trong b\u1EB1ng 2 \xD7 180\xB0 = 360\xB0."
       },
       {
         "subject": "To\xE1n",
         "kdZone": "MATH_IT",
         "vdZone": "KHTN",
         "q": "S\u1ED1 nguy\xEAn t\u1ED1 l\u1EDBn nh\u1EA5t c\xF3 hai ch\u1EEF s\u1ED1 trong t\u1EADp h\u1EE3p c\xE1c s\u1ED1 t\u1EF1 nhi\xEAn l\xE0 s\u1ED1 n\xE0o?",
-        "a": "97"
+        "a": "97",
+        "explanation": "99 chia h\u1EBFt cho 3, 98 l\xE0 s\u1ED1 ch\u1EB5n, c\xF2n 97 ch\u1EC9 chia h\u1EBFt cho 1 v\xE0 ch\xEDnh n\xF3 n\xEAn l\xE0 s\u1ED1 nguy\xEAn t\u1ED1 l\u1EDBn nh\u1EA5t c\xF3 hai ch\u1EEF s\u1ED1."
       },
       {
         "subject": "To\xE1n",
@@ -103610,7 +103617,8 @@ var RAW_SAMPLE_QUESTION_SET = {
         "kdZone": "NATURAL_SCI",
         "vdZone": "KHTN",
         "q": "Tr\u1ECDng l\u01B0\u1EE3ng c\u1EE7a m\u1ED9t v\u1EADt tr\xEAn b\u1EC1 m\u1EB7t M\u1EB7t Tr\u0103ng b\u1EB1ng kho\u1EA3ng m\u1ED9t ph\u1EA7n m\u1EA5y tr\u1ECDng l\u01B0\u1EE3ng c\u1EE7a n\xF3 tr\xEAn Tr\xE1i \u0110\u1EA5t?",
-        "a": "1/6"
+        "a": "1/6",
+        "explanation": "Gia t\u1ED1c tr\u1ECDng tr\u01B0\u1EDDng tr\xEAn M\u1EB7t Tr\u0103ng kho\u1EA3ng 1,62 m/s\xB2, x\u1EA5p x\u1EC9 b\u1EB1ng 1/6 gia t\u1ED1c tr\u1ECDng tr\u01B0\u1EDDng tr\xEAn Tr\xE1i \u0110\u1EA5t (9,8 m/s\xB2)."
       },
       {
         "subject": "L\xFD",
@@ -103631,7 +103639,8 @@ var RAW_SAMPLE_QUESTION_SET = {
         "kdZone": "NATURAL_SCI",
         "vdZone": "KHTN",
         "q": "Trong h\xF3a h\u1ECDc, dung d\u1ECBch c\xF3 \u0111\u1ED9 pH = 7 \u1EDF nhi\u1EC7t \u0111\u1ED9 25\xB0C mang t\xEDnh ch\u1EA5t g\xEC?",
-        "a": "Trung t\xEDnh"
+        "a": "Trung t\xEDnh",
+        "explanation": "\u1EDE 25\xB0C, dung d\u1ECBch c\xF3 pH = 7 c\xF3 n\u1ED3ng \u0111\u1ED9 ion H+ b\u1EB1ng OH-, mang m\xF4i tr\u01B0\u1EDDng trung t\xEDnh."
       },
       {
         "subject": "H\xF3a",
@@ -103659,7 +103668,8 @@ var RAW_SAMPLE_QUESTION_SET = {
         "kdZone": "NATURAL_SCI",
         "vdZone": "KHTN",
         "q": "Nh\xF3m m\xE1u n\xE0o \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 nh\xF3m m\xE1u chuy\xEAn cho trong h\u1EC7 th\u1ED1ng nh\xF3m m\xE1u ABO?",
-        "a": "Nh\xF3m O"
+        "a": "Nh\xF3m O",
+        "explanation": "H\u1ED3ng c\u1EA7u nh\xF3m m\xE1u O kh\xF4ng c\xF3 kh\xE1ng nguy\xEAn A v\xE0 B tr\xEAn b\u1EC1 m\u1EB7t n\xEAn kh\xF4ng b\u1ECB kh\xE1ng th\u1EC3 c\u1EE7a ng\u01B0\u1EDDi nh\u1EADn ng\u01B0ng k\u1EBFt."
       },
       {
         "subject": "Sinh",
@@ -103722,7 +103732,8 @@ var RAW_SAMPLE_QUESTION_SET = {
         "kdZone": "SOCIAL_SCI",
         "vdZone": "KHXH",
         "q": "K\xEAnh \u0111\xE0o Panama n\u1ED1i li\u1EC1n hai \u0111\u1EA1i d\u01B0\u01A1ng l\u1EDBn n\xE0o tr\xEAn th\u1EBF gi\u1EDBi?",
-        "a": "Th\xE1i B\xECnh D\u01B0\u01A1ng v\xE0 \u0110\u1EA1i T\xE2y D\u01B0\u01A1ng"
+        "a": "Th\xE1i B\xECnh D\u01B0\u01A1ng v\xE0 \u0110\u1EA1i T\xE2y D\u01B0\u01A1ng",
+        "explanation": "K\xEAnh \u0111\xE0o Panama d\xE0i kho\u1EA3ng 82 km c\u1EAFt qua eo \u0111\u1EA5t Panama, n\u1ED1i li\u1EC1n Th\xE1i B\xECnh D\u01B0\u01A1ng v\u1EDBi \u0110\u1EA1i T\xE2y D\u01B0\u01A1ng."
       },
       {
         "subject": "\u0110\u1ECBa",
@@ -103841,20 +103852,24 @@ var RAW_SAMPLE_QUESTION_SET = {
       },
       {
         "hint": "Theo Quy\u1EBFt \u0111\u1ECBnh s\u1ED1 05/2020/Q\u0110-TTg, c\u1EA5p ... l\u0169 \u0111\u01B0\u1EE3c ph\xE2n th\xE0nh ba c\u1EA5p c\u0103n c\u1EE9 v\xE0o \u0111\u1ED9 l\u1EDBn m\u1EF1c n\u01B0\u1EDBc l\u0169 v\xE0 m\u1EE9c \u0111\u1ED9 t\xE1c \u0111\u1ED9ng \u0111\u1EBFn an to\xE0n \u0111\xEA \u0111i\u1EC1u (7 ch\u1EEF c\xE1i).",
-        "answer": "B\xC1O \u0110\u1ED8NG"
+        "answer": "B\xC1O \u0110\u1ED8NG",
+        "explanation": "H\u1EC7 th\u1ED1ng ph\xF2ng ch\u1ED1ng thi\xEAn tai Vi\u1EC7t Nam chia l\u0169 th\xE0nh 3 c\u1EA5p b\xE1o \u0111\u1ED9ng I, II v\xE0 III theo m\u1EF1c n\u01B0\u1EDBc t\u1EA1i c\xE1c tr\u1EA1m th\u1EE7y v\u0103n."
       },
       {
         "hint": "T\u1EEB n\xE0o c\xF2n thi\u1EBFu trong hai c\xE2u th\u01A1 c\u1EE7a T\u1EA3n \u0110\xE0: 'Non xanh \u0111\xE3 bi\u1EBFt hay ch\u01B0a? / ... \u0111i ra b\u1EC3 l\u1EA1i m\u01B0a v\u1EC1 ngu\u1ED3n' (4 ch\u1EEF c\xE1i)?",
-        "answer": "N\u01AF\u1EDAC"
+        "answer": "N\u01AF\u1EDAC",
+        "explanation": "\u0110\xE2y l\xE0 hai c\xE2u tr\xEDch trong b\xE0i th\u01A1 n\u1ED5i ti\u1EBFng 'Th\u1EC1 non n\u01B0\u1EDBc' c\u1EE7a thi s\u0129 T\u1EA3n \u0110\xE0."
       },
       {
         "hint": "Trong m\u1EA1ng \u0111i\u1EC7n gia \u0111\xECnh, aptomat l\xE0 thi\u1EBFt b\u1ECB t\u1EF1 \u0111\u1ED9ng c\xF3 ch\u1EE9c n\u0103ng thay th\u1EBF cho c\u1EA3 c\u1EA7u ch\xEC v\xE0 thi\u1EBFt b\u1ECB \u0111\xF3ng ng\u1EAFt \u0111i\u1EC7n n\xE0o (6 ch\u1EEF c\xE1i)?",
-        "answer": "C\u1EA6U DAO"
+        "answer": "C\u1EA6U DAO",
+        "explanation": "Aptomat v\u1EEBa \u0111\xF3ng c\u1EAFt m\u1EA1ch \u0111i\u1EC7n nh\u01B0 c\u1EA7u dao th\xF4ng th\u01B0\u1EDDng, v\u1EEBa t\u1EF1 \u0111\u1ED9ng ng\u1EAFt m\u1EA1ch khi qu\xE1 t\u1EA3i ho\u1EB7c ng\u1EAFn m\u1EA1ch nh\u01B0 c\u1EA7u ch\xEC."
       }
     ],
     "centerQuestion": {
       "q": "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m): Khi ph\xE1t hi\u1EC7n h\u1ECFa ho\u1EA1n, b\u01B0\u1EDBc \u0111\u1EA7u ti\xEAn trong quy tr\xECnh 4 b\u01B0\u1EDBc x\u1EED l\xFD kh\u1EA9n c\u1EA5p l\xE0 h\xF4 ho\xE1n, b\xE1o \u0111\u1ED9ng g\u1EA5p cho m\u1ECDi ng\u01B0\u1EDDi xung quanh bi\u1EBFt c\xF3 s\u1EF1 c\u1ED1 g\xEC?",
-      "a": "CH\xC1Y"
+      "a": "CH\xC1Y",
+      "explanation": "Theo Ti\xEAu l\u1EC7nh ch\u1EEFa ch\xE1y 4 b\u01B0\u1EDBc: b\u01B0\u1EDBc 1 l\xE0 b\xE1o \u0111\u1ED9ng g\u1EA5p khi c\xF3 ch\xE1y, ti\u1EBFp theo l\xE0 ng\u1EAFt \u0111i\u1EC7n, d\xF9ng ph\u01B0\u01A1ng ti\u1EC7n ch\u1EEFa ch\xE1y t\u1EA1i ch\u1ED7 v\xE0 g\u1ECDi 114."
     }
   },
   "tangToc": [
@@ -103864,6 +103879,7 @@ var RAW_SAMPLE_QUESTION_SET = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau1_iq.png",
       "answer": "34",
+      "explanation": "\u0110\xE2y l\xE0 d\xE3y s\u1ED1 theo quy lu\u1EADt Fibonacci: m\u1ED7i s\u1ED1 sau b\u1EB1ng t\u1ED5ng hai s\u1ED1 \u0111\u1EE9ng li\u1EC1n tr\u01B0\u1EDBc n\xF3, n\xEAn s\u1ED1 c\u1EA7n t\xECm l\xE0 13 + 21 = 34.",
       "answerImage": "/olympia/media/tangtoc_cau1_answer.png",
       "duration": 20
     },
@@ -103873,6 +103889,7 @@ var RAW_SAMPLE_QUESTION_SET = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau2_clue1.png",
       "answer": "V\u1ECBnh H\u1EA1 Long",
+      "explanation": "V\u1ECBnh H\u1EA1 Long thu\u1ED9c t\u1EC9nh Qu\u1EA3ng Ninh, \u0111\u01B0\u1EE3c UNESCO hai l\u1EA7n c\xF4ng nh\u1EADn l\xE0 Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi v\xE0o c\xE1c n\u0103m 1994 v\xE0 2000.",
       "answerImage": "/olympia/media/tangtoc_cau2_answer.png",
       "duration": 20,
       "clueImages": [
@@ -103904,6 +103921,7 @@ var RAW_SAMPLE_QUESTION_SET = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau3_arrange.png",
       "answer": "246135",
+      "explanation": "Th\u1EE9 t\u1EF1 t\u1EEB g\u1EA7n M\u1EB7t Tr\u1EDDi nh\u1EA5t ra xa d\u1EA7n l\xE0: Sao Th\u1EE7y (2) \u2013 Sao Kim (4) \u2013 Tr\xE1i \u0110\u1EA5t (6) \u2013 Sao H\u1ECFa (1) \u2013 Sao M\u1ED9c (3) \u2013 Sao Th\u1ED5 (5).",
       "answerImage": "/olympia/media/tangtoc_cau3_answer.png",
       "duration": 30
     },
@@ -103913,6 +103931,7 @@ var RAW_SAMPLE_QUESTION_SET = {
       "type": "video",
       "media": "/olympia/media/tangtoc_cau4_video.webm",
       "answer": "Isaac Newton",
+      "explanation": "Isaac Newton c\xF4ng b\u1ED1 ki\u1EC7t t\xE1c 'Principia' n\u0103m 1687, \u0111\u1EB7t n\u1EC1n m\xF3ng cho c\u01A1 h\u1ECDc c\u1ED5 \u0111i\u1EC3n v\xE0 thi\xEAn v\u0103n h\u1ECDc hi\u1EC7n \u0111\u1EA1i.",
       "answerImage": "/olympia/media/tangtoc_cau4_isaac_newton.png",
       "duration": 30
     }
@@ -103933,6 +103952,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "V\xF2i 1 ch\u1EA3y m\u1ED9t m\xECnh 3 gi\u1EDD \u0111\u1EA7y b\u1EC3, v\xF2i 2 ch\u1EA3y m\u1ED9t m\xECnh 6 gi\u1EDD \u0111\u1EA7y b\u1EC3. M\u1EDF c\u1EA3 hai v\xF2i c\xF9ng l\xFAc th\xEC sau m\u1EA5y gi\u1EDD \u0111\u1EA7y b\u1EC3?",
         "a": "2 gi\u1EDD",
+        "explanation": "Trong 1 gi\u1EDD, hai v\xF2i ch\u1EA3y \u0111\u01B0\u1EE3c 1/3 + 1/6 = 1/2 b\u1EC3, n\xEAn c\xF9ng ch\u1EA3y s\u1EBD \u0111\u1EA7y b\u1EC3 sau 2 gi\u1EDD.",
         "type": "theory"
       },
       {
@@ -103941,6 +103961,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "\u0110\u01A1n v\u1ECB \u0111o t\u1EA7n s\u1ED1 dao \u0111\u1ED9ng (Hz) \u0111\u01B0\u1EE3c \u0111\u1EB7t theo t\xEAn c\u1EE7a nh\xE0 v\u1EADt l\xFD h\u1ECDc ng\u01B0\u1EDDi n\u01B0\u1EDBc n\xE0o?",
         "a": "\u0110\u1EE9c (Heinrich Hertz)",
+        "explanation": "\u0110\u01A1n v\u1ECB Hertz (Hz) \u0111\u01B0\u1EE3c \u0111\u1EB7t theo t\xEAn nh\xE0 v\u1EADt l\xFD ng\u01B0\u1EDDi \u0110\u1EE9c Heinrich Hertz, ng\u01B0\u1EDDi ch\u1EE9ng minh s\u1EF1 t\u1ED3n t\u1EA1i c\u1EE7a s\xF3ng \u0111i\u1EC7n t\u1EEB.",
         "type": "theory"
       },
       {
@@ -104007,6 +104028,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "Nh\xE0 to\xE1n h\u1ECDc De Morgan sinh \u1EDF th\u1EBF k\u1EF7 XIX t\u1EEBng \u0111\u1ED1: 'T\xF4i x tu\u1ED5i v\xE0o n\u0103m x b\xECnh ph\u01B0\u01A1ng'. \xD4ng sinh v\xE0o n\u0103m n\xE0o?",
         "a": "1806 (43 tu\u1ED5i v\xE0o n\u0103m 1849)",
+        "explanation": "Trong th\u1EBF k\u1EF7 XIX ch\u1EC9 c\xF3 43\xB2 = 1849 l\xE0 s\u1ED1 ch\xEDnh ph\u01B0\u01A1ng, n\xEAn \xF4ng 43 tu\u1ED5i v\xE0o n\u0103m 1849 v\xE0 sinh n\u0103m 1849 - 43 = 1806.",
         "type": "theory"
       },
       {
@@ -104015,6 +104037,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "Nh\u1EDD c\xF3 \u0111\u1ED3ng th\u1EDDi hai t\xEDnh ch\u1EA5t v\u1EADt l\xFD \u0111\u1EB7c bi\u1EC7t n\xE0o m\xE0 v\u1EADt li\u1EC7u Indium Tin Oxide (ITO) \u0111\u01B0\u1EE3c d\xF9ng l\xE0m m\xE0n h\xECnh c\u1EA3m \u1EE9ng \u0111i\u1EC7n tho\u1EA1i?",
         "a": "D\u1EABn \u0111i\u1EC7n v\xE0 trong su\u1ED1t v\u1EDBi \xE1nh s\xE1ng",
+        "explanation": "ITO l\xE0 oxit d\u1EABn \u0111i\u1EC7n trong su\u1ED1t, v\u1EEBa cho \xE1nh s\xE1ng hi\u1EC3n th\u1ECB xuy\xEAn qua v\u1EEBa d\u1EABn t\xEDn hi\u1EC7u \u0111i\u1EC7n t\u1EEB thao t\xE1c ch\u1EA1m.",
         "type": "practice"
       },
       {
@@ -104073,6 +104096,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "M\xE0u xanh lam qu\xFD hi\u1EBFm c\u1EE7a vi\xEAn kim c\u01B0\u01A1ng 'The De Beers Blue' \u0111\u01B0\u1EE3c t\u1EA1o n\xEAn b\u1EDFi s\u1EF1 hi\u1EC7n di\u1EC7n c\u1EE7a nguy\xEAn t\u1ED1 h\xF3a h\u1ECDc n\xE0o trong m\u1EA1ng tinh th\u1EC3 cacbon?",
         "a": "Bo (Boron)",
+        "explanation": "Nguy\xEAn t\u1ED1 Bo (B) thay th\u1EBF m\u1ED9t s\u1ED1 nguy\xEAn t\u1EED cacbon trong m\u1EA1ng tinh th\u1EC3 \u0111\xE3 h\u1EA5p th\u1EE5 \xE1nh s\xE1ng \u0111\u1ECF v\xE0 t\u1EA1o ra s\u1EAFc xanh lam cho kim c\u01B0\u01A1ng.",
         "type": "theory"
       },
       {
@@ -104081,6 +104105,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "M\u1ED9t h\u1EC7 th\u1ED1ng g\u1ED3m 8 \u0111\xE8n. M\u1ED7i \u0111\xE8n s\xE1ng xanh 2 ph\xFAt r\u1ED3i chuy\u1EC3n sang \u0111\u1ECF 2 ph\xFAt. \u0110\xE8n 1 b\u1EADt xanh l\xFAc 0s, c\u1EE9 sau 10s \u0111\xE8n ti\u1EBFp theo b\u1EADt xanh. Trong 3 ph\xFAt \u0111\u1EA7u, c\u1EA3 8 \u0111\xE8n c\xF9ng s\xE1ng xanh trong bao nhi\xEAu gi\xE2y?",
         "a": "50 gi\xE2y",
+        "explanation": "\u0110\xE8n th\u1EE9 8 b\u1EAFt \u0111\u1EA7u b\u1EADt xanh \u1EDF gi\xE2y th\u1EE9 70, trong khi \u0111\xE8n th\u1EE9 1 t\u1EAFt xanh \u1EDF gi\xE2y th\u1EE9 120, n\xEAn c\u1EA3 8 \u0111\xE8n c\xF9ng xanh t\u1EEB gi\xE2y 70 \u0111\u1EBFn gi\xE2y 120, t\u1EE9c 50 gi\xE2y.",
         "type": "theory"
       },
       {
@@ -104147,6 +104172,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHTN",
         "q": "H\u1EA1t c\u01A1 b\u1EA3n n\xE0o \u0111\u01B0\u1EE3c ti\xEAn \u0111o\xE1n b\u1EDFi nh\xE0 v\u1EADt l\xFD Peter Higgs n\u0103m 1964 v\xE0 \u0111\u01B0\u1EE3c x\xE1c nh\u1EADn t\u1EA1i m\xE1y gia t\u1ED1c LHC (CERN) n\u0103m 2012?",
         "a": "Boson Higgs",
+        "explanation": "H\u1EA1t Boson Higgs g\u1EAFn v\u1EDBi tr\u01B0\u1EDDng Higgs gi\xFAp c\xE1c h\u1EA1t c\u01A1 b\u1EA3n c\xF3 kh\u1ED1i l\u01B0\u1EE3ng v\xE0 \u0111\u01B0\u1EE3c c\xF4ng b\u1ED1 ph\xE1t hi\u1EC7n t\u1EA1i CERN ng\xE0y 4/7/2012.",
         "type": "theory"
       },
       {
@@ -104155,6 +104181,7 @@ var RAW_SAMPLE_QUESTION_SET = {
         "vdZone": "KHXH",
         "q": "H\u1ED9i ngh\u1ECB th\xE0nh l\u1EADp \u0110\u1EA3ng C\u1ED9ng s\u1EA3n Vi\u1EC7t Nam \u0111\u1EA7u n\u0103m 1930 do Nguy\u1EC5n \xC1i Qu\u1ED1c ch\u1EE7 tr\xEC di\u1EC5n ra t\u1EA1i b\xE1n \u0111\u1EA3o n\xE0o thu\u1ED9c H\u01B0\u01A1ng C\u1EA3ng (Trung Qu\u1ED1c)?",
         "a": "C\u1EEDu Long",
+        "explanation": "H\u1ED9i ngh\u1ECB h\u1EE3p nh\u1EA5t th\xE0nh l\u1EADp \u0110\u1EA3ng C\u1ED9ng s\u1EA3n Vi\u1EC7t Nam di\u1EC5n ra t\u1EEB ng\xE0y 6/1 \u0111\u1EBFn 7/2/1930 t\u1EA1i b\xE1n \u0111\u1EA3o C\u1EEDu Long, H\u01B0\u01A1ng C\u1EA3ng.",
         "type": "theory"
       }
     ]
@@ -104165,42 +104192,48 @@ var RAW_SAMPLE_QUESTION_SET = {
       "kdZone": "SOCIAL_SCI",
       "vdZone": "KHXH",
       "q": "Tri\u1EC1u \u0111\u1EA1i phong ki\u1EBFn n\xE0o t\u1ED3n t\u1EA1i l\xE2u d\xE0i nh\u1EA5t trong l\u1ECBch s\u1EED ch\u1EBF \u0111\u1ED9 qu\xE2n ch\u1EE7 Vi\u1EC7t Nam (k\xE9o d\xE0i 356 n\u0103m)?",
-      "a": "Nh\xE0 H\u1EADu L\xEA"
+      "a": "Nh\xE0 H\u1EADu L\xEA",
+      "explanation": "Nh\xE0 H\u1EADu L\xEA l\xE0 tri\u1EC1u \u0111\u1EA1i phong ki\u1EBFn t\u1ED3n t\u1EA1i l\xE2u d\xE0i nh\u1EA5t l\u1ECBch s\u1EED Vi\u1EC7t Nam (356 n\u0103m, g\u1ED3m hai giai \u0111o\u1EA1n L\xEA s\u01A1 v\xE0 L\xEA trung h\u01B0ng)."
     },
     {
       "subject": "H\xF3a",
       "kdZone": "NATURAL_SCI",
       "vdZone": "KHTN",
       "q": "Kim lo\u1EA1i n\xE0o c\xF3 nhi\u1EC7t \u0111\u1ED9 n\xF3ng ch\u1EA3y cao nh\u1EA5t trong t\u1EA5t c\u1EA3 c\xE1c kim lo\u1EA1i nguy\xEAn ch\u1EA5t (3.422\xB0C), th\u01B0\u1EDDng d\xF9ng l\xE0m d\xE2y t\xF3c b\xF3ng \u0111\xE8n?",
-      "a": "Vonfram (Tungsten / W)"
+      "a": "Vonfram (Tungsten / W)",
+      "explanation": "Vonfram (k\xED hi\u1EC7u W) c\xF3 nhi\u1EC7t \u0111\u1ED9 n\xF3ng ch\u1EA3y 3.422\xB0C, cao nh\u1EA5t trong c\xE1c kim lo\u1EA1i nguy\xEAn ch\u1EA5t n\xEAn ch\u1ECBu \u0111\u01B0\u1EE3c nhi\u1EC7t \u0111\u1ED9 ph\xE1t s\xE1ng c\u1EE7a d\xE2y t\xF3c b\xF3ng \u0111\xE8n."
     },
     {
       "subject": "\u0110\u1ECBa",
       "kdZone": "SOCIAL_SCI",
       "vdZone": "KHXH",
       "q": "Qu\u1ED1c gia n\xE0o c\xF3 s\u1ED1 l\u01B0\u1EE3ng m\xFAi gi\u1EDD nhi\u1EC1u nh\u1EA5t th\u1EBF gi\u1EDBi (t\xEDnh c\u1EA3 c\xE1c v\xF9ng l\xE3nh th\u1ED5 h\u1EA3i ngo\u1EA1i)?",
-      "a": "Ph\xE1p"
+      "a": "Ph\xE1p",
+      "explanation": "Nh\u1EDD c\xE1c v\xF9ng l\xE3nh th\u1ED5 v\xE0 t\u1EC9nh h\u1EA3i ngo\u1EA1i r\u1EA3i kh\u1EAFp c\xE1c \u0111\u1EA1i d\u01B0\u01A1ng, n\u01B0\u1EDBc Ph\xE1p s\u1EED d\u1EE5ng t\u1EDBi 12 m\xFAi gi\u1EDD kh\xE1c nhau, nhi\u1EC1u nh\u1EA5t th\u1EBF gi\u1EDBi."
     },
     {
       "subject": "To\xE1n",
       "kdZone": "MATH_IT",
       "vdZone": "KHTN",
       "q": "M\u1ED9t n\u0103m th\u1EBF k\u1EF7 (k\u1EBFt th\xFAc b\u1EB1ng hai ch\u1EEF s\u1ED1 00) ch\u1EC9 l\xE0 n\u0103m nhu\u1EADn khi n\xF3 chia h\u1EBFt cho s\u1ED1 t\u1EF1 nhi\xEAn n\xE0o?",
-      "a": "400"
+      "a": "400",
+      "explanation": "Theo l\u1ECBch Gregory, n\u0103m tr\xF2n th\u1EBF k\u1EF7 ph\u1EA3i chia h\u1EBFt cho 400 m\u1EDBi l\xE0 n\u0103m nhu\u1EADn (v\xED d\u1EE5 n\u0103m 2000 l\xE0 n\u0103m nhu\u1EADn, c\xF2n n\u0103m 1900 kh\xF4ng ph\u1EA3i)."
     },
     {
       "subject": "V\u0103n",
       "kdZone": "SOCIAL_SCI",
       "vdZone": "KHXH",
       "q": "B\xE0i th\u01A1 'T\xE2y Ti\u1EBFn' c\u1EE7a nh\xE0 th\u01A1 Quang D\u0169ng \u0111\u01B0\u1EE3c s\xE1ng t\xE1c v\xE0o n\u0103m n\xE0o t\u1EA1i Ph\xF9 L\u01B0u Chanh?",
-      "a": "1948"
+      "a": "1948",
+      "explanation": "Quang D\u0169ng s\xE1ng t\xE1c b\xE0i th\u01A1 'T\xE2y Ti\u1EBFn' v\xE0o cu\u1ED1i n\u0103m 1948 t\u1EA1i l\xE0ng Ph\xF9 L\u01B0u Chanh (H\xE0 Nam) khi nh\u1EDB v\u1EC1 \u0111\u1ED3ng \u0111\u1ED9i c\u0169."
     },
     {
       "subject": "L\u0129nh v\u1EF1c kh\xE1c",
       "kdZone": "GENERAL",
       "vdZone": "HBC",
       "q": "Tr\u1EE5 s\u1EDF ch\xEDnh c\u1EE7a T\u1ED5 ch\u1EE9c Gi\xE1o d\u1EE5c, Khoa h\u1ECDc v\xE0 V\u0103n h\xF3a Li\xEAn H\u1EE3p Qu\u1ED1c (UNESCO) \u0111\u1EB7t t\u1EA1i th\xE0nh ph\u1ED1 n\xE0o?",
-      "a": "Paris (Ph\xE1p)"
+      "a": "Paris (Ph\xE1p)",
+      "explanation": "Tr\u1EE5 s\u1EDF ch\xEDnh c\u1EE7a UNESCO \u0111\u1EB7t t\u1EA1i qu\u1EA3ng tr\u01B0\u1EDDng Fontenoy \u1EDF th\u1EE7 \u0111\xF4 Paris, C\u1ED9ng h\xF2a Ph\xE1p."
     }
   ]
 };
@@ -105870,6 +105903,68 @@ function getEntranceStepThresholdMs(seatId, totalSeats = 4) {
 }
 
 // src/lib/olympia/engine.ts
+var VALID_TTS_ACTIONS = /* @__PURE__ */ new Set([
+  "lobby_greeting",
+  "opening_duo",
+  "contestant_intro",
+  "round_intro",
+  "reread_question",
+  "ve_dich_steal_call",
+  "hype_filler",
+  "explain_answer",
+  "cnv_result",
+  "score_summary",
+  "final_awards",
+  "closing_farewell",
+  "test_voices",
+  "custom",
+  "stop"
+]);
+function hasTopTieForSummary(st) {
+  const active = st.seats.filter((s) => s.name && s.approved !== false);
+  if (active.length < 2) return false;
+  const max = Math.max(...active.map((s) => s.score));
+  return active.filter((s) => s.score === max).length >= 2;
+}
+function isPostMatchSummaryContext(st) {
+  if (st.stage === "finished") return true;
+  if (st.currentRound === "cauHoiPhu" && (st.cauHoiPhu?.winner != null || st.cauHoiPhu?.phase === "done" || st.roundStatus?.cauHoiPhu === "done")) {
+    return true;
+  }
+  if (st.currentRound === "veDich" && canStartScoreSummary(st)) {
+    const chpPending = st.roundsPlan?.includes("cauHoiPhu") && st.roundStatus?.cauHoiPhu === "pending" && hasTopTieForSummary(st);
+    return !chpPending;
+  }
+  return false;
+}
+function computeFinalSeatRanks(st) {
+  const active = st.seats.filter((s) => s.name && s.approved !== false);
+  const chpWinner = st.cauHoiPhu?.winner ?? null;
+  const sorted = [...active].sort((a, b) => {
+    const aw = chpWinner != null && a.id === chpWinner ? 1 : 0;
+    const bw = chpWinner != null && b.id === chpWinner ? 1 : 0;
+    if (aw !== bw) return bw - aw;
+    if (a.score !== b.score) return b.score - a.score;
+    return a.id - b.id;
+  });
+  const ranks = {};
+  for (let i = 0; i < sorted.length; i++) {
+    const cur = sorted[i];
+    if (i === 0) {
+      ranks[cur.id] = 1;
+    } else {
+      const prev = sorted[i - 1];
+      const prevIsChpWinner = chpWinner != null && prev.id === chpWinner;
+      const curIsChpWinner = chpWinner != null && cur.id === chpWinner;
+      if (!prevIsChpWinner && !curIsChpWinner && cur.score === prev.score) {
+        ranks[cur.id] = ranks[prev.id];
+      } else {
+        ranks[cur.id] = i + 1;
+      }
+    }
+  }
+  return ranks;
+}
 var mkTimer = (ms) => ({ totalMs: ms, remainingMs: ms, startedAt: null });
 var timerRemaining = (t, now) => t.startedAt == null ? t.remainingMs : Math.max(0, t.remainingMs - (now - t.startedAt));
 var timerRunning = (t) => t.startedAt != null;
@@ -105984,6 +106079,7 @@ var OlympiaGame = class _OlympiaGame {
     const initialChpLimit = config.chpQuestionLimit === "unlimited" || config.chpQuestionLimit === 3 ? config.chpQuestionLimit : defaultChpQuestionLimitForRuleset(this.ruleset.id);
     this.state = {
       code,
+      name: config.name,
       rulesetId: this.ruleset.id,
       themeMode: "o26_classic",
       o22Quarter: config.o22Quarter ?? 1,
@@ -106043,7 +106139,15 @@ var OlympiaGame = class _OlympiaGame {
       now,
       log: [],
       openedQuestionKeys: [],
-      transcript: []
+      transcript: [],
+      ttsSettings: {
+        enabled: config.ttsEnabled ?? true,
+        baseRate: 1
+      },
+      ttsCommand: null,
+      ttsSeq: 0,
+      pendingCnvWin: null,
+      awardsState: null
     };
   }
   // ── helpers ──
@@ -106109,12 +106213,117 @@ var OlympiaGame = class _OlympiaGame {
     }
     return { openedQ, openedA, reservedQ };
   }
-  cue(sound, kind = "sound", pan, bgmSound, isManual) {
+  cue(sound, kind = "sound", pan, bgmSound, isManual, playbackRate) {
     if (this.state.manualAudioMode && !isManual && kind !== "stop") {
       return;
     }
     this.state.cueSeq += 1;
-    this.state.cue = { id: this.state.cueSeq, sound, kind, pan, bgmSound, isManual };
+    this.state.cue = {
+      id: this.state.cueSeq,
+      sound,
+      kind,
+      pan,
+      bgmSound,
+      isManual,
+      ...playbackRate != null ? { playbackRate } : {}
+    };
+  }
+  nextTtsSeq() {
+    this.state.ttsSeq = (this.state.ttsSeq ?? 0) + 1;
+    return this.state.ttsSeq;
+  }
+  focusPostMatchSeat(sm, idx, now) {
+    const st = this.state;
+    const seatId = sm.orderedSeats[idx];
+    sm.currentIndex = idx;
+    sm.focusTarget = "contestant";
+    sm.lastAdvanceAt = now;
+    sm.seatEnteredAt = now;
+    st.studioCamera = sm.isFullscreen ? 10 : seatToStudioCamera(seatId);
+    st.studioCameraManual = false;
+    const rank = sm.seatRanks?.[seatId] ?? 4;
+    const playbackRate = rank <= 4 ? 1 : Math.max(0.92, +(1 - (rank - 4) * 0.02).toFixed(2));
+    this.cue(
+      `6_NhacKhac/summary_rank_${Math.min(4, rank)}`,
+      "bgm",
+      void 0,
+      void 0,
+      void 0,
+      playbackRate
+    );
+    if (st.ttsSettings?.enabled !== false) {
+      const seq = this.nextTtsSeq();
+      st.ttsCommand = {
+        seq,
+        action: "score_summary",
+        issuedAt: now,
+        round: st.currentRound ?? void 0,
+        meta: {
+          isPostMatch: true,
+          focusTarget: "contestant",
+          seatId,
+          seatName: this.seatName(seatId),
+          rank,
+          score: this.seat(seatId)?.score ?? 0
+        }
+      };
+    }
+  }
+  commitPendingCnvWin(now) {
+    const pending = this.state.pendingCnvWin;
+    if (!pending) return;
+    this.state.pendingCnvWin = null;
+    this.commitCnvWin(pending.seatId, now);
+  }
+  commitCnvWin(seat, now) {
+    const v = this.state.vcnv;
+    if (!v) return;
+    const rs = this.ruleset;
+    v.eliminatedSeats = v.eliminatedSeats.filter((id) => id !== seat);
+    const realOpenedRows = v.rows.filter((r) => r.opened).length;
+    v.openedCount = Math.max(v.openedCount, realOpenedRows);
+    const pts = cnvPointsFor(rs, realOpenedRows, Boolean(v.centerOpened));
+    this.addScore(seat, pts);
+    v.solvedBy = seat;
+    v.rows.forEach((r, i) => {
+      r.opened = true;
+      v.piecesRevealed[i] = true;
+    });
+    if (!v.centerQuestion) {
+      v.centerQuestion = { q: "C\xE2u h\u1ECFi g\u1EE3i \xFD cu\u1ED1i c\xF9ng t\u1EA1i \xF4 trung t\xE2m", a: v.keyword };
+    }
+    v.centerOpened = true;
+    v.piecesRevealed[4] = true;
+    v.phase = "done";
+    v.currentRow = 4;
+    pauseTimer(v.timer, now);
+    const buzzers = v.bells.map((b, idx) => ({
+      order: idx + 1,
+      seat: b.seat,
+      name: this.seatName(b.seat),
+      note: b.before ? "B\u1EA5m tr\u01B0\u1EDBc khi l\u1EADt \u0111\xE1p \xE1n h\xE0ng" : "B\u1EA5m sau khi l\u1EADt \u0111\xE1p \xE1n h\xE0ng",
+      verdict: b.seat === seat ? "correct" : void 0
+    }));
+    if (!buzzers.some((b) => b.seat === seat)) {
+      buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "correct" });
+    }
+    v.bells = [];
+    this.pushTranscript({
+      at: now,
+      round: "vcnv",
+      roundLabel: ROUND_LABELS.vcnv,
+      segmentLabel: `Gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (\u0111\xE3 m\u1EDF ${v.openedCount} h\xE0ng${v.centerOpened ? " + \xF4 trung t\xE2m" : ""})`,
+      entryKind: "cnv_bell",
+      questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
+      correctAnswer: v.keyword,
+      actorSeat: seat,
+      actorName: this.seatName(seat),
+      selectedPoints: pts,
+      buzzerEvents: buzzers,
+      verdict: "correct",
+      scoreChanges: { [seat]: pts }
+    });
+    this.cue("2_VuotChuongNgaiVat/cnv_correct");
   }
   logMsg(msg) {
     this.state.log.push(msg);
@@ -106272,6 +106481,11 @@ var OlympiaGame = class _OlympiaGame {
       this.touch(now);
       return true;
     }
+    if (st.pendingCnvWin && now - st.pendingCnvWin.requestedAt >= 15e3) {
+      this.commitPendingCnvWin(now);
+      this.touch(now);
+      return true;
+    }
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
       const activeCount = Math.max(1, st.seats.length);
@@ -106404,6 +106618,8 @@ var OlympiaGame = class _OlympiaGame {
     st.entranceCompleted = true;
     if (st.entranceState) st.entranceState.active = false;
     if (st.summaryState) st.summaryState.active = false;
+    if (st.awardsState) st.awardsState.active = false;
+    st.pendingCnvWin = null;
     st.showStageGraphics = false;
     st.studioCameraManual = false;
     st.studioCamera = void 0;
@@ -106457,6 +106673,8 @@ var OlympiaGame = class _OlympiaGame {
             q: preQ.q,
             a: preQ.a,
             subject: preQ.subject,
+            explanation: preQ.explanation,
+            hint: preQ.hint,
             kdZone: preQ.kdZone,
             vdZone: preQ.vdZone,
             media: preQ.media,
@@ -106472,6 +106690,7 @@ var OlympiaGame = class _OlympiaGame {
           return {
             hint: v.rows[i]?.hint ?? "",
             answer: ans,
+            explanation: v.rows[i]?.explanation,
             letterCount: v.rows[i]?.letterCount || cleanVcnvWord(ans).length,
             media: v.rows[i]?.media,
             mediaType: v.rows[i]?.mediaType,
@@ -106598,6 +106817,7 @@ var OlympiaGame = class _OlympiaGame {
     if (st.vcnv) {
       st.vcnv.bells = [];
     }
+    st.pendingCnvWin = null;
     if (st.veDich) {
       st.veDich.steal = null;
     }
@@ -107202,6 +107422,8 @@ var OlympiaGame = class _OlympiaGame {
       case "game:reset": {
         const fresh = new _OlympiaGame(st.code, this.config, now).state;
         fresh.seats = st.seats.map((s) => ({ ...s, score: 0 }));
+        fresh.name = st.name;
+        if (st.ttsSettings) fresh.ttsSettings = { ...st.ttsSettings };
         this.state = fresh;
         return OK;
       }
@@ -107209,8 +107431,70 @@ var OlympiaGame = class _OlympiaGame {
         st.stage = "finished";
         st.currentRound = null;
         st.banner = null;
+        st.introTimer = null;
+        if (st.entranceState) st.entranceState.active = false;
+        st.pendingCnvWin = null;
         this.cue("6_NhacKhac/ending_music");
         return OK;
+      case "tts:setEnabled": {
+        const enabled = Boolean(a.enabled);
+        const baseRate = st.ttsSettings?.baseRate ?? 1;
+        st.ttsSettings = { enabled, baseRate };
+        if (!enabled && st.pendingCnvWin) {
+          this.commitPendingCnvWin(now);
+        }
+        return OK;
+      }
+      case "tts:setRate": {
+        const rawRate = Number(a.baseRate ?? a.rate);
+        if (!Number.isFinite(rawRate)) return fail("T\u1ED1c \u0111\u1ED9 TTS kh\xF4ng h\u1EE3p l\u1EC7");
+        const baseRate = Math.max(0.75, Math.min(1.5, +rawRate.toFixed(2)));
+        st.ttsSettings = {
+          enabled: st.ttsSettings?.enabled ?? true,
+          baseRate
+        };
+        return OK;
+      }
+      case "tts:command": {
+        const actionName = String(a.action || "");
+        if (!VALID_TTS_ACTIONS.has(actionName)) {
+          return fail("L\u1EC7nh TTS kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        const seq = this.nextTtsSeq();
+        const role = a.role === "khanh_vy" || a.role === "ngoc_huy" ? a.role : void 0;
+        const round = typeof a.round === "string" && ROUND_ORDER.includes(a.round) ? a.round : st.currentRound ?? void 0;
+        st.ttsCommand = {
+          seq,
+          action: actionName,
+          issuedAt: now,
+          ...round ? { round } : {},
+          ...typeof a.text === "string" ? { text: a.text } : {},
+          ...role ? { role } : {},
+          ...a.skipAnimation != null ? { skipAnimation: Boolean(a.skipAnimation) } : {},
+          ...a.meta && typeof a.meta === "object" ? { meta: a.meta } : {}
+        };
+        return OK;
+      }
+      case "tts:stop": {
+        const seq = this.nextTtsSeq();
+        st.ttsCommand = {
+          seq,
+          action: "stop",
+          issuedAt: now
+        };
+        if (st.pendingCnvWin) {
+          this.commitPendingCnvWin(now);
+        }
+        return OK;
+      }
+      case "tts:cnvRevealDone": {
+        if (!st.pendingCnvWin) return OK;
+        if (a.seq != null && Number(a.seq) !== st.pendingCnvWin.seq) {
+          return OK;
+        }
+        this.commitPendingCnvWin(now);
+        return OK;
+      }
       case "audio:stop_bgm":
         this.cue("", "stop");
         return OK;
@@ -107235,6 +107519,54 @@ var OlympiaGame = class _OlympiaGame {
         if (!canStartScoreSummary(st)) {
           return fail("Ch\u1EC9 c\xF3 th\u1EC3 m\u1EDF T\u1ED5ng k\u1EBFt \u0111i\u1EC3m sau khi ph\u1EA7n thi hi\u1EC7n t\u1EA1i \u0111\xE3 k\u1EBFt th\xFAc ho\xE0n to\xE0n!");
         }
+        const isPostMatch = a.isPostMatch != null ? Boolean(a.isPostMatch) : isPostMatchSummaryContext(st);
+        const effectiveMode = a.mode || st.summaryMode || "cinematic_o27";
+        st.summaryMode = effectiveMode;
+        st.introTimer = null;
+        st.showScoreboard = false;
+        st.studioCameraManual = false;
+        if (st.awardsState?.active) {
+          st.awardsState.active = false;
+        }
+        if (isPostMatch) {
+          const orderedSeats2 = [...this.activeSeatIds].sort((x, y) => x - y);
+          if (orderedSeats2.length === 0) return fail("Kh\xF4ng c\xF3 th\xED sinh");
+          const seatRanks = computeFinalSeatRanks(st);
+          const nSeats2 = orderedSeats2.length;
+          const holdDurationMs2 = nSeats2 <= 4 ? 1500 : nSeats2 <= 6 ? 1e3 : 500;
+          const isFullscreen2 = effectiveMode === "graphic" ? true : a.isFullscreen != null ? Boolean(a.isFullscreen) : false;
+          st.summaryState = {
+            active: true,
+            isPostMatch: true,
+            currentIndex: -1,
+            orderedSeats: orderedSeats2,
+            seatRanks,
+            focusTarget: "mc",
+            isAuto: false,
+            isFullscreen: isFullscreen2,
+            mode: effectiveMode,
+            holdDurationMs: holdDurationMs2,
+            startedAt: now,
+            lastAdvanceAt: now
+          };
+          st.studioCamera = 3;
+          if (st.ttsSettings?.enabled !== false) {
+            const seq = this.nextTtsSeq();
+            st.ttsCommand = {
+              seq,
+              action: "score_summary",
+              issuedAt: now,
+              round: st.currentRound ?? void 0,
+              meta: {
+                isPostMatch: true,
+                focusTarget: "mc",
+                orderedSeats: orderedSeats2,
+                seatRanks
+              }
+            };
+          }
+          return OK;
+        }
         const isAuto = a.isAuto !== false && a.auto !== false;
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
           const sx = this.seat(x)?.score ?? 0;
@@ -107243,28 +107575,59 @@ var OlympiaGame = class _OlympiaGame {
           return x - y;
         });
         if (orderedSeats.length === 0) return fail("Kh\xF4ng c\xF3 th\xED sinh");
-        st.introTimer = null;
-        st.showScoreboard = false;
-        st.studioCameraManual = false;
-        const effectiveMode = a.mode || st.summaryMode || "cinematic_o27";
-        st.summaryMode = effectiveMode;
         const nSeats = orderedSeats.length;
         const holdDurationMs = nSeats <= 4 ? 1500 : nSeats <= 6 ? 1e3 : 500;
         const isFullscreen = effectiveMode === "graphic" ? true : a.isFullscreen != null ? Boolean(a.isFullscreen) : false;
         st.summaryState = {
           active: true,
+          isPostMatch: false,
           currentIndex: 0,
           orderedSeats,
+          focusTarget: "contestant",
           isAuto,
           isFullscreen,
           mode: effectiveMode,
           holdDurationMs,
+          startedAt: now,
           lastAdvanceAt: now,
           seatEnteredAt: now
         };
         this.cue("6_NhacKhac/summary", "bgm");
         const firstSeat = orderedSeats[0];
         st.studioCamera = isFullscreen ? 10 : seatToStudioCamera(firstSeat);
+        return OK;
+      }
+      case "summary:focusMc": {
+        if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
+        st.summaryState.currentIndex = -1;
+        st.summaryState.focusTarget = "mc";
+        st.summaryState.lastAdvanceAt = now;
+        st.studioCamera = 3;
+        st.studioCameraManual = false;
+        return OK;
+      }
+      case "summary:focusSeat": {
+        const sm = st.summaryState;
+        if (!sm || !sm.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
+        let idx = a.index != null ? Number(a.index) : -1;
+        if (a.seatId != null || a.seat != null) {
+          const targetSeat = Number(a.seatId ?? a.seat);
+          idx = sm.orderedSeats.indexOf(targetSeat);
+        }
+        if (!Number.isInteger(idx) || idx < 0 || idx >= sm.orderedSeats.length) {
+          return fail("V\u1ECB tr\xED th\xED sinh kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        if (sm.isPostMatch) {
+          this.focusPostMatchSeat(sm, idx, now);
+        } else {
+          sm.currentIndex = idx;
+          sm.focusTarget = "contestant";
+          sm.lastAdvanceAt = now;
+          sm.seatEnteredAt = now;
+          const targetSeat = sm.orderedSeats[idx];
+          st.studioCamera = sm.isFullscreen ? 10 : seatToStudioCamera(targetSeat);
+          st.studioCameraManual = false;
+        }
         return OK;
       }
       case "summary:setMode": {
@@ -107274,22 +107637,35 @@ var OlympiaGame = class _OlympiaGame {
           st.summaryState.mode = mode;
           st.summaryState.isFullscreen = mode === "graphic";
           st.overlayMode = mode === "graphic" ? "FULLSCREEN" : "LOWER_THIRD";
-          const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex] ?? 0;
-          st.studioCamera = mode === "graphic" ? 10 : seatToStudioCamera(curSeat);
+          const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex];
+          st.studioCamera = mode === "graphic" ? 10 : st.summaryState.focusTarget === "mc" || curSeat == null ? 3 : seatToStudioCamera(curSeat);
         }
         return OK;
       }
       case "summary:next": {
-        if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
-        const nextIdx = st.summaryState.currentIndex + 1;
-        if (nextIdx < st.summaryState.orderedSeats.length) {
-          st.summaryState.currentIndex = nextIdx;
-          st.summaryState.lastAdvanceAt = now;
-          st.summaryState.seatEnteredAt = now;
-          const nextSeat = st.summaryState.orderedSeats[nextIdx];
-          st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
+        const sm = st.summaryState;
+        if (!sm || !sm.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
+        if (sm.isPostMatch) {
+          const nextIdx2 = sm.currentIndex + 1;
+          if (nextIdx2 < sm.orderedSeats.length) {
+            this.focusPostMatchSeat(sm, nextIdx2, now);
+          } else {
+            sm.active = false;
+            st.studioCameraManual = false;
+            st.studioCamera = 3;
+            this.cue("", "stop");
+          }
+          return OK;
+        }
+        const nextIdx = sm.currentIndex + 1;
+        if (nextIdx < sm.orderedSeats.length) {
+          sm.currentIndex = nextIdx;
+          sm.lastAdvanceAt = now;
+          sm.seatEnteredAt = now;
+          const nextSeat = sm.orderedSeats[nextIdx];
+          st.studioCamera = sm.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
         } else {
-          st.summaryState.active = false;
+          sm.active = false;
           st.studioCameraManual = false;
           st.studioCamera = 10;
           this.cue("", "stop");
@@ -107297,17 +107673,35 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "summary:prev": {
-        if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
-        const prevIdx = Math.max(0, st.summaryState.currentIndex - 1);
-        st.summaryState.currentIndex = prevIdx;
-        st.summaryState.lastAdvanceAt = now;
-        st.summaryState.seatEnteredAt = now;
-        const prevSeat = st.summaryState.orderedSeats[prevIdx];
-        st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(prevSeat);
+        const sm = st.summaryState;
+        if (!sm || !sm.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
+        if (sm.isPostMatch) {
+          const prevIdx2 = sm.currentIndex - 1;
+          if (prevIdx2 < 0) {
+            sm.currentIndex = -1;
+            sm.focusTarget = "mc";
+            sm.lastAdvanceAt = now;
+            st.studioCamera = 3;
+            st.studioCameraManual = false;
+          } else {
+            this.focusPostMatchSeat(sm, prevIdx2, now);
+          }
+          return OK;
+        }
+        const prevIdx = Math.max(0, sm.currentIndex - 1);
+        sm.currentIndex = prevIdx;
+        sm.lastAdvanceAt = now;
+        sm.seatEnteredAt = now;
+        const prevSeat = sm.orderedSeats[prevIdx];
+        st.studioCamera = sm.isFullscreen ? 10 : seatToStudioCamera(prevSeat);
         return OK;
       }
       case "summary:toggleAuto": {
         if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
+        if (st.summaryState.isPostMatch) {
+          st.summaryState.isAuto = false;
+          return OK;
+        }
         st.summaryState.isAuto = !st.summaryState.isAuto;
         st.summaryState.lastAdvanceAt = now;
         return OK;
@@ -107316,8 +107710,8 @@ var OlympiaGame = class _OlympiaGame {
         if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
         st.summaryState.isFullscreen = !st.summaryState.isFullscreen;
         st.overlayMode = st.summaryState.isFullscreen ? "FULLSCREEN" : "LOWER_THIRD";
-        const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex] ?? 0;
-        st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(curSeat);
+        const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex];
+        st.studioCamera = st.summaryState.isFullscreen ? 10 : st.summaryState.focusTarget === "mc" || curSeat == null ? 3 : seatToStudioCamera(curSeat);
         return OK;
       }
       case "summary:stop": {
@@ -107325,7 +107719,109 @@ var OlympiaGame = class _OlympiaGame {
           st.summaryState.active = false;
         }
         st.studioCameraManual = false;
-        st.studioCamera = 10;
+        st.studioCamera = st.summaryState?.isPostMatch ? 3 : 10;
+        this.cue("", "stop");
+        return OK;
+      }
+      case "awards:start": {
+        if (!isPostMatchSummaryContext(st) && !canStartScoreSummary(st)) {
+          return fail("Ch\u1EC9 c\xF3 th\u1EC3 m\u1EDF Trao Gi\u1EA3i Th\u01B0\u1EDFng sau khi k\u1EBFt th\xFAc cu\u1ED9c thi!");
+        }
+        const active = this.activeSeatIds;
+        if (active.length === 0) return fail("Kh\xF4ng c\xF3 th\xED sinh");
+        if (st.summaryState) st.summaryState.active = false;
+        st.introTimer = null;
+        st.showScoreboard = false;
+        const seatRanks = computeFinalSeatRanks(st);
+        const tiers = { first: [], second: [], third: [] };
+        for (const id of active) {
+          const r = seatRanks[id] ?? 4;
+          if (r === 1) tiers.first.push(id);
+          else if (r === 2) tiers.second.push(id);
+          else tiers.third.push(id);
+        }
+        st.awardsState = {
+          active: true,
+          startedAt: now,
+          revealedTiers: [],
+          activeTier: null,
+          seatWalkStartedAt: {},
+          tiers,
+          cameraMode: "mc",
+          laurelCrowned: false
+        };
+        st.studioCamera = 3;
+        st.studioCameraManual = false;
+        this.cue("6_NhacKhac/prize_award", "bgm");
+        return OK;
+      }
+      case "awards:callTier": {
+        const aw = st.awardsState;
+        if (!aw || !aw.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u l\u1EC5 Trao Gi\u1EA3i Th\u01B0\u1EDFng");
+        const tier = String(a.tier || "");
+        if (tier !== "third" && tier !== "second" && tier !== "first") {
+          return fail("H\u1EA1ng gi\u1EA3i kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        aw.activeTier = tier;
+        if (!aw.revealedTiers.includes(tier)) {
+          aw.revealedTiers.push(tier);
+        }
+        for (const seatId of aw.tiers[tier]) {
+          aw.seatWalkStartedAt[seatId] = now;
+        }
+        if (tier === "first") {
+          aw.laurelCrowned = true;
+        }
+        aw.cameraMode = "auto";
+        st.studioCameraManual = false;
+        st.studioCamera = void 0;
+        if (st.ttsSettings?.enabled !== false) {
+          const seq = this.nextTtsSeq();
+          st.ttsCommand = {
+            seq,
+            action: "final_awards",
+            issuedAt: now,
+            round: st.currentRound ?? void 0,
+            meta: {
+              tier,
+              seatIds: aw.tiers[tier],
+              isTieForFirst: tier === "first" && aw.tiers.first.length > 1,
+              tiedLeaderIds: aw.tiers.first.length > 1 ? aw.tiers.first : []
+            }
+          };
+        }
+        return OK;
+      }
+      case "awards:setCamera": {
+        const aw = st.awardsState;
+        if (!aw || !aw.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u l\u1EC5 Trao Gi\u1EA3i Th\u01B0\u1EDFng");
+        const mode = String(a.mode || a.cameraMode || "");
+        if (mode !== "auto" && mode !== "mc" && mode !== "podium_wide" && mode !== "podium_close") {
+          return fail("Ch\u1EBF \u0111\u1ED9 camera trao gi\u1EA3i kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        aw.cameraMode = mode;
+        if (mode === "mc") {
+          st.studioCamera = 3;
+          st.studioCameraManual = true;
+        } else if (mode === "podium_wide") {
+          st.studioCamera = 30;
+          st.studioCameraManual = true;
+        } else if (mode === "podium_close") {
+          st.studioCamera = 31;
+          st.studioCameraManual = true;
+        } else {
+          st.studioCamera = void 0;
+          st.studioCameraManual = false;
+        }
+        return OK;
+      }
+      case "awards:stop": {
+        if (st.awardsState) {
+          st.awardsState.active = false;
+          st.awardsState.activeTier = null;
+        }
+        st.studioCameraManual = false;
+        st.studioCamera = void 0;
         this.cue("", "stop");
         return OK;
       }
@@ -107516,6 +108012,8 @@ var OlympiaGame = class _OlympiaGame {
                 q: q2.q,
                 a: q2.a,
                 subject: q2.subject,
+                explanation: q2.explanation,
+                hint: q2.hint,
                 kdZone: q2.kdZone,
                 vdZone: q2.vdZone,
                 media: q2.media,
@@ -107594,6 +108092,8 @@ var OlympiaGame = class _OlympiaGame {
           q: q.q,
           a: q.a,
           subject: q.subject,
+          explanation: q.explanation,
+          hint: q.hint,
           kdZone: q.kdZone,
           vdZone: q.vdZone,
           media: q.media,
@@ -107778,6 +108278,8 @@ var OlympiaGame = class _OlympiaGame {
               q: preQ.q,
               a: preQ.a,
               subject: preQ.subject,
+              explanation: preQ.explanation,
+              hint: preQ.hint,
               kdZone: preQ.kdZone,
               vdZone: preQ.vdZone,
               media: preQ.media,
@@ -108299,51 +108801,35 @@ var OlympiaGame = class _OlympiaGame {
         if (!v.bells.some((b) => b.seat === seat)) {
           return fail("Ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1EA5m CNV cho th\xED sinh \u0111ang c\xF3 t\xEDn hi\u1EC7u chu\xF4ng!");
         }
-        v.eliminatedSeats = v.eliminatedSeats.filter((id) => id !== seat);
-        const realOpenedRows = v.rows.filter((r) => r.opened).length;
-        v.openedCount = Math.max(v.openedCount, realOpenedRows);
-        const pts = cnvPointsFor(rs, realOpenedRows, Boolean(v.centerOpened));
-        this.addScore(seat, pts);
-        v.solvedBy = seat;
-        v.rows.forEach((r, i) => {
-          r.opened = true;
-          v.piecesRevealed[i] = true;
-        });
-        if (!v.centerQuestion) {
-          v.centerQuestion = { q: "C\xE2u h\u1ECFi g\u1EE3i \xFD cu\u1ED1i c\xF9ng t\u1EA1i \xF4 trung t\xE2m", a: v.keyword };
+        if (st.pendingCnvWin) {
+          return fail("\u0110ang c\xF4ng b\u1ED1 k\u1EBFt qu\u1EA3 CNV, vui l\xF2ng ch\u1EDD gi\xE2y l\xE1t!");
         }
-        v.centerOpened = true;
-        v.piecesRevealed[4] = true;
-        v.phase = "done";
-        v.currentRow = 4;
         pauseTimer(v.timer, now);
-        const buzzers = v.bells.map((b, idx) => ({
-          order: idx + 1,
-          seat: b.seat,
-          name: this.seatName(b.seat),
-          note: b.before ? "B\u1EA5m tr\u01B0\u1EDBc khi l\u1EADt \u0111\xE1p \xE1n h\xE0ng" : "B\u1EA5m sau khi l\u1EADt \u0111\xE1p \xE1n h\xE0ng",
-          verdict: b.seat === seat ? "correct" : void 0
-        }));
-        if (!buzzers.some((b) => b.seat === seat)) {
-          buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "correct" });
+        if (st.ttsSettings?.enabled !== false) {
+          const seq = this.nextTtsSeq();
+          const seatName = this.seatName(seat);
+          st.pendingCnvWin = {
+            seatId: seat,
+            seatName,
+            keyword: v.keyword,
+            requestedAt: now,
+            seq
+          };
+          st.ttsCommand = {
+            seq,
+            action: "cnv_result",
+            issuedAt: now,
+            round: "vcnv",
+            meta: {
+              isCorrect: true,
+              seatId: seat,
+              seatName,
+              keyword: v.keyword
+            }
+          };
+          return OK;
         }
-        v.bells = [];
-        this.pushTranscript({
-          at: now,
-          round: "vcnv",
-          roundLabel: ROUND_LABELS.vcnv,
-          segmentLabel: `Gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (\u0111\xE3 m\u1EDF ${v.openedCount} h\xE0ng${v.centerOpened ? " + \xF4 trung t\xE2m" : ""})`,
-          entryKind: "cnv_bell",
-          questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
-          correctAnswer: v.keyword,
-          actorSeat: seat,
-          actorName: this.seatName(seat),
-          selectedPoints: pts,
-          buzzerEvents: buzzers,
-          verdict: "correct",
-          scoreChanges: { [seat]: pts }
-        });
-        this.cue("2_VuotChuongNgaiVat/cnv_correct");
+        this.commitCnvWin(seat, now);
         return OK;
       }
       case "vcnv:wrongCNV": {
@@ -108387,6 +108873,22 @@ var OlympiaGame = class _OlympiaGame {
           note: `${allNames} tr\u1EA3 l\u1EDDi sai CNV (m\u1EA5t quy\u1EC1n ch\u01A1i VCNV).`
         });
         this.cue("2_VuotChuongNgaiVat/cnv_wrong");
+        if (st.ttsSettings?.enabled !== false) {
+          const seq = this.nextTtsSeq();
+          st.ttsCommand = {
+            seq,
+            action: "cnv_result",
+            issuedAt: now,
+            round: "vcnv",
+            meta: {
+              isCorrect: false,
+              seatId: seat,
+              seatName: this.seatName(seat),
+              seatIds: v.bells.map((b) => b.seat),
+              seatNames: v.bells.map((b) => this.seatName(b.seat))
+            }
+          };
+        }
         return OK;
       }
       case "vcnv:toggleLockSeat": {
@@ -108409,6 +108911,7 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:revealAll": {
+        st.pendingCnvWin = null;
         v.rows.forEach((r, i) => {
           r.opened = true;
           v.piecesRevealed[i] = true;
@@ -109559,6 +110062,7 @@ var OlympiaGame = class _OlympiaGame {
           const rowAns = qs.vcnv.rows[i]?.answer ?? r.answer;
           r.hint = qs.vcnv.rows[i]?.hint ?? r.hint;
           r.answer = rowAns;
+          r.explanation = qs.vcnv.rows[i]?.explanation ?? r.explanation;
           r.letterCount = qs.vcnv.rows[i]?.letterCount || cleanVcnvWord(rowAns).length || r.letterCount;
         }
       });
@@ -109604,10 +110108,20 @@ var OlympiaGame = class _OlympiaGame {
       if (role !== "player" || seatId == null) return {};
       return rec[seatId] ? { [seatId]: rec[seatId] } : {};
     };
+    if (role === "player") {
+      s.pendingCnvWin = null;
+      s.ttsCommand = null;
+    }
     if (s.khoiDong) {
       delete s.khoiDong.seatQueues;
       delete s.khoiDong.sharedQueue;
-      if (s.khoiDong.current && s.khoiDong.phase !== "result") delete s.khoiDong.current.a;
+      if (s.khoiDong.current && s.khoiDong.phase !== "result") {
+        delete s.khoiDong.current.a;
+        if (role === "player") {
+          delete s.khoiDong.current.explanation;
+          delete s.khoiDong.current.hint;
+        }
+      }
     }
     if (s.vcnv) {
       if (s.vcnv.phase === "selecting") {
@@ -109621,7 +110135,12 @@ var OlympiaGame = class _OlympiaGame {
         }
       }
       s.vcnv.rows.forEach((r, i) => {
-        if (!r.opened && !(s.vcnv.answersRevealed && s.vcnv.currentRow === i)) r.answer = "";
+        if (!r.opened && !(s.vcnv.answersRevealed && s.vcnv.currentRow === i)) {
+          r.answer = "";
+          if (role === "player") {
+            delete r.explanation;
+          }
+        }
       });
       if (s.vcnv.solvedBy == null && s.vcnv.phase !== "done") s.vcnv.keyword = s.vcnv.keyword.replace(/[^\s]/g, "\u2022");
       if (!s.vcnv.answersRevealed) {
@@ -109643,24 +110162,37 @@ var OlympiaGame = class _OlympiaGame {
       if (s.vcnv.centerQuestion) {
         if (s.vcnv.currentRow === 4 || s.vcnv.centerOpened || s.vcnv.solvedBy != null || s.vcnv.phase === "done") {
           const showCenterAns = s.vcnv.centerOpened || s.vcnv.currentRow === 4 || s.vcnv.solvedBy != null || s.vcnv.phase === "done";
+          const centerRevealed = s.vcnv.centerOpened || s.vcnv.solvedBy != null || s.vcnv.phase === "done";
           s.vcnv.centerQuestion = {
             ...s.vcnv.centerQuestion,
-            a: showCenterAns ? s.vcnv.centerQuestion.a : ""
+            a: showCenterAns ? s.vcnv.centerQuestion.a : "",
+            ...role === "player" && !centerRevealed ? { explanation: void 0, hint: void 0 } : {}
           };
+          if (role === "player" && !centerRevealed) {
+            delete s.vcnv.centerQuestion.explanation;
+            delete s.vcnv.centerQuestion.hint;
+          }
         } else {
           delete s.vcnv.centerQuestion;
         }
       }
     }
     if (s.tangToc) {
-      s.tangToc.questions = s.tangToc.questions.map((q, i) => ({
-        ...q,
-        answer: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" && s.tangToc.phase !== "question" ? q.answer : "",
-        // media only for the current question once it is shown
-        media: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.media : void 0,
-        clueImages: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.clueImages : void 0,
-        q: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.q : void 0
-      }));
+      s.tangToc.questions = s.tangToc.questions.map((q, i) => {
+        const revealed = i === s.tangToc.qIdx && s.tangToc.phase !== "idle" && s.tangToc.phase !== "question";
+        const mapped = {
+          ...q,
+          answer: revealed ? q.answer : "",
+          // media only for the current question once it is shown
+          media: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.media : void 0,
+          clueImages: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.clueImages : void 0,
+          q: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.q : void 0
+        };
+        if (role === "player" && !revealed) {
+          delete mapped.explanation;
+        }
+        return mapped;
+      });
       if (s.tangToc.phase === "question" || s.tangToc.phase === "idle") {
         if (role === "display") {
           const redacted = {};
@@ -109704,13 +110236,25 @@ var OlympiaGame = class _OlympiaGame {
             vdZone: real?.q?.vdZone
           }
         };
+        if (role === "player" && vd.phase !== "result") {
+          delete vd.current.q.explanation;
+          delete vd.current.q.hint;
+        }
       }
     }
     if (s.cauHoiPhu) {
       const cp = s.cauHoiPhu;
-      cp.questions = cp.questions.map(
-        (q, i) => i === cp.qIdx && cp.phase !== "idle" ? { ...q, a: "" } : { q: "", a: "" }
-      );
+      cp.questions = cp.questions.map((q, i) => {
+        if (i === cp.qIdx && cp.phase !== "idle") {
+          const mapped = { ...q, a: "" };
+          if (role === "player" && cp.phase !== "result") {
+            delete mapped.explanation;
+            delete mapped.hint;
+          }
+          return mapped;
+        }
+        return { q: "", a: "" };
+      });
     }
     if (s.transcript) {
       s.transcript = s.transcript.map((entry) => {
@@ -109748,7 +110292,7 @@ async function loadGame(code) {
     try {
       room = await prisma.room.findUnique({
         where: { code },
-        select: { id: true, mode: true, config: true, hostKey: true, quizBankId: true }
+        select: { id: true, name: true, mode: true, config: true, hostKey: true, quizBankId: true }
       });
     } catch {
     }
@@ -109792,10 +110336,18 @@ async function loadGame(code) {
       const preset = getPresetOlympiaBanks().find((b) => b.id === bankId);
       olympia.questionSet = preset ? preset.set : SAMPLE_QUESTION_SET;
     }
-    const game = new OlympiaGame(code, olympia);
+    const gameCfg = {
+      ...olympia,
+      name: room.name ?? olympia.name
+    };
+    const game = new OlympiaGame(code, gameCfg);
     const snap = cfg.olympiaSnapshot;
     if (snap && snap.code === code) {
       game.state = snap;
+      if (room.name) game.state.name = room.name;
+      if (!game.state.ttsSettings) {
+        game.state.ttsSettings = { enabled: gameCfg.ttsEnabled ?? true, baseRate: 1 };
+      }
       game.state.seats.forEach((s) => s.connected = false);
     }
     const entry = {
@@ -109989,7 +110541,7 @@ function registerOlympiaSocket(io2) {
     const withEntry = () => info ? games.get(info.code) ?? null : null;
     socket.on("action", (action, ack) => {
       const entry = withEntry();
-      const isDisplayAllowedAction = info?.role === "display" && (action?.type === "banner:hide" || action?.type === "banner:skip" || action?.type === "media:close" || action?.type === "studio:toggle" || action?.type === "studio:camera" || action?.type === "studio:camera:auto" || action?.type === "studio:camera:reset" || action?.type === "studio:camera:ptz" || action?.type?.startsWith("studio:camera:"));
+      const isDisplayAllowedAction = info?.role === "display" && (action?.type === "banner:hide" || action?.type === "banner:skip" || action?.type === "media:close" || action?.type === "tts:cnvRevealDone" || action?.type === "studio:toggle" || action?.type === "studio:camera" || action?.type === "studio:camera:auto" || action?.type === "studio:camera:reset" || action?.type === "studio:camera:ptz" || action?.type?.startsWith("studio:camera:"));
       if (!entry || !info || info.role !== "host" && !isDisplayAllowedAction) {
         return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
       }
@@ -110007,6 +110559,15 @@ function registerOlympiaSocket(io2) {
         }
       }
       const res = entry.game.hostAction(action, Date.now());
+      ack?.(res);
+      if (res.ok) broadcast(info.code);
+    });
+    socket.on("display:tts_done", (payload, ack) => {
+      const entry = withEntry();
+      if (!entry || !info || info.role !== "display" && info.role !== "host") {
+        return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      }
+      const res = entry.game.hostAction({ type: "tts:cnvRevealDone", seq: payload?.seq }, Date.now());
       ack?.(res);
       if (res.ok) broadcast(info.code);
     });

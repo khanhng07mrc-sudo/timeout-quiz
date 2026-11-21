@@ -1987,9 +1987,9 @@ export function renderDynamicCurvedFormulaCanvas(
     [40, 140],
     [600, 140],
     [720, 35],
-    [1940, 35],
-    [1860, 390],
-    [1940, 740],
+    [2010, 35],
+    [1930, 390],
+    [2010, 740],
   ];
 
   function computeContourOffset(pts: [number, number][], dist: number): [number, number][] {
@@ -2189,9 +2189,9 @@ export function renderDynamicCurvedFormulaCanvas(
     const slopeY = -(driftX - 1000) * slope;
     ctx.translate(driftX, driftY + slopeY);
     ctx.rotate(-Math.atan(slope) + (s.rot || 0) * 0.1);
-    ctx.transform(0.42, 0, 0.08, 1, 0, 0);
-    const scaledSize = Math.round(s.size * 0.85);
-    ctx.font = `italic 600 ${scaledSize}px "Cambria Math", "Times New Roman", "Plus Jakarta Sans", serif`;
+    ctx.transform(0.85, 0, 0.04, 1, 0, 0);
+    const scaledSize = Math.round(s.size * 1.45);
+    ctx.font = `italic 700 ${scaledSize}px "Cambria Math", "Times New Roman", "Plus Jakarta Sans", serif`;
     ctx.letterSpacing = "0.06em";
 
     // Ambient drop shadow
@@ -2972,13 +2972,13 @@ export function CentralLedWall({
     return geom;
   }, []);
 
-  // Expanded formula wall sweep angle (0.65 * Math.PI) frames all 1..8 contestant podiums
-  // cleanly blanketing the entire background behind contestant 0 with zero gap under CAM 10
-  const wallSweepAng = 0.65 * Math.PI;
+  // Expanded formula wall sweep angle (0.76 * Math.PI) frames all 1..8 contestant podiums
+  // and reaches right up to the MC entrance portal / door
+  const wallSweepAng = 0.76 * Math.PI;
   const wallStartAng = 1.05 * Math.PI;
-  // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
+  // Sweep lower base wall and horizontal neon tubes under the entire screen
   const lowerWallStartAng = 1.05 * Math.PI;
-  const lowerWallSweepAng = wallSweepAng - 0.02 * Math.PI;
+  const lowerWallSweepAng = wallSweepAng - 0.01 * Math.PI;
   const FORMULA_WALL_OFFSET_X = -0.15;
 
   // High-Priority Visual Refinement:

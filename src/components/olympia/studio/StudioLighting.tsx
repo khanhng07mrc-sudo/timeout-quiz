@@ -1135,15 +1135,16 @@ export function StudioWalls({
  */
 /**
  * Broadcast Volumetric Light Beam Cone:
- * Projects a soft, translucent light cone through the atmosphere between start and target positions.
+ * Projects a delicate, hazy, misty volumetric white beam through the atmosphere
+ * with soft vertical gradient falloff and edge attenuation (eliminating flat/solid cone edges).
  */
 function VolumetricLightBeam({
   start,
   target,
-  color = "#38bdf8",
-  opacity = 0.2,
-  radiusTop = 0.08,
-  radiusBottom = 1.0,
+  color = "#ffffff",
+  opacity = 0.045,
+  radiusTop = 0.018,
+  radiusBottom = 0.24,
 }: {
   start: [number, number, number];
   target: [number, number, number];
@@ -1165,17 +1166,54 @@ function VolumetricLightBeam({
     return { center: [c.x, c.y, c.z] as [number, number, number], quaternion: q, height: h };
   }, [start[0], start[1], start[2], target[0], target[1], target[2]]);
 
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(color) },
+        uOpacity: { value: opacity },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          vViewPosition = -mvPosition.xyz;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+
+        void main() {
+          // Soft vertical falloff: fade in from fixture, fade out before touching floor/podium
+          float vFade = smoothstep(0.0, 0.32, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
+          // Radial/Fresnel edge feathering: eliminates harsh polygon silhouette
+          vec3 normal = normalize(vNormal);
+          vec3 viewDir = normalize(vViewPosition);
+          float edgeFade = pow(clamp(abs(dot(normal, viewDir)), 0.0, 1.0), 1.5);
+          float alpha = uOpacity * vFade * edgeFade;
+          gl_FragColor = vec4(uColor, alpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    });
+  }, [color, opacity]);
+
   return (
-    <mesh position={center} quaternion={quaternion}>
-      <cylinderGeometry args={[radiusTop, radiusBottom, height, 16, 1, true]} />
-      <meshBasicMaterial
-        color={color}
-        transparent
-        opacity={opacity}
-        blending={THREE.AdditiveBlending}
-        side={THREE.DoubleSide}
-        depthWrite={false}
-      />
+    <mesh position={center} quaternion={quaternion} material={material}>
+      <cylinderGeometry args={[radiusTop, radiusBottom, height, 24, 1, true]} />
     </mesh>
   );
 }
@@ -1429,44 +1467,41 @@ export function StudioCeilingRig({
           </group>
         );
       })}
-      {/* ── CEILING STUDIO SPOTLIGHTS & VOLUMETRIC BEAMS ── */}
+      {/* ── CEILING STUDIO SPOTLIGHTS & VOLUMETRIC WHITE BEAMS (CENTER STAGE ONLY) ── */}
       {quality !== "LIGHT" ? (
         <>
           {([
-            [0,    5.5, -1.0,  0,    0,  -2.0],
-            [-2.5, 5.5, -2.0, -0.8, 0,  -3.5],
-            [ 2.5, 5.5, -2.0,  0.8, 0,  -3.5],
-            [-4.5, 5.5, -3.5, -2.0, 0.5, -5.0],
-            [ 4.5, 5.5, -3.5,  2.0, 0.5, -5.0],
-            [ 0,   5.5, -4.5,  0,   0.8, -6.0],
+            // Center Stage Laurel Wreath (floor Y = 0.05m)
+            [0, 5.8, -1.2, 0, 0.05, -0.7],
+            // Center Stage Dais (floor Y = 0.08m)
+            [0, 5.8, -2.2, 0, 0.08, -1.8],
           ] as [number,number,number,number,number,number][]).map(([px,py,pz,tx,ty,tz], i) => (
             <React.Fragment key={`ceil-light-group-${i}`}>
               <TargetedSpotLight
                 position={[px, py, pz]}
                 targetPosition={[tx, ty, tz]}
-                intensity={(isDimmed ? 2.5 : 8.5 * roundLightingTheme.intensityMultiplier) * liveFactor}
+                intensity={(isDimmed ? 1.8 : 5.5 * roundLightingTheme.intensityMultiplier) * liveFactor}
                 color={roundLightingTheme.spotColor}
-                angle={0.48}
-                penumbra={0.65}
-                distance={16}
+                angle={0.35}
+                penumbra={0.7}
+                distance={14}
                 decay={1.2}
                 castShadow={false}
               />
               <VolumetricLightBeam
                 start={[px, py, pz]}
                 target={[tx, ty, tz]}
-                color={roundLightingTheme.beamColor}
-                opacity={isDimmed ? 0.06 : 0.22 * liveFactor}
-                radiusTop={0.08}
-                radiusBottom={1.15}
+                color="#ffffff"
+                opacity={isDimmed ? 0.02 : 0.045 * liveFactor}
+                radiusTop={0.018}
+                radiusBottom={0.25}
               />
             </React.Fragment>
           ))}
         </>
       ) : (
         <>
-          <TargetedSpotLight position={[0, 5.5, -2.0]} targetPosition={[0, 0, -3.5]} intensity={(isDimmed ? 1.8 : 6.0) * liveFactor} color={roundLightingTheme.spotColor} angle={0.6} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
-          <TargetedSpotLight position={[0, 5.5, -4.0]} targetPosition={[0, 0, -5.5]} intensity={(isDimmed ? 1.8 : 5.5) * liveFactor} color={roundLightingTheme.spotColor} angle={0.55} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
+          <TargetedSpotLight position={[0, 5.5, -2.0]} targetPosition={[0, 0, -1.5]} intensity={(isDimmed ? 1.8 : 5.0) * liveFactor} color={roundLightingTheme.spotColor} angle={0.45} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
         </>
       )}
     </group>
@@ -3384,15 +3419,15 @@ function KhoiDongBulbFixture({
         castShadow={false}
       />
 
-      {/* 4. Volumetric Light Beam Cone from ceiling bulb down to podium */}
+      {/* 4. Subtle Volumetric Light Beam Cone from ceiling bulb down to podium */}
       {isKD && (
         <VolumetricLightBeam
           start={[0, 0, 0]}
           target={localTarget}
-          color="#38bdf8"
-          opacity={0.22}
-          radiusTop={0.065}
-          radiusBottom={0.85}
+          color="#ffffff"
+          opacity={0.045}
+          radiusTop={0.018}
+          radiusBottom={0.24}
         />
       )}
     </group>

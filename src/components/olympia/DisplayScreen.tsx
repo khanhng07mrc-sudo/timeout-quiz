@@ -1395,9 +1395,10 @@ function Podium({ state }: { state: OlympiaState }) {
 
 function autoQuestionFontSize(text: string) {
   const len = text ? text.length : 0;
-  if (len <= 45) return "text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-relaxed font-black";
-  if (len <= 85) return "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed font-black";
-  if (len <= 140) return "text-base sm:text-lg md:text-xl lg:text-2xl leading-normal font-extrabold";
+  // Fixed standard broadcast font size across normal questions (<= 200 chars)
+  if (len <= 200) return "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed font-black";
+  // Auto-shrink for long questions to prevent overflow
+  if (len <= 320) return "text-base sm:text-lg md:text-xl lg:text-2xl leading-normal font-extrabold";
   return "text-sm sm:text-base md:text-lg lg:text-xl leading-normal font-bold";
 }
 

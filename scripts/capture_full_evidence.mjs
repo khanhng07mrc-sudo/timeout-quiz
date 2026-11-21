@@ -186,8 +186,50 @@ async function main() {
   await displayPage.screenshot({ path: p3, fullPage: false });
   console.log(`  -> Captured: ${p3}`);
 
+  // Start Khởi Động turn and reveal Question 1 for Graphics Lower-Third verification
+  console.log("\n[7/10] Starting Khởi Động turn & revealing question for Lower-Third typography...");
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const startKd = btns.find((b) => (b.innerText || "").toUpperCase().includes("BẮT ĐẦU"));
+    if (startKd) startKd.click();
+  });
+  await sleep(1500);
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const nextQ = btns.find((b) => (b.innerText || "").toUpperCase().includes("CÂU TIẾP"));
+    if (nextQ) nextQ.click();
+  });
+  await sleep(2500);
+
+  // Capture Screenshot 8: Classic Theme Lower-Third & Fixed Font Size
+  const p8 = path.join(EVIDENCE_DIR, "08_classic_theme_lower_third_and_fixed_font.png");
+  await displayPage.screenshot({ path: p8, fullPage: false });
+  console.log(`  -> Captured: ${p8}`);
+
+  // Switch to V3 Arrow Theme on Host Console
+  console.log("  -> Switching to V3 Arrow Theme...");
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const themeBtn = btns.find((b) => (b.innerText || "").includes("Theme:") || (b.innerText || "").includes("Cổ Điển") || (b.innerText || "").includes("Mũi Tên"));
+    if (themeBtn) themeBtn.click();
+  });
+  await sleep(2000);
+
+  // Capture Screenshot 9: V3 Arrow Theme Lower-Third & Fixed Font Size
+  const p9 = path.join(EVIDENCE_DIR, "09_arrow_theme_lower_third_and_fixed_font.png");
+  await displayPage.screenshot({ path: p9, fullPage: false });
+  console.log(`  -> Captured: ${p9}`);
+
+  // Switch back to Classic Theme
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const themeBtn = btns.find((b) => (b.innerText || "").includes("Theme:") || (b.innerText || "").includes("Cổ Điển") || (b.innerText || "").includes("Mũi Tên"));
+    if (themeBtn) themeBtn.click();
+  });
+  await sleep(1000);
+
   // CAM 3 Close-up on MC
-  console.log("\n[7/8] Switching Display to CAM 3 for Anatomical Mouth Visemes...");
+  console.log("\n[8/10] Switching Display to CAM 3 for Anatomical Mouth Visemes...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const camBtn = btns.find(

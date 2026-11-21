@@ -549,14 +549,22 @@ export function BroadcastRoundIntroOverlay({
 }
 
 /**
- * Auto font-size clamp for question text to prevent overflow in fixed box (Broadcast TV Standards)
- * Eliminates text-[11px] and text-xs completely.
+ * Fixed standard broadcast question font-size with auto-shrink fallback for very long questions.
+ * Guarantees uniform text size across all normal questions (<= 200 chars), smoothly stepping down
+ * only when length threatens to overflow graphics boundaries.
  */
 export function clampQuestionFont(text: string) {
   const len = text ? text.length : 0;
-  if (len <= 70) return "text-2xl sm:text-3xl md:text-[34px] lg:text-[36px] xl:text-[44px] 2xl:text-[48px] font-black leading-tight";
-  if (len <= 140) return "text-xl sm:text-2xl md:text-[28px] lg:text-[30px] xl:text-[36px] 2xl:text-[40px] font-black leading-snug";
-  return "text-lg sm:text-xl md:text-[22px] lg:text-[24px] xl:text-[30px] 2xl:text-[34px] font-bold leading-normal";
+  // Fixed standard broadcast question font size for all normal questions
+  if (len <= 200) {
+    return "text-xl sm:text-2xl md:text-[27px] lg:text-[29px] xl:text-[31px] 2xl:text-[33px] font-black leading-snug";
+  }
+  // Auto-shrink when question is very long to prevent overflowing graphics
+  if (len <= 320) {
+    return "text-lg sm:text-xl md:text-[22px] lg:text-[24px] xl:text-[26px] 2xl:text-[28px] font-extrabold leading-normal";
+  }
+  // Safe minimal broadcast floor for extreme essay-length questions
+  return "text-base sm:text-lg md:text-[19px] lg:text-[21px] xl:text-[22px] 2xl:text-[24px] font-bold leading-normal";
 }
 
 /**
@@ -987,7 +995,7 @@ export function Vtv3ChalkboardQuestionFrame({
         )}
 
         {/* Center: Question Prompt Text (Top-Left Aligned Broadcast Standard) */}
-        <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3 sm:py-4 flex flex-col items-start justify-start text-left">
+        <div className="relative z-10 flex-1 px-4 sm:px-6 md:px-7 py-2 sm:py-2.5 flex flex-col items-start justify-start text-left">
           {questionText ? (
             <div
               className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${clampQuestionFont(
@@ -1761,13 +1769,13 @@ export function ClassicUnifiedLowerThird({
         <div className="absolute bottom-2 left-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
         <div className="absolute bottom-2 right-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
 
-        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges (Strict 3-Zone Fixed-Dimension Layout) ── */}
-        <div className="relative z-20 w-full h-[46px] sm:h-[50px] min-h-[46px] sm:min-h-[50px] max-h-[50px] bg-black/60 border-b border-amber-500/35 px-2.5 sm:px-4 py-1 flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
-          {/* 1. Left Zone: Round / Question Status Badge (Fixed Width) */}
-          <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-start gap-1.5 overflow-hidden">
+        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges (Optimized Padding & Cell Area) ── */}
+        <div className="relative z-20 w-full h-[46px] sm:h-[50px] min-h-[46px] sm:min-h-[50px] max-h-[50px] bg-black/60 border-b border-amber-500/35 px-2 sm:px-3 py-1 flex items-center justify-between gap-1 sm:gap-1.5 flex-nowrap">
+          {/* 1. Left Zone: Round / Question Status Badge (Compact Width) */}
+          <div className="w-[100px] sm:w-[115px] shrink-0 flex items-center justify-start gap-1 overflow-hidden">
             <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
             {badgeLabel ? (
-              <div className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm max-w-[110px] sm:max-w-[125px] overflow-hidden">
+              <div className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm max-w-[85px] sm:max-w-[100px] overflow-hidden">
                 <BoundedText text={badgeLabel} align="center" />
               </div>
             ) : null}
@@ -1788,7 +1796,7 @@ export function ClassicUnifiedLowerThird({
               return (
                 <div
                   key={seat.id}
-                  className={`h-[36px] sm:h-[40px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
+                  className={`h-[36px] sm:h-[40px] flex items-center justify-between gap-1 px-2 py-0.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
                     isBuzzed
                       ? "ring-2 ring-red-500 bg-red-950/95 border border-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.95)] animate-pulse"
                       : isTurn
@@ -1821,8 +1829,8 @@ export function ClassicUnifiedLowerThird({
             })}
           </div>
 
-          {/* 3. Right Zone: Seconds Badge (Fixed Width) */}
-          <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-end gap-1.5">
+          {/* 3. Right Zone: Seconds Badge (Compact Width) */}
+          <div className="w-[100px] sm:w-[115px] shrink-0 flex items-center justify-end gap-1">
             {timerBadge && (
               <div className="shrink-0">
                 <EconovaSecondsBadge timer={timerBadge} serverNow={serverNow} />
@@ -1832,7 +1840,7 @@ export function ClassicUnifiedLowerThird({
         </div>
 
         {/* ── LOWER CHAMBER: Fixed Broadcast Height, Top-Left Aligned Question or Integrated Shutter Answer Reveal ── */}
-        <div className={`relative z-10 w-full flex-1 min-h-0 px-5 sm:px-8 md:px-12 py-3 sm:py-4 flex flex-col items-start justify-start text-left overflow-y-auto ${
+        <div className={`relative z-10 w-full flex-1 min-h-0 px-4 sm:px-6 md:px-7 py-2 sm:py-2.5 flex flex-col items-start justify-start text-left overflow-y-auto ${
           isFullscreen
             ? "min-h-[180px] sm:min-h-[220px] md:min-h-[260px] max-h-[400px]"
             : "min-h-[140px] sm:min-h-[155px] md:min-h-[175px] max-h-[210px]"
@@ -2365,7 +2373,7 @@ export function VcnvCountdownGraphic({
             !isV3Arrow
               ? "border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.25)] bg-gradient-to-br from-[#1e222a] via-[#15181f] to-[#0d0f14]"
               : "border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-gradient-to-br from-[#071a3d] via-[#05132d] to-[#030c1d]"
-          } flex flex-col justify-between p-2.5 sm:p-3.5 md:p-4`}
+          } flex flex-col justify-between p-2 sm:p-2.5 md:p-3`}
         >
           {/* Header Badge: CHƯỚNG NGẠI VẬT CÓ X CHỮ CÁI */}
           <div className="flex items-center justify-center w-full pb-1.5 shrink-0">
@@ -2493,7 +2501,7 @@ export function VcnvCountdownGraphic({
           } flex flex-col justify-between`}
         >
           {/* Question Text Body (Top-Left Aligned) / Done Celebration */}
-          <div className="flex-1 min-h-0 flex flex-col items-start justify-start px-5 sm:px-7 pt-5 sm:pt-6 pb-8 text-left overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col items-start justify-start px-4 sm:px-5 pt-3 sm:pt-4 pb-4 text-left overflow-hidden">
             {v.phase === "selecting" || v.phase === "grid" || curIdx < 0 ? null : v.phase === "done" ? (
               <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2 animate-fade-in">
                 <div className="px-4 py-1 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
@@ -2513,13 +2521,11 @@ export function VcnvCountdownGraphic({
             ) : (
               <p
                 className={`w-full font-bold text-white select-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.92)] tracking-wide ${
-                  (questionHint || "").length > 210
-                    ? "text-[15px] sm:text-[17px] md:text-[19px] lg:text-[21px] xl:text-[23px] 2xl:text-[26px] leading-[1.36]"
-                    : (questionHint || "").length > 140
-                    ? "text-[17px] sm:text-[19px] md:text-[22px] lg:text-[24px] xl:text-[27px] 2xl:text-[30px] leading-[1.36]"
-                    : (questionHint || "").length > 85
-                    ? "text-[19px] sm:text-[22px] md:text-[25px] lg:text-[28px] xl:text-[31px] 2xl:text-[35px] leading-[1.38]"
-                    : "text-[22px] sm:text-[25px] md:text-[28px] lg:text-[32px] xl:text-[36px] 2xl:text-[42px] leading-[1.38]"
+                  (questionHint || "").length > 260
+                    ? "text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] leading-[1.36]"
+                    : (questionHint || "").length > 170
+                    ? "text-[18px] sm:text-[21px] md:text-[23px] lg:text-[25px] leading-[1.36]"
+                    : "text-[21px] sm:text-[24px] md:text-[27px] lg:text-[30px] xl:text-[33px] leading-[1.38]"
                 }`}
               >
                 {questionHint || ""}
@@ -3734,13 +3740,13 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                 transformStyle: "preserve-3d",
                 filter: isDimmed ? "brightness(0.5) contrast(0.85)" : "none",
               }}
-              className="relative flex items-center w-full h-16 sm:h-20 md:h-[82px] my-1 px-2 select-none"
+              className="relative flex items-center w-full h-16 sm:h-20 md:h-[82px] my-1 px-1 select-none"
             >
               <div className="absolute left-4 z-30">
                 <RedConnectionRivet />
               </div>
               <div
-                className="w-full rounded-full h-full pl-12 pr-8 flex items-center justify-between shadow-2xl relative overflow-hidden transition-all duration-500 ease-in-out"
+                className="w-full rounded-full h-full pl-10 pr-5 flex items-center justify-between shadow-2xl relative overflow-hidden transition-all duration-500 ease-in-out"
                 style={{
                   background: isHighlighted
                     ? "linear-gradient(180deg, #064e3b 0%, #022c22 100%)"
@@ -4155,7 +4161,7 @@ export function Vtv3ClassicSummaryGraphic({
       <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center">
         <HorizontalBrassRod />
         <div
-          className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl p-4 sm:p-6 md:p-8"
+          className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl p-3 sm:p-4 md:p-5"
           style={{
             background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
             border: "3.5px solid #d4af37",
@@ -5106,14 +5112,13 @@ export function EconovaLowerThirdV3({
     : 0;
 
   const strLen = typeof questionText === "string" ? questionText.length : 60;
+  // Fixed standard broadcast font size across normal questions (<= 200 chars)
   const fontSizeClass =
-    strLen > 220
-      ? "text-[18px] sm:text-[19px] md:text-[20px] leading-normal font-bold"
-      : strLen > 140
-      ? "text-[21px] sm:text-[22px] md:text-[23px] leading-snug font-extrabold"
-      : strLen > 75
-      ? "text-[24px] sm:text-[26px] md:text-[27px] leading-snug font-black"
-      : "text-[28px] sm:text-[31px] md:text-[33px] leading-snug font-black";
+    strLen > 300
+      ? "text-[17px] sm:text-[18px] md:text-[19px] leading-normal font-bold"
+      : strLen > 200
+      ? "text-[20px] sm:text-[21px] md:text-[22px] leading-snug font-extrabold"
+      : "text-[24px] sm:text-[26px] md:text-[28px] leading-snug font-black";
 
   const timerH = 22;
   const qTop = showScoreTab ? 48 : 16;

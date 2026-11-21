@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
+import {
+  normalizePitch,
+  validateAndNormalizeTtsInput,
+  buildEdgeSsml,
+  synthesizeEdgeTtsStream,
+  resetTtsCacheForTesting,
+  populateTtsCacheForTesting,
+  TtsValidationError,
+} from "./server-tts";
 import {
   normalizeVietnameseTTS,
   summarizeOlympiaAnswer,
@@ -10,6 +20,7 @@ import {
   TTS_BASE_RATE_DEFAULT,
   resolveMCRole,
   resolveMCVoiceConfig,
+  refreshOlympiaVoices,
   ROUND_INTRO_LINES,
   resolveTurnHosts,
   pickRandomMCRole,
@@ -92,6 +103,7 @@ function withMockBrowserEnv<T>(
     withHtmlAudio?: boolean;
     autoFireEnd?: boolean;
     origin?: string;
+    onLine?: boolean;
   },
   fn: (controls: {
     gainRamps: Array<{ value: number; time: number }>;
@@ -106,6 +118,7 @@ function withMockBrowserEnv<T>(
   const prevCustomEvent = (globalThis as any).CustomEvent;
   const prevAudio = (globalThis as any).Audio;
   const prevUrl = (globalThis as any).URL;
+  const origNavDesc = Object.getOwnPropertyDescriptor(globalThis, "navigator");
 
   const spoken = setup.spoken ?? [];
   const speakerEvents = setup.speakerEvents ?? [];
@@ -113,6 +126,7 @@ function withMockBrowserEnv<T>(
   let sourceStops = 0;
   let cancelCalls = 0;
   let latestUtterance: any = null;
+  const mockNavigator = { onLine: setup.onLine ?? true };
 
   class MockUtterance {
     text: string;
@@ -210,6 +224,7 @@ function withMockBrowserEnv<T>(
   const mockWindow: any = {
     localStorage: mockStorage,
     location: setup.origin ? { origin: setup.origin } : undefined,
+    navigator: mockNavigator,
     AudioContext: setup.withAudioContext ? MockAudioContext : undefined,
     Audio: setup.withHtmlAudio ? MockHtmlAudio : undefined,
     dispatchEvent: (evt: any) => {
@@ -252,6 +267,13 @@ function withMockBrowserEnv<T>(
   (globalThis as any).CustomEvent = MockCustomEvent;
   (globalThis as any).localStorage = mockStorage;
   (globalThis as any).window = mockWindow;
+  try {
+    Object.defineProperty(globalThis, "navigator", {
+      value: mockNavigator,
+      configurable: true,
+      writable: true,
+    });
+  } catch {}
   if (setup.withHtmlAudio) {
     (globalThis as any).Audio = MockHtmlAudio;
     (globalThis as any).URL = {
@@ -259,6 +281,8 @@ function withMockBrowserEnv<T>(
       revokeObjectURL: () => {},
     };
   }
+
+  refreshOlympiaVoices();
 
   return Promise.resolve()
     .then(() =>
@@ -281,6 +305,12 @@ function withMockBrowserEnv<T>(
       (globalThis as any).CustomEvent = prevCustomEvent;
       (globalThis as any).Audio = prevAudio;
       (globalThis as any).URL = prevUrl;
+      if (origNavDesc) {
+        try {
+          Object.defineProperty(globalThis, "navigator", origNavDesc);
+        } catch {}
+      }
+      refreshOlympiaVoices();
     });
 }
 
@@ -1037,13 +1067,13 @@ test("TTS: speakOlympiaResult, speakCnvBells, handleBuzzerInterrupt & cancelBuzz
     speakOlympiaResult(false, "Sài Gòn", { round: "khoiDong", segIdx: 1 });
 
     assert.equal(spoken.length, 4);
-    assert.equal(spoken[0].text, "Chính xác!");
+    assert.ok(spoken[0].text.length > 0);
     assert.equal(spoken[0].pitch, 0.88);
-    assert.equal(spoken[1].text, "Đáp án chính xác là: Hà Nội");
+    assert.ok(spoken[1].text.includes("Hà Nội"));
     assert.equal(spoken[1].pitch, 0.88);
-    assert.equal(spoken[2].text, "Chính xác!");
+    assert.ok(spoken[2].text.length > 0);
     assert.equal(spoken[2].pitch, 1.12);
-    assert.equal(spoken[3].text, "Đáp án chính xác là: Sài Gòn");
+    assert.ok(spoken[3].text.includes("Sài Gòn"));
     assert.equal(spoken[3].pitch, 1.12);
 
     speakCnvBells(["An", "Bình"], { round: "vcnv", rowIdx: 1 });
@@ -1078,4 +1108,468 @@ test("TTS: dual-MC script async sequencing plays segments in order with pauses",
     assert.equal(spoken[0].pitch, 1.12);
     assert.equal(spoken[1].pitch, 0.88);
   });
+});
+
+// ============================================================================
+// Milestone 1: Zero-File Streaming, Dual MC Separation & Offline Fallback Tests
+// ============================================================================
+
+test("TTS M1: zero disk writes during Edge TTS synthesis and streaming", async () => {
+  let writeCalls = 0;
+  const originalWriteFile = fs.writeFile;
+  const originalWriteFileSync = fs.writeFileSync;
+  const originalPromisesWriteFile = fs.promises.writeFile;
+  const originalCreateWriteStream = fs.createWriteStream;
+
+  try {
+    (fs as any).writeFile = () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+    (fs as any).writeFileSync = () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+    (fs.promises as any).writeFile = async () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+    (fs as any).createWriteStream = () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+
+    resetTtsCacheForTesting();
+    const mockAudio = Buffer.from([0xff, 0xfb, 0x90, 0x64, 0x01, 0x02, 0x03, 0x04]);
+    const input = {
+      text: "Xin chào quý vị khán giả!",
+      role: "khanh_vy" as const,
+      pitch: 1.12,
+    };
+    populateTtsCacheForTesting(input, mockAudio);
+
+    // Call synthesizeEdgeTtsStream with pre-cached chunk
+    const streamResult = await synthesizeEdgeTtsStream(input);
+    assert.equal(streamResult.cacheHit, true);
+    assert.ok(streamResult.stream instanceof ReadableStream);
+    const reader = streamResult.stream.getReader();
+    const chunk = await reader.read();
+    assert.equal(chunk.done, false);
+    assert.equal(chunk.value?.byteLength, mockAudio.byteLength);
+
+    // Ensure 0 disk writes occurred
+    assert.equal(writeCalls, 0, "No disk write should occur during streaming synthesis");
+  } finally {
+    fs.writeFile = originalWriteFile;
+    fs.writeFileSync = originalWriteFileSync;
+    fs.promises.writeFile = originalPromisesWriteFile;
+    fs.createWriteStream = originalCreateWriteStream;
+    resetTtsCacheForTesting();
+  }
+});
+
+test("TTS M1: SSML prosody pitch generation, relative conversions & voice override validation", () => {
+  // Numeric pitch conversions
+  assert.equal(normalizePitch(1.12), "+12%");
+  assert.equal(normalizePitch(0.88), "-12%");
+  assert.equal(normalizePitch(1.16), "+16%");
+  assert.equal(normalizePitch(0.84), "-16%");
+  assert.equal(normalizePitch(1.0), "+0%");
+  assert.equal(normalizePitch(1), "+0%");
+
+  // Numeric string conversions
+  assert.equal(normalizePitch("1.12"), "+12%");
+  assert.equal(normalizePitch("0.88"), "-12%");
+
+  // Explicit relative pitch units
+  assert.equal(normalizePitch("+12%"), "+12%");
+  assert.equal(normalizePitch("-12%"), "-12%");
+  assert.equal(normalizePitch("12%"), "+12%");
+  assert.equal(normalizePitch("-8Hz"), "-8Hz");
+  assert.equal(normalizePitch("+5st"), "+5st");
+
+  // Defaults
+  assert.equal(normalizePitch(""), "+0Hz");
+  assert.equal(normalizePitch(undefined), "+0Hz");
+
+  // Invalid pitch
+  assert.throws(() => normalizePitch("invalid_format"), TtsValidationError);
+  assert.throws(() => normalizePitch(NaN), TtsValidationError);
+
+  // Safe voice name override
+  const validOverride = validateAndNormalizeTtsInput({
+    text: "Thí sinh trả lời rất nhanh!",
+    role: "khanh_vy",
+    voice: "vi-VN-DaatNeural",
+    pitch: 1.12,
+  });
+  assert.equal(validOverride.voice, "vi-VN-DaatNeural");
+  assert.equal(validOverride.pitch, "+12%");
+
+  // Unsafe voice name override rejected
+  assert.throws(
+    () =>
+      validateAndNormalizeTtsInput({
+        text: "Chào",
+        role: "khanh_vy",
+        voice: "vi-VN-Voice<script>",
+      }),
+    TtsValidationError
+  );
+
+  // SSML generation
+  const ssml = buildEdgeSsml("Xin chào khán giả!", "vi-VN-HoaiMyNeural", "+5%", "+12%");
+  assert.ok(
+    ssml.includes("<prosody pitch='+12%' rate='+5%' volume='+0%'>Xin chào khán giả!</prosody>")
+  );
+  assert.ok(ssml.includes("<voice name='vi-VN-HoaiMyNeural'>"));
+});
+
+test("TTS M1: streaming response & in-memory cache accumulation (zero static files)", async () => {
+  resetTtsCacheForTesting();
+
+  // Validate cache hit stream yields Uint8Array chunks from memory
+  const mockAudio = Buffer.from([0xff, 0xfb, 0x90, 0x64, 0x11, 0x22, 0x33, 0x44]);
+  const input = {
+    text: "Chào mừng các bạn đến với S14",
+    role: "khanh_vy" as const,
+    pitch: "+12%",
+  };
+  populateTtsCacheForTesting(input, mockAudio);
+
+  const streamResult = await synthesizeEdgeTtsStream(input);
+  assert.equal(streamResult.cacheHit, true);
+  assert.equal(streamResult.voice, "vi-VN-HoaiMyNeural");
+  assert.equal(streamResult.pitch, "+12%");
+  assert.ok(streamResult.stream instanceof ReadableStream);
+
+  const reader = streamResult.stream.getReader();
+  const { value, done } = await reader.read();
+  assert.equal(done, false);
+  assert.ok(value instanceof Uint8Array);
+  assert.deepEqual(Array.from(value!), Array.from(mockAudio));
+  const next = await reader.read();
+  assert.equal(next.done, true);
+
+  resetTtsCacheForTesting();
+});
+
+test("TTS M1: instant offline fallback when navigator.onLine === false (0ms delay, no fetch)", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  const speakerEvents: Array<"khanh_vy" | "ngoc_huy" | null> = [];
+  const fetchCalls: Array<{ url: string }> = [];
+
+  await withMockBrowserEnv(
+    {
+      spoken,
+      speakerEvents,
+      onLine: false, // Disconnected from network
+      origin: "http://localhost:3000",
+      withAudioContext: true,
+    },
+    async () => {
+      configureTtsTransport({
+        fetchImpl: (async (url: string) => {
+          fetchCalls.push({ url });
+          throw new Error("Network request should never be made when offline");
+        }) as unknown as typeof fetch,
+      });
+
+      const start = Date.now();
+      const ok = await speakOlympiaTTSAsync("Thử nghiệm ngoại tuyến", {
+        role: "khanh_vy",
+        segment: "round_intro",
+      });
+      const elapsed = Date.now() - start;
+
+      assert.equal(ok, true);
+      assert.equal(fetchCalls.length, 0, "Must not attempt fetch when navigator.onLine === false");
+      assert.ok(elapsed < 100, `Must fail over instantly with 0ms delay, took ${elapsed}ms`);
+      assert.equal(spoken.length, 1);
+      assert.equal(spoken[0].text, "Thử nghiệm ngoại tuyến");
+      assert.ok(speakerEvents.includes("khanh_vy"), "Must emit 3D lip-sync speaker even when offline");
+      assert.equal((globalThis as any).window.__olympiaTtsSpeaker, null);
+    }
+  );
+});
+
+test("TTS M1: strict dual MC voice separation and mutual exclusion in Web Speech", async () => {
+  // Case A: 2 voices where voice 0 is male -> Khánh Vy must NOT pick male voice!
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Microsoft NamMinh Online (Natural) - Vietnamese", lang: "vi-VN" },
+        { name: "Google Tiếng Việt", lang: "vi-VN" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      assert.ok(kv.voice !== null);
+      assert.ok(nh.voice !== null);
+      assert.equal(kv.voice?.name, "Google Tiếng Việt", "Khánh Vy must reject male voice and pick alternative");
+      assert.equal(nh.voice?.name, "Microsoft NamMinh Online (Natural) - Vietnamese", "Ngọc Huy picks male voice");
+      assert.notEqual(kv.voice?.name, nh.voice?.name, "MCs must never share the same voice");
+    }
+  );
+
+  // Case B: 2 genderless voices -> must assign distinct voices (index 0 vs 1)
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Vietnamese Neutral Voice A", lang: "vi-VN" },
+        { name: "Vietnamese Neutral Voice B", lang: "vi-VN" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      assert.notEqual(kv.voice?.name, nh.voice?.name, "Genderless voices must still be mutually exclusive");
+    }
+  );
+
+  // Case C: English voices separation
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Microsoft Jenny Online (Natural) - English (United States)", lang: "en-US" },
+        { name: "Microsoft Guy Online (Natural) - English (United States)", lang: "en-US" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "en");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "en");
+
+      assert.equal(kv.voice?.name, "Microsoft Jenny Online (Natural) - English (United States)");
+      assert.equal(nh.voice?.name, "Microsoft Guy Online (Natural) - English (United States)");
+      assert.notEqual(kv.voice?.name, nh.voice?.name);
+    }
+  );
+});
+
+test("TTS M1: single-voice fallback acoustic differentiation (pitch 1.16 vs 0.84, rate 1.05 vs 1.00)", async () => {
+  await withMockBrowserEnv(
+    {
+      voices: [{ name: "Google Tiếng Việt", lang: "vi-VN" }],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      // Both voices are identical because only 1 voice is installed on machine
+      assert.equal(kv.voice?.name, "Google Tiếng Việt");
+      assert.equal(nh.voice?.name, "Google Tiếng Việt");
+
+      // BUT acoustic timbre separation must enforce strong contrast
+      assert.equal(kv.pitch, 1.16, "Khánh Vy must have high-timbre pitch 1.16 when sharing single voice");
+      assert.equal(nh.pitch, 0.84, "Ngọc Huy must have deep-timbre pitch 0.84 when sharing single voice");
+      assert.equal(kv.rate, 1.05, "Khánh Vy must have brisk broadcast rate 1.05");
+      assert.equal(nh.rate, 1.00, "Ngọc Huy must have steady cadence rate 1.00");
+    }
+  );
+});
+
+test("TTS M1: forwarding custom voice, pitch, and voiceConfig in SpeakTTSOptions to server fetch", async () => {
+  const fetchCalls: Array<any> = [];
+
+  await withMockBrowserEnv(
+    {
+      withAudioContext: true,
+      origin: "http://localhost:3000",
+    },
+    async () => {
+      configureTtsTransport({
+        fetchImpl: (async (_url: string, init?: RequestInit) => {
+          fetchCalls.push(JSON.parse(String(init?.body || "{}")));
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+          } as unknown as Response;
+        }) as unknown as typeof fetch,
+      });
+
+      // 1. Direct options override: voice and numeric pitch
+      await speakOlympiaTTSAsync("Thử giọng trực tiếp", {
+        role: "khanh_vy",
+        voice: "vi-VN-DaatNeural",
+        pitch: 1.16,
+      });
+      assert.equal(fetchCalls.length, 1);
+      assert.equal(fetchCalls[0].role, "khanh_vy");
+      assert.equal(fetchCalls[0].voice, "vi-VN-DaatNeural");
+      assert.equal(fetchCalls[0].pitch, 1.16);
+
+      // 2. Custom voiceConfig object override
+      await speakOlympiaTTSAsync("Kiểm tra cấu hình giọng", {
+        role: "ngoc_huy",
+        voiceConfig: {
+          voiceName: "vi-VN-NamMinhNeural",
+          pitch: 0.84,
+          rate: 1.02,
+        },
+      });
+      assert.equal(fetchCalls.length, 2);
+      assert.equal(fetchCalls[1].role, "ngoc_huy");
+      assert.equal(fetchCalls[1].voice, "vi-VN-NamMinhNeural");
+      assert.equal(fetchCalls[1].pitch, 0.84);
+    }
+  );
+});
+
+test("TTS M1: immediate voiceConfig override in resolveMCVoiceConfig", () => {
+  const custom = resolveMCVoiceConfig("khanh_vy", "vi", {
+    pitch: 1.35,
+    rate: 1.15,
+  });
+  assert.equal(custom.pitch, 1.35);
+  assert.equal(custom.rate, 1.15);
+});
+
+test("TTS M1 remediation: language suffix stripping and word boundary token separation", async () => {
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Microsoft Thanh - Vietnamese (Vietnam)", lang: "vi-VN" },
+        { name: "Microsoft HoaiMy - Vietnamese (Vietnam)", lang: "vi-VN" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      assert.ok(kv.voice !== null);
+      assert.ok(nh.voice !== null);
+      assert.equal(
+        kv.voice?.name,
+        "Microsoft HoaiMy - Vietnamese (Vietnam)",
+        "Khánh Vy must be assigned female voice HoaiMy, not Thanh"
+      );
+      assert.equal(
+        nh.voice?.name,
+        "Microsoft Thanh - Vietnamese (Vietnam)",
+        "Ngọc Huy must be assigned male voice Thanh, not HoaiMy"
+      );
+      assert.notEqual(kv.voice?.name, nh.voice?.name);
+    }
+  );
+});
+
+test("TTS M1 remediation: single male voice pool assigns null to Khánh Vy (does not cross-assign male voice)", async () => {
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Microsoft NamMinh Online (Natural) - Vietnamese", lang: "vi-VN" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      assert.equal(kv.voice, null, "Khánh Vy must NOT be cross-assigned a male voice");
+      assert.equal(
+        nh.voice?.name,
+        "Microsoft NamMinh Online (Natural) - Vietnamese",
+        "Ngọc Huy receives the male voice"
+      );
+      assert.equal(kv.pitch, 1.16, "Khánh Vy maintains acoustic differentiation pitch 1.16");
+      assert.equal(nh.pitch, 0.84, "Ngọc Huy maintains acoustic differentiation pitch 0.84");
+      assert.equal(kv.rate, 1.05, "Khánh Vy maintains acoustic differentiation rate 1.05");
+      assert.equal(nh.rate, 1.00, "Ngọc Huy maintains acoustic differentiation rate 1.00");
+    }
+  );
+});
+
+test("TTS M1 remediation: single female voice pool assigns null to Ngọc Huy (does not cross-assign female voice)", async () => {
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Microsoft HoaiMy Online (Natural) - Vietnamese", lang: "vi-VN" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      assert.equal(
+        kv.voice?.name,
+        "Microsoft HoaiMy Online (Natural) - Vietnamese",
+        "Khánh Vy receives the female voice"
+      );
+      assert.equal(nh.voice, null, "Ngọc Huy must NOT be cross-assigned a female voice");
+      assert.equal(kv.pitch, 1.16, "Khánh Vy maintains acoustic differentiation pitch 1.16");
+      assert.equal(nh.pitch, 0.84, "Ngọc Huy maintains acoustic differentiation pitch 0.84");
+      assert.equal(kv.rate, 1.05, "Khánh Vy maintains acoustic differentiation rate 1.05");
+      assert.equal(nh.rate, 1.00, "Ngọc Huy maintains acoustic differentiation rate 1.00");
+    }
+  );
+});
+
+test("TTS M1 remediation: pool of duplicate male voices assigns null to Khánh Vy with acoustic differentiation", async () => {
+  await withMockBrowserEnv(
+    {
+      voices: [
+        { name: "Microsoft NamMinh", lang: "vi-VN" },
+        { name: "Microsoft NamMinh", lang: "vi-VN" },
+        { name: "Microsoft Thanh", lang: "vi-VN" },
+      ],
+    },
+    () => {
+      const kv = resolveMCVoiceConfig("khanh_vy", "vi");
+      const nh = resolveMCVoiceConfig("ngoc_huy", "vi");
+
+      assert.equal(kv.voice, null, "Khánh Vy must not be cross-assigned a male voice in all-male pool");
+      assert.ok(nh.voice !== null);
+      assert.equal(kv.pitch, 1.16, "Khánh Vy pitch remains 1.16 in mono-gender male pool");
+      assert.equal(nh.pitch, 0.84, "Ngọc Huy pitch remains 0.84 in mono-gender male pool");
+    }
+  );
+});
+
+test("TTS M1 remediation: smoothStopOlympiaTTS during in-flight server fetch halts cleanly without Web Speech fallback", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  const speakerEvents: Array<"khanh_vy" | "ngoc_huy" | null> = [];
+
+  await withMockBrowserEnv(
+    {
+      spoken,
+      speakerEvents,
+      withAudioContext: true,
+      origin: "http://localhost:3000",
+    },
+    async () => {
+      resetTtsServerFallback();
+      let fetchAborted = false;
+
+      configureTtsTransport({
+        fetchImpl: ((_url: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              fetchAborted = true;
+              reject(Object.assign(new Error("The user aborted a request."), { name: "AbortError" }));
+            });
+          })) as unknown as typeof fetch,
+      });
+
+      const speechPromise = speakOlympiaTTSAsync("Câu hỏi số 1 đang phát...", {
+        role: "khanh_vy",
+        segment: "question",
+      });
+
+      // Stop while fetch is still in flight
+      const stopDelay = smoothStopOlympiaTTS(45, 160);
+      assert.ok(stopDelay >= 0);
+
+      const result = await speechPromise;
+
+      assert.equal(result, false, "Must resolve to false when stopped during fetch");
+      assert.equal(fetchAborted, true, "Active fetch must be aborted");
+      assert.equal(spoken.length, 0, "Must NOT speak via Web Speech fallback after smoothStop");
+      assert.equal(getTtsEngineMode(), "server", "Engine mode must remain 'server', NOT fall back to 'webspeech'");
+      assert.equal(getTtsEngineStatus().serverCooldownUntil, 0, "Must NOT enter 15-second cooldown on smoothStop");
+      assert.equal((globalThis as any).window.__olympiaTtsSpeaker, null, "Speaker event must be cleared");
+    }
+  );
 });

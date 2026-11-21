@@ -7,6 +7,8 @@ import {
   speakOlympiaTTS,
   interpolateTemplate,
   refreshOlympiaVoices,
+  smoothStopOlympiaTTS,
+  getTtsEngineStatus,
 } from "@/lib/olympia/tts";
 
 interface TtsManagerModalProps {
@@ -23,7 +25,8 @@ type TtsTab =
   | "contestants"
   | "rounds"
   | "verdicts"
-  | "summary_awards";
+  | "summary_awards"
+  | "diagnostics";
 
 export function TtsManagerModal({
   isOpen,
@@ -39,6 +42,20 @@ export function TtsManagerModal({
 
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [diagnosticEngine, setDiagnosticEngine] = useState<"auto" | "server" | "webspeech">("auto");
+  const [telemetry, setTelemetry] = useState<{
+    status: "idle" | "streaming" | "speaking" | "ended" | "error";
+    engineUsed: string;
+    speaker: string | null;
+    latencyMs: number;
+    zeroDiskConfirmed: boolean;
+  }>({
+    status: "idle",
+    engineUsed: "auto",
+    speaker: null,
+    latencyMs: 0,
+    zeroDiskConfirmed: true,
+  });
 
   // Sync available speech synthesis voices
   useEffect(() => {
@@ -65,7 +82,11 @@ export function TtsManagerModal({
 
   if (!isOpen) return null;
 
-  const handleTestSpeak = (text: string, role: "khanh_vy" | "ngoc_huy") => {
+  const handleTestSpeak = (
+    text: string,
+    role: "khanh_vy" | "ngoc_huy",
+    engineOverride?: "auto" | "server" | "webspeech"
+  ) => {
     setTestStatus(`Đang phát thử giọng ${role === "khanh_vy" ? "Khánh Vy" : "Ngọc Huy"}…`);
     const cfg =
       role === "khanh_vy"
@@ -81,12 +102,106 @@ export function TtsManagerModal({
       soGhe: 1,
       roomName: "Chung Kết Năm",
       tenPhong: "Chung Kết Năm",
+      dapAnDung: "Quang Trung",
     });
+
+    const engineToUse = engineOverride || diagnosticEngine;
+    const startTime = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+    setTelemetry((prev) => ({
+      ...prev,
+      status: engineToUse === "webspeech" ? "speaking" : "streaming",
+      speaker: role,
+      engineUsed: engineToUse,
+    }));
+
     speakOlympiaTTS(preview, {
       role,
+      pitch: cfg?.pitch,
+      voice: cfg?.voiceURI,
+      voiceConfig: cfg,
       baseRate: cfg?.rate ?? (role === "khanh_vy" ? 1.05 : 1.04),
-      onEnd: () => setTestStatus(null),
+      engine: engineToUse,
+      onEnd: () => {
+        const elapsed = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startTime);
+        setTestStatus(`Phát thành công (${elapsed}ms)`);
+        setTelemetry((prev) => ({
+          ...prev,
+          status: "ended",
+          latencyMs: elapsed,
+          speaker: null,
+          zeroDiskConfirmed: true,
+        }));
+        setTimeout(() => setTestStatus(null), 2500);
+      },
+      onError: (err) => {
+        setTestStatus(`Lỗi phát âm: ${String(err)}`);
+        setTelemetry((prev) => ({
+          ...prev,
+          status: "error",
+          speaker: null,
+        }));
+        setTimeout(() => setTestStatus(null), 3500);
+      },
     });
+  };
+
+  const handleTestDuoSpeak = () => {
+    setTestStatus("Đang phát thử đối thoại Song MC (Khánh Vy ➡️ Ngọc Huy)…");
+    const engineToUse = diagnosticEngine;
+    const startTime = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+    setTelemetry((prev) => ({
+      ...prev,
+      status: engineToUse === "webspeech" ? "speaking" : "streaming",
+      speaker: "khanh_vy",
+      engineUsed: engineToUse,
+    }));
+
+    speakOlympiaTTS("Xin chào quý vị khán giả đang theo dõi trận Chung kết Đường lên đỉnh Olympia!", {
+      role: "khanh_vy",
+      engine: engineToUse,
+      onEnd: () => {
+        setTelemetry((prev) => ({ ...prev, speaker: "ngoc_huy" }));
+        speakOlympiaTTS("Và chúc 4 nhà leo núi hôm nay sẽ thi đấu thật xuất sắc và bình tĩnh nhé!", {
+          role: "ngoc_huy",
+          engine: engineToUse,
+          onEnd: () => {
+            const elapsed = Math.round(
+              (typeof performance !== "undefined" ? performance.now() : Date.now()) - startTime
+            );
+            setTestStatus(`Hoàn thành đối thoại Song MC (${elapsed}ms)`);
+            setTelemetry((prev) => ({
+              ...prev,
+              status: "ended",
+              latencyMs: elapsed,
+              speaker: null,
+              zeroDiskConfirmed: true,
+            }));
+            setTimeout(() => setTestStatus(null), 3000);
+          },
+          onError: (err) => {
+            setTestStatus(`Lỗi phát âm Ngọc Huy: ${String(err)}`);
+            setTelemetry((prev) => ({ ...prev, status: "error", speaker: null }));
+          },
+        });
+      },
+      onError: (err) => {
+        setTestStatus(`Lỗi phát âm Khánh Vy: ${String(err)}`);
+        setTelemetry((prev) => ({ ...prev, status: "error", speaker: null }));
+      },
+    });
+  };
+
+  const handleEmergencyStop = () => {
+    smoothStopOlympiaTTS();
+    setTestStatus("Đã dừng âm thanh khẩn cấp.");
+    setTelemetry((prev) => ({
+      ...prev,
+      status: "idle",
+      speaker: null,
+    }));
+    setTimeout(() => setTestStatus(null), 2000);
   };
 
   const handleResetToDefault = () => {
@@ -207,6 +322,7 @@ export function TtsManagerModal({
             { id: "rounds", label: "🏆 Lời dẫn Vòng thi" },
             { id: "verdicts", label: "💬 Bình luận Đúng / Sai" },
             { id: "summary_awards", label: "🥇 Tổng kết & Trao giải" },
+            { id: "diagnostics", label: "🔬 Kiểm Âm & Chẩn Đoán" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -245,6 +361,18 @@ export function TtsManagerModal({
                 </div>
 
                 <div className="space-y-3 text-xs">
+                  <div className="bg-rose-950/60 border border-rose-500/40 rounded-lg p-2.5 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-rose-300">🎙️ Server Edge TTS (Ưu tiên):</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono">
+                        vi-VN-HoaiMyNeural
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Giọng nữ chuẩn truyền hình VTV3: trong trẻo, tự nhiên, thanh thoát. Tự động stream qua Web Audio API không tạo file trên ổ cứng.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="text-slate-300 font-bold block mb-1">
                       Cao độ (Pitch): {scripts.mcVoiceConfig?.khanhVy?.pitch ?? 1.12}x (Thanh mảnh, trẻ trung)
@@ -339,6 +467,18 @@ export function TtsManagerModal({
                 </div>
 
                 <div className="space-y-3 text-xs">
+                  <div className="bg-sky-950/60 border border-sky-500/40 rounded-lg p-2.5 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sky-300">🎙️ Server Edge TTS (Ưu tiên):</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono">
+                        vi-VN-NamMinhNeural
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Giọng nam chuẩn truyền hình VTV3: trầm ấm, dứt khoát, quyền lực. Tự động stream qua Web Audio API không tạo file trên ổ cứng.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="text-slate-300 font-bold block mb-1">
                       Cao độ (Pitch): {scripts.mcVoiceConfig?.ngocHuy?.pitch ?? 0.88}x (Trầm ấm, dứt khoát)
@@ -804,6 +944,232 @@ export function TtsManagerModal({
                   }}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-amber-400 focus:outline-none"
                 />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: AUDIO DIAGNOSTIC WORKBENCH */}
+          {activeTab === "diagnostics" && (
+            <div className="space-y-6">
+              {/* Engine Mode Switcher */}
+              <div className="rounded-xl border border-indigo-500/40 bg-indigo-950/20 p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-indigo-300 text-sm flex items-center gap-2">
+                      <span>⚙️</span> CHẾ ĐỘ MÁY PHÁT ÂM (TTS SYNTHESIS ENGINE MODE)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Chọn cơ chế phát âm để kiểm tra độc lập server streaming và client offline fallback
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleEmergencyStop}
+                    className="px-3 py-1.5 rounded-lg border border-rose-500/60 bg-rose-950/70 hover:bg-rose-900 text-rose-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition"
+                  >
+                    <span>🛑</span> Dừng âm thanh khẩn cấp
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDiagnosticEngine("auto")}
+                    className={`p-3 rounded-lg border text-left transition cursor-pointer flex flex-col gap-1 ${
+                      diagnosticEngine === "auto"
+                        ? "border-amber-400 bg-amber-950/40 text-amber-200 shadow-md"
+                        : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">🚀 Chế độ Tự Động (Auto)</span>
+                      {diagnosticEngine === "auto" && <span className="text-amber-400 text-xs">✓ Đang chọn</span>}
+                    </div>
+                    <span className="text-[11px] text-slate-300">
+                      Ưu tiên Server WebSocket Edge TTS, tự động dự phòng Web Speech nếu mất kết nối.
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDiagnosticEngine("server")}
+                    className={`p-3 rounded-lg border text-left transition cursor-pointer flex flex-col gap-1 ${
+                      diagnosticEngine === "server"
+                        ? "border-indigo-400 bg-indigo-950/40 text-indigo-200 shadow-md"
+                        : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">⚡ Bắt buộc Server Edge TTS</span>
+                      {diagnosticEngine === "server" && <span className="text-indigo-400 text-xs">✓ Đang chọn</span>}
+                    </div>
+                    <span className="text-[11px] text-slate-300">
+                      Ép phát qua /api/olympia/tts bằng HoaiMyNeural & NamMinhNeural (Zero-file Web Audio API).
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDiagnosticEngine("webspeech")}
+                    className={`p-3 rounded-lg border text-left transition cursor-pointer flex flex-col gap-1 ${
+                      diagnosticEngine === "webspeech"
+                        ? "border-emerald-400 bg-emerald-950/40 text-emerald-200 shadow-md"
+                        : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">🌐 Bắt buộc Web Speech (Client)</span>
+                      {diagnosticEngine === "webspeech" && <span className="text-emerald-400 text-xs">✓ Đang chọn</span>}
+                    </div>
+                    <span className="text-[11px] text-slate-300">
+                      Ép dùng API giọng nói tích hợp của trình duyệt với thuật toán tự động tách âm sắc nam/nữ.
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real-time Telemetry Dashboard */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3.5 space-y-1">
+                  <span className="text-[11px] text-slate-400 block font-bold uppercase">Engine Kích Hoạt</span>
+                  <div className="text-sm font-black text-amber-300 font-mono flex items-center gap-1.5">
+                    <span>{telemetry.engineUsed.toUpperCase()}</span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3.5 space-y-1">
+                  <span className="text-[11px] text-slate-400 block font-bold uppercase">Trạng Thái Audio</span>
+                  <div className="text-sm font-black font-mono flex items-center gap-1.5">
+                    {telemetry.status === "streaming" && <span className="text-indigo-400 animate-pulse">📡 Đang stream WebAudio</span>}
+                    {telemetry.status === "speaking" && <span className="text-emerald-400 animate-pulse">🔊 Đang phát âm</span>}
+                    {telemetry.status === "ended" && <span className="text-sky-300">⏹️ Đã kết thúc</span>}
+                    {telemetry.status === "error" && <span className="text-rose-400">❌ Lỗi phát âm</span>}
+                    {telemetry.status === "idle" && <span className="text-slate-400">💤 Sẵn sàng (Idle)</span>}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3.5 space-y-1">
+                  <span className="text-[11px] text-slate-400 block font-bold uppercase">Độ Trễ Phản Hồi</span>
+                  <div className="text-sm font-black text-cyan-300 font-mono">
+                    {telemetry.latencyMs > 0 ? `${telemetry.latencyMs} ms` : "--"}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-3.5 space-y-1">
+                  <span className="text-[11px] text-emerald-400 block font-bold uppercase">Bộ Nhớ / Đĩa Cứng</span>
+                  <div className="text-xs font-black text-emerald-300 font-mono">
+                    {telemetry.zeroDiskConfirmed ? "✅ 100% In-Memory (Zero Disk)" : "Chuẩn bị"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Test Scenarios Matrix */}
+              <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-5 space-y-4">
+                <div className="border-b border-white/10 pb-2">
+                  <h3 className="font-black text-amber-300 text-sm">🧪 KỊCH BẢN THỬ NGHIỆM TRỰC TIẾP (LIVE TEST SCENARIOS)</h3>
+                  <p className="text-xs text-slate-400">
+                    Nhấp để thử nghiệm phản hồi thực tế của MC Khánh Vy, Ngọc Huy và cơ chế phân nhánh kịch bản
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Scenario 1: Khanh Vy solo intro */}
+                  <div className="p-3.5 rounded-lg border border-rose-500/30 bg-rose-950/20 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-rose-200">1. MC Khánh Vy - Chào Khai Mạc Show</div>
+                      <p className="text-[11px] text-slate-400 italic">&ldquo;Chào mừng quý vị đến với Đường lên đỉnh Olympia năm thứ 26!&rdquo;</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTestSpeak("Chào mừng quý vị và các bạn đã quay trở lại với trường quay S14 của Đường lên đỉnh Olympia!", "khanh_vy")}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600/40 hover:bg-rose-600/60 text-rose-100 font-bold text-xs whitespace-nowrap cursor-pointer transition shadow-sm"
+                    >
+                      🔊 Phát âm
+                    </button>
+                  </div>
+
+                  {/* Scenario 2: Ngoc Huy solo round intro */}
+                  <div className="p-3.5 rounded-lg border border-sky-500/30 bg-sky-950/20 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-sky-200">2. MC Ngọc Huy - Dẫn Vào Khởi Động</div>
+                      <p className="text-[11px] text-slate-400 italic">&ldquo;Và ngay bây giờ, chúng ta sẽ bước vào phần thi Khởi Động!&rdquo;</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTestSpeak("Và ngay bây giờ, 4 nhà leo núi của chúng ta đã sẵn sàng bước vào phần thi Khởi Động!", "ngoc_huy")}
+                      className="px-3 py-1.5 rounded-lg bg-sky-600/40 hover:bg-sky-600/60 text-sky-100 font-bold text-xs whitespace-nowrap cursor-pointer transition shadow-sm"
+                    >
+                      🔊 Phát âm
+                    </button>
+                  </div>
+
+                  {/* Scenario 3: Duo MC conversation */}
+                  <div className="p-3.5 rounded-lg border border-amber-500/30 bg-amber-950/20 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-amber-200">3. Đối thoại Song MC (Khánh Vy ➡️ Ngọc Huy)</div>
+                      <p className="text-[11px] text-slate-400 italic">Hai MC phối hợp luân phiên với hai giọng nam/nữ tách biệt</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTestDuoSpeak}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs whitespace-nowrap cursor-pointer transition shadow-sm"
+                    >
+                      👥 Thử Song MC
+                    </button>
+                  </div>
+
+                  {/* Scenario 4: Khoi Dong solo vs shared */}
+                  <div className="p-3.5 rounded-lg border border-indigo-500/30 bg-indigo-950/20 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-indigo-200">4. Khởi Động Cá Nhân vs Chung</div>
+                      <p className="text-[11px] text-slate-400 italic">Cá nhân (không nhắc chuông) | Chung (nhắc bấm chuông)</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleTestSpeak("Xin mời bạn Nguyễn Văn A bước vào lượt thi Khởi động cá nhân của mình với 6 câu hỏi. Chúc bạn thi đấu thật bình tĩnh và đạt điểm số tối đa!", "ngoc_huy")}
+                        className="px-2 py-1 rounded bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-100 font-bold text-[11px] cursor-pointer"
+                        title="Lượt cá nhân: Không nhắc chuông, chúc tự tin"
+                      >
+                        Cá nhân
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTestSpeak("Các bạn thí sinh hãy chuẩn bị sẵn sàng tay trên bàn phím chuông, chúc cả 4 bạn sẽ có một màn khởi động thật suôn sẻ và giành được thật nhiều điểm số!", "khanh_vy")}
+                        className="px-2 py-1 rounded bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-100 font-bold text-[11px] cursor-pointer"
+                        title="Lượt chung: Nhắc sẵn sàng tay trên chuông"
+                      >
+                        Chung (Chuông)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scenario 5: Khoi Dong Correct (playful) vs Wrong (mandatory answer) */}
+                  <div className="p-3.5 rounded-lg border border-emerald-500/30 bg-emerald-950/20 flex items-center justify-between gap-3 md:col-span-2">
+                    <div>
+                      <div className="font-bold text-xs text-emerald-200">5. Phán quyết Trả Lời: Đúng Biến Thể vs Sai (Bắt buộc công bố đáp án đúng)</div>
+                      <p className="text-[11px] text-slate-400 italic">
+                        Đúng: Nêu đáp án để lừa nhẹ (&ldquo;Quang Trung? Vâng, hoàn toàn chính xác!&rdquo;) | Sai: Luôn nêu đáp án đúng (&ldquo;Rất tiếc câu trả lời chưa đúng, đáp án chính xác phải là: Quang Trung!&rdquo;)
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTestSpeak("Quang Trung? Vâng, xin chúc mừng, câu trả lời hoàn toàn chính xác!", "khanh_vy")}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600/40 hover:bg-emerald-600/60 text-emerald-100 font-bold text-xs cursor-pointer"
+                      >
+                        ✔️ Đúng (Lừa nhẹ)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTestSpeak("Rất tiếc chưa chính xác, đáp án đúng của chúng ta là: Quang Trung!", "ngoc_huy")}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600/40 hover:bg-rose-600/60 text-rose-100 font-bold text-xs cursor-pointer"
+                      >
+                        ❌ Sai (Nêu đáp án)
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

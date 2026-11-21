@@ -11,11 +11,22 @@ export interface SynthesizeTtsInput {
   role: TtsRole;
   lang?: TtsLangInput;
   rate?: number;
-  pitch?: string;
+  pitch?: number | string;
+  voice?: string;
 }
 
 export interface SynthesizeTtsResult {
   audio: Buffer;
+  voice: string;
+  lang: TtsLang;
+  rateStr: string;
+  pitch: string;
+  cacheHit: boolean;
+}
+
+export interface SynthesizeTtsStreamResult {
+  stream: ReadableStream<Uint8Array>;
+  audio?: Buffer;
   voice: string;
   lang: TtsLang;
   rateStr: string;
@@ -392,16 +403,29 @@ export function mapRateToProsody(rate?: number): string {
   return `${pct >= 0 ? "+" : ""}${pct}%`;
 }
 
-export function normalizePitch(pitch?: string): string {
-  if (pitch === undefined || pitch === "") return "+0Hz";
-  if (typeof pitch !== "string") {
-    throw new TtsValidationError("pitch must be a string");
+export function normalizePitch(pitch?: number | string): string {
+  if (pitch === undefined || pitch === null || pitch === "") return "+0Hz";
+  if (typeof pitch === "number") {
+    if (!Number.isFinite(pitch)) {
+      throw new TtsValidationError("pitch must be a finite number");
+    }
+    const pct = Math.round((pitch - 1) * 100);
+    return `${pct >= 0 ? "+" : ""}${pct}%`;
   }
-  const trimmed = pitch.trim();
-  if (!/^[+-]?\d{1,3}(?:Hz|st|%)$/i.test(trimmed)) {
-    throw new TtsValidationError("pitch must match /^[+-]?\\d{1,3}(Hz|st|%)$/i");
+  if (typeof pitch === "string") {
+    const trimmed = pitch.trim();
+    if (!trimmed) return "+0Hz";
+    const parsedNum = Number(trimmed);
+    if (!isNaN(parsedNum) && !/[a-zA-Z%]/.test(trimmed)) {
+      const pct = Math.round((parsedNum - 1) * 100);
+      return `${pct >= 0 ? "+" : ""}${pct}%`;
+    }
+    if (!/^[+-]?\d{1,3}(?:Hz|st|%)$/i.test(trimmed)) {
+      throw new TtsValidationError("pitch must match /^[+-]?\\d{1,3}(Hz|st|%)$/i or be a relative float");
+    }
+    return /^[+-]/.test(trimmed) ? trimmed : `+${trimmed}`;
   }
-  return /^[+-]/.test(trimmed) ? trimmed : `+${trimmed}`;
+  throw new TtsValidationError("pitch must be a number or string");
 }
 
 export function validateAndNormalizeTtsInput(input: unknown): {
@@ -443,8 +467,17 @@ export function validateAndNormalizeTtsInput(input: unknown): {
   }
 
   const rateStr = mapRateToProsody(obj.rate as number | undefined);
-  const pitch = normalizePitch(obj.pitch as string | undefined);
-  const voice = EDGE_TTS_VOICES[role][resolvedLang];
+  const pitch = normalizePitch(obj.pitch as number | string | undefined);
+
+  let voice: string;
+  if (obj.voice !== undefined && obj.voice !== null && obj.voice !== "") {
+    if (typeof obj.voice !== "string" || !/^[a-zA-Z0-9_-]+$/.test(obj.voice)) {
+      throw new TtsValidationError('voice must match /^[a-zA-Z0-9_-]+$/');
+    }
+    voice = obj.voice;
+  } else {
+    voice = EDGE_TTS_VOICES[role][resolvedLang];
+  }
 
   return {
     cleanText: sanitized,
@@ -538,6 +571,23 @@ const inflightRequests = new Map<string, Promise<SynthesizeTtsResult>>();
 
 let activeWsCount = 0;
 const wsWaitQueue: Array<() => void> = [];
+
+async function acquireWsSlot(): Promise<() => void> {
+  if (activeWsCount >= MAX_CONCURRENT_WS) {
+    await new Promise<void>((resolve) => {
+      wsWaitQueue.push(resolve);
+    });
+  }
+  activeWsCount++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    activeWsCount--;
+    const next = wsWaitQueue.shift();
+    if (next) next();
+  };
+}
 
 async function withWsConcurrencyLimit<T>(fn: () => Promise<T>): Promise<T> {
   if (activeWsCount >= MAX_CONCURRENT_WS) {
@@ -854,6 +904,328 @@ export async function synthesizeEdgeTts(input: SynthesizeTtsInput): Promise<Synt
   }
 }
 
+function synthesizeStreamOnce(params: {
+  cleanText: string;
+  voice: string;
+  lang: TtsLang;
+  rateStr: string;
+  pitch: string;
+  onTurnEnd?: (fullAudio: Buffer) => void;
+  onDone?: () => void;
+}): Promise<ReadableStream<Uint8Array>> {
+  const WebSocketCtor = loadWebSocketConstructor();
+  const connectionId = connectUuid();
+  const requestId = connectUuid();
+  const secMsGec = generateSecMsGecV2();
+  const url =
+    `${WSS_BASE_URL}?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}` +
+    `&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}` +
+    `&ConnectionId=${connectionId}`;
+
+  const ssml = buildEdgeSsml(
+    params.cleanText,
+    params.voice,
+    params.rateStr,
+    params.pitch
+  );
+
+  return new Promise<ReadableStream<Uint8Array>>((resolve, reject) => {
+    let settled = false;
+    let streamClosed = false;
+    const chunks: Buffer[] = [];
+    let streamController: ReadableStreamDefaultController<Uint8Array> | null = null;
+    let statusCode403 = false;
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        streamController = controller;
+      },
+      cancel() {
+        if (!streamClosed) {
+          streamClosed = true;
+          try {
+            ws.terminate();
+          } catch {}
+          params.onDone?.();
+        }
+      },
+    });
+
+    const ws = new WebSocketCtor(url, {
+      headers: {
+        Pragma: "no-cache",
+        "Cache-Control": "no-cache",
+        Origin: EDGE_ORIGIN,
+        "User-Agent": EDGE_USER_AGENT,
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Language": "en-US,en;q=0.9",
+        Cookie: `muid=${generateMuid()};`,
+      },
+    });
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      ws.removeAllListeners();
+    };
+
+    const finishError = (err: Error) => {
+      if (streamClosed) return;
+      streamClosed = true;
+      cleanup();
+      try {
+        ws.terminate();
+      } catch {}
+      params.onDone?.();
+      if (!settled) {
+        settled = true;
+        reject(err);
+      } else {
+        try {
+          streamController?.error(err);
+        } catch {}
+      }
+    };
+
+    const finishSuccess = () => {
+      if (streamClosed) return;
+      streamClosed = true;
+      cleanup();
+      try {
+        ws.close();
+      } catch {}
+      params.onDone?.();
+      const audio = Buffer.concat(chunks);
+      if (audio.byteLength === 0 || !isValidMp3Buffer(audio)) {
+        finishError(new TtsUpstreamError("Edge-TTS returned empty or invalid audio"));
+        return;
+      }
+      try {
+        params.onTurnEnd?.(audio);
+      } catch {}
+      try {
+        streamController?.close();
+      } catch {}
+      if (!settled) {
+        settled = true;
+        resolve(stream);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      finishError(new TtsUpstreamError(`Edge-TTS WebSocket timed out after ${WS_TIMEOUT_MS}ms`));
+    }, WS_TIMEOUT_MS);
+
+    ws.on("unexpected-response", (_req, res) => {
+      const status = res.statusCode ?? 0;
+      if (status === 403) {
+        statusCode403 = true;
+        const dateHeader = res.headers?.date;
+        if (typeof dateHeader === "string") {
+          const parsedMs = Date.parse(dateHeader);
+          if (Number.isFinite(parsedMs)) {
+            const serverEpochSec = parsedMs / 1000;
+            const clientEpochSec = Date.now() / 1000 + clockSkewSeconds;
+            clockSkewSeconds += serverEpochSec - clientEpochSec;
+          }
+        }
+      }
+      res.resume();
+      const err = new TtsUpstreamError(`Edge-TTS upstream HTTP ${status}`);
+      (err as TtsUpstreamError & { statusCode?: number }).statusCode = statusCode403 ? 403 : status;
+      finishError(err);
+    });
+
+    ws.on("open", () => {
+      try {
+        const ts = edgeTimestampString();
+        const configMsg =
+          `X-Timestamp:${ts}\r\n` +
+          `Content-Type:application/json; charset=utf-8\r\n` +
+          `Path:speech.config\r\n\r\n` +
+          JSON.stringify({
+            context: {
+              synthesis: {
+                audio: {
+                  metadataoptions: {
+                    sentenceBoundaryEnabled: "false",
+                    wordBoundaryEnabled: "false",
+                  },
+                  outputFormat: OUTPUT_FORMAT,
+                },
+              },
+            },
+          }) +
+          "\r\n";
+
+        const ssmlMsg =
+          `X-RequestId:${requestId}\r\n` +
+          `Content-Type:application/ssml+xml\r\n` +
+          `X-Timestamp:${ts}Z\r\n` +
+          `Path:ssml\r\n\r\n` +
+          ssml;
+
+        ws.send(configMsg);
+        ws.send(ssmlMsg);
+      } catch (err) {
+        finishError(
+          new TtsUpstreamError(err instanceof Error ? err.message : "Failed to send Edge-TTS SSML")
+        );
+      }
+    });
+
+    ws.on("message", (raw: WebSocketType.RawData, isBinary: boolean) => {
+      if (streamClosed) return;
+      if (!isBinary) {
+        const text = rawDataToBuffer(raw).toString("utf8");
+        if (text.includes("Path:turn.end")) {
+          finishSuccess();
+        }
+        return;
+      }
+
+      const buf = rawDataToBuffer(raw);
+      if (buf.length < 2) return;
+      const headerLen = buf.readUInt16BE(0);
+      if (2 + headerLen > buf.length) return;
+      const headerText = buf.subarray(2, 2 + headerLen).toString("utf8");
+      if (
+        headerText.includes("Path:audio") &&
+        headerText.includes("Content-Type:audio/mpeg")
+      ) {
+        const payload = buf.subarray(2 + headerLen);
+        if (payload.byteLength > 0) {
+          chunks.push(payload);
+          try {
+            streamController?.enqueue(new Uint8Array(payload));
+          } catch {}
+          if (!settled) {
+            settled = true;
+            resolve(stream);
+          }
+        }
+      }
+    });
+
+    ws.on("error", (err) => {
+      finishError(new TtsUpstreamError(err instanceof Error ? err.message : "Edge-TTS WS error"));
+    });
+
+    ws.on("close", (code) => {
+      if (!streamClosed) {
+        if (chunks.length > 0) {
+          finishSuccess();
+        } else {
+          const err = new TtsUpstreamError(`Edge-TTS connection closed early (${code})`);
+          (err as TtsUpstreamError & { closeCode?: number }).closeCode = code;
+          finishError(err);
+        }
+      }
+    });
+  });
+}
+
+async function synthesizeWithSkewRetryStream(params: {
+  cleanText: string;
+  voice: string;
+  lang: TtsLang;
+  rateStr: string;
+  pitch: string;
+  onTurnEnd?: (fullAudio: Buffer) => void;
+}): Promise<ReadableStream<Uint8Array>> {
+  const releaseSlot = await acquireWsSlot();
+  try {
+    return await synthesizeStreamOnce({
+      ...params,
+      onDone: releaseSlot,
+    });
+  } catch (err) {
+    const typed = err as { statusCode?: number; closeCode?: number } | null;
+    if (typed?.statusCode === 403 || typed?.closeCode === 1006) {
+      const retryRelease = await acquireWsSlot();
+      try {
+        return await synthesizeStreamOnce({
+          ...params,
+          onDone: retryRelease,
+        });
+      } catch (retryErr) {
+        throw retryErr;
+      }
+    }
+    throw err;
+  }
+}
+
+export async function synthesizeEdgeTtsStream(
+  input: SynthesizeTtsInput
+): Promise<SynthesizeTtsStreamResult> {
+  const normalized = validateAndNormalizeTtsInput(input);
+  const cacheKey = `${normalized.voice}|${normalized.rateStr}|${normalized.pitch}|${normalized.cleanText}`;
+
+  const cached = ttsCache.get(cacheKey);
+  if (cached) {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(cached.audio));
+        controller.close();
+      },
+    });
+    return {
+      stream,
+      audio: cached.audio,
+      voice: normalized.voice,
+      lang: normalized.lang,
+      rateStr: normalized.rateStr,
+      pitch: normalized.pitch,
+      cacheHit: true,
+    };
+  }
+
+  const stream = await synthesizeWithSkewRetryStream({
+    cleanText: normalized.cleanText,
+    voice: normalized.voice,
+    lang: normalized.lang,
+    rateStr: normalized.rateStr,
+    pitch: normalized.pitch,
+    onTurnEnd: (fullAudio) => {
+      ttsCache.set(cacheKey, {
+        audio: fullAudio,
+        voice: normalized.voice,
+        lang: normalized.lang,
+        rateStr: normalized.rateStr,
+        pitch: normalized.pitch,
+        cacheHit: false,
+      });
+    },
+  });
+
+  return {
+    stream,
+    voice: normalized.voice,
+    lang: normalized.lang,
+    rateStr: normalized.rateStr,
+    pitch: normalized.pitch,
+    cacheHit: false,
+  };
+}
+
 export function getTtsCacheStats() {
   return ttsCache.stats();
+}
+
+export function resetTtsCacheForTesting(): void {
+  (ttsCache as any).store?.clear();
+  (ttsCache as any).totalBytes = 0;
+}
+
+export function populateTtsCacheForTesting(input: SynthesizeTtsInput, audio: Buffer): void {
+  const normalized = validateAndNormalizeTtsInput(input);
+  const cacheKey = `${normalized.voice}|${normalized.rateStr}|${normalized.pitch}|${normalized.cleanText}`;
+  ttsCache.set(cacheKey, {
+    audio,
+    voice: normalized.voice,
+    lang: normalized.lang,
+    rateStr: normalized.rateStr,
+    pitch: normalized.pitch,
+    cacheHit: false,
+  });
 }

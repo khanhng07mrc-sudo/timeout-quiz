@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
+import React, { useEffect, useState, useRef, useMemo, useLayoutEffect, useCallback } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
 import { normalizeAnswer, cleanVcnvWord, getVcnvUnit, parseVcnvAnswer, isPostMatchSummaryContext } from "@/lib/olympia/engine";
@@ -229,6 +229,65 @@ export const HostConsole = React.memo(function HostConsole({
     const { type, ...extra } = action;
     return call(type, extra);
   };
+
+  const [activeSpeaker, setActiveSpeaker] = useState<"khanh_vy" | "ngoc_huy" | null>(null);
+  const [ttsPaused, setTtsPaused] = useState(false);
+  const [ttsVolume, setTtsVolume] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const v = window.localStorage?.getItem("olympia_tts_volume");
+      if (v != null) {
+        const parsed = parseFloat(v);
+        if (Number.isFinite(parsed)) return Math.max(0, Math.min(100, Math.round(parsed * 100)));
+      }
+    }
+    return 100;
+  });
+
+  // Track live MC speaking indicator from window events and iframe messages
+  useEffect(() => {
+    const handleSpeakerEvent = (e: Event) => {
+      const speaker = (e as CustomEvent).detail?.speaker ?? null;
+      setActiveSpeaker(speaker);
+    };
+    const handleWindowMessage = (e: MessageEvent) => {
+      if (e.data?.type === "OLYMPIA_TTS_SPEAKER") {
+        setActiveSpeaker(e.data.speaker ?? null);
+      }
+    };
+    window.addEventListener("olympia:tts-speaker", handleSpeakerEvent);
+    window.addEventListener("message", handleWindowMessage);
+    return () => {
+      window.removeEventListener("olympia:tts-speaker", handleSpeakerEvent);
+      window.removeEventListener("message", handleWindowMessage);
+    };
+  }, []);
+
+  // Dual Dispatcher for TTS commands: Socket + window.postMessage
+  const dispatchTtsCommand = useCallback(
+    (command: "pause" | "resume" | "skip" | "stop" | "reread_question" | "set_volume", extra: Record<string, unknown> = {}) => {
+      // 1. Socket emit to remote display
+      call("tts:command", { command, action: command === "skip" ? "stop" : command === "pause" || command === "resume" ? "custom" : command, ...extra });
+      // 2. PostMessage to local iframe displays (PiP and Sandbox)
+      if (typeof window !== "undefined") {
+        try {
+          const typeMap: Record<string, string> = {
+            pause: "TTS_PAUSE",
+            resume: "TTS_RESUME",
+            skip: "TTS_SKIP",
+            stop: "TTS_STOP",
+            reread_question: "TTS_REPLAY",
+            set_volume: "TTS_VOLUME",
+          };
+          const msg = { type: typeMap[command] || "TTS_COMMAND", command, ...extra };
+          window.postMessage(msg, "*");
+          document.querySelectorAll("iframe").forEach((frame) => {
+            frame.contentWindow?.postMessage(msg, "*");
+          });
+        } catch {}
+      }
+    },
+    [call]
+  );
 
   // Keyboard Shortcuts matching the reference application:
   // Space: Play/Pause | Enter: Đúng | Bksp: Sai | W: Nền chờ | R: Lật đáp án | C: Toggle chuông | S: Ngôi sao | B: Bảng điểm | N: Câu tiếp
@@ -801,6 +860,126 @@ export const HostConsole = React.memo(function HostConsole({
           </div>
         </div>
       )}
+
+      {/* ── DEDICATED HOST AUDIO & MANUAL TTS CONTROL BAR ── */}
+      <div className={`border-b border-violet-500/20 bg-slate-950/80 backdrop-blur-md px-2 sm:px-3 py-1 flex items-center justify-between gap-2 shrink-0 z-20 flex-wrap ${
+        isSandbox ? "text-[10px]" : "text-xs"
+      }`}>
+        {/* Left: Live MC Speaking Indicator Badge */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="font-bold text-slate-400 uppercase text-[10px] hidden sm:inline">MC:</span>
+          {activeSpeaker === "khanh_vy" ? (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/80 text-rose-200 font-bold animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.4)]">
+              <span>🎤</span>
+              <span>Khánh Vy (Nữ) đang nói</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+            </span>
+          ) : activeSpeaker === "ngoc_huy" ? (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/80 text-sky-200 font-bold animate-pulse shadow-[0_0_8px_rgba(56,189,248,0.4)]">
+              <span>🎤</span>
+              <span>Ngọc Huy (Nam) đang nói</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/60 text-slate-400 font-medium">
+              <span>🔇</span>
+              <span>Đang im lặng</span>
+            </span>
+          )}
+        </div>
+
+        {/* Center: Playback Control Buttons */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {!ttsPaused ? (
+            <button
+              type="button"
+              onClick={() => {
+                setTtsPaused(true);
+                dispatchTtsCommand("pause");
+              }}
+              disabled={!ttsActive}
+              className={`rounded px-2 py-0.5 font-bold cursor-pointer border transition flex items-center gap-1 ${
+                ttsActive
+                  ? "bg-amber-500/20 border-amber-400/60 text-amber-200 hover:bg-amber-500/35"
+                  : "bg-white/5 border-white/10 text-slate-500 cursor-not-allowed"
+              }`}
+              title="Tạm dừng giọng đọc MC hiện tại"
+            >
+              <span>⏸️</span>
+              <span>Tạm dừng</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setTtsPaused(false);
+                dispatchTtsCommand("resume");
+              }}
+              disabled={!ttsActive}
+              className="rounded px-2 py-0.5 font-bold cursor-pointer border border-emerald-400/80 bg-emerald-500/30 text-emerald-200 hover:bg-emerald-500/45 transition flex items-center gap-1 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+              title="Tiếp tục giọng đọc MC"
+            >
+              <span>▶️</span>
+              <span>Tiếp tục</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setTtsPaused(false);
+              dispatchTtsCommand("skip");
+            }}
+            disabled={!ttsActive}
+            className={`rounded px-2 py-0.5 font-bold cursor-pointer border transition flex items-center gap-1 ${
+              ttsActive
+                ? "bg-rose-500/20 border-rose-400/50 text-rose-200 hover:bg-rose-500/30"
+                : "bg-white/5 border-white/10 text-slate-500 cursor-not-allowed"
+            }`}
+            title="Bỏ qua phần đọc của MC hiện tại (dừng đọc ngay lập tức)"
+          >
+            <span>⏭️</span>
+            <span>Bỏ qua</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTtsPaused(false);
+              dispatchTtsCommand("reread_question");
+            }}
+            disabled={!ttsActive}
+            className={`rounded px-2 py-0.5 font-bold cursor-pointer border transition flex items-center gap-1 ${
+              ttsActive
+                ? "bg-purple-600/25 border-purple-400/50 text-purple-200 hover:bg-purple-600/40"
+                : "bg-white/5 border-white/10 text-slate-500 cursor-not-allowed"
+            }`}
+            title="MC đọc lại nội dung câu hỏi hiện tại"
+          >
+            <span>🔄</span>
+            <span>Đọc lại</span>
+          </button>
+        </div>
+
+        {/* Right: TTS Volume Slider */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-slate-400 text-xs">🔊</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={ttsVolume}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setTtsVolume(val);
+              dispatchTtsCommand("set_volume", { volume: val / 100 });
+            }}
+            className="w-16 sm:w-24 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+            title={`Âm lượng TTS: ${ttsVolume}%`}
+          />
+          <span className="font-mono text-[10px] text-cyan-300 w-7 text-right">{ttsVolume}%</span>
+        </div>
+      </div>
 
       {/* ── MAIN 3-COLUMN WORKSPACE ── */}
       <div className="flex-1 flex overflow-hidden min-h-0">

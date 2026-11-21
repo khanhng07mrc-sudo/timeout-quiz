@@ -54,6 +54,11 @@ import {
   buildLobbyGreetingScript,
   speakDualMcScript,
   setGlobalCustomTtsScripts,
+  pauseOlympiaTTS,
+  resumeOlympiaTTS,
+  skipOlympiaTTS,
+  setOlympiaTtsVolume,
+  replayCurrentQuestionTTS,
 } from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -195,7 +200,9 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      if (e.data?.type === "UNLOCK_AUDIO") {
+      if (!e.data || typeof e.data !== "object") return;
+      const type = e.data.type;
+      if (type === "UNLOCK_AUDIO") {
         if (!isExplicitMuteParam) {
           setAudioOn(true);
         }
@@ -203,10 +210,39 @@ export default function DisplayScreen({ code }: { code: string }) {
           (window as any).__OLYMPIA_UNLOCK_AUDIO__();
         }
         unlockOlympiaTTS();
-      } else if (e.data?.type === "SET_TTS") {
+      } else if (type === "SET_TTS") {
         setTtsActive(Boolean(e.data.enabled));
         setTtsEnabled(Boolean(e.data.enabled));
+      } else if (type === "TTS_PAUSE") {
+        pauseOlympiaTTS();
+      } else if (type === "TTS_RESUME") {
+        resumeOlympiaTTS();
+      } else if (type === "TTS_SKIP" || type === "TTS_STOP") {
+        skipOlympiaTTS();
+      } else if (type === "TTS_VOLUME") {
+        if (typeof e.data.volume === "number") {
+          setOlympiaTtsVolume(e.data.volume);
+        }
+      } else if (type === "TTS_REPLAY" || type === "TTS_REREAD") {
+        lastQuestionRef.current = "";
+        replayCurrentQuestionTTS();
+      } else if (type === "TTS_COMMAND") {
+        const cmd = e.data.command || e.data.action;
+        if (cmd === "pause") pauseOlympiaTTS();
+        else if (cmd === "resume") resumeOlympiaTTS();
+        else if (cmd === "skip" || cmd === "stop") skipOlympiaTTS();
+        else if (cmd === "set_volume" && typeof e.data.volume === "number") setOlympiaTtsVolume(e.data.volume);
+        else if (cmd === "reread_question" || cmd === "replay") {
+          lastQuestionRef.current = "";
+          replayCurrentQuestionTTS();
+        }
       }
+    };
+    const handleSpeakerEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      try {
+        window.parent?.postMessage({ type: "OLYMPIA_TTS_SPEAKER", speaker: detail?.speaker }, "*");
+      } catch {}
     };
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "olympia_tts_enabled") {
@@ -214,9 +250,11 @@ export default function DisplayScreen({ code }: { code: string }) {
       }
     };
     window.addEventListener("message", handleMessage);
+    window.addEventListener("olympia:tts-speaker", handleSpeakerEvent);
     window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("message", handleMessage);
+      window.removeEventListener("olympia:tts-speaker", handleSpeakerEvent);
       window.removeEventListener("storage", handleStorage);
     };
   }, [isExplicitMuteParam]);
@@ -379,6 +417,216 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.veDich?.turnIdx,
     state?.cauHoiPhu?.phase,
     state?.cauHoiPhu?.qIdx,
+  ]);
+
+  // Subscription to state.ttsCommand from Host / engine
+  const prevCommandSeqRef = useRef<number>(-1);
+  useEffect(() => {
+    if (!state?.ttsCommand || state.ttsCommand.seq === prevCommandSeqRef.current) return;
+    prevCommandSeqRef.current = state.ttsCommand.seq;
+    const cmd = state.ttsCommand;
+    const action = cmd.action as string;
+
+    switch (action) {
+      case "pause":
+        pauseOlympiaTTS();
+        break;
+      case "resume":
+        resumeOlympiaTTS();
+        break;
+      case "stop":
+      case "skip":
+        skipOlympiaTTS();
+        break;
+      case "set_volume":
+        if (typeof (cmd as any).volume === "number") {
+          setOlympiaTtsVolume((cmd as any).volume);
+        } else if (typeof cmd.meta?.volume === "number") {
+          setOlympiaTtsVolume(cmd.meta.volume as number);
+        }
+        break;
+      case "reread_question":
+        lastQuestionRef.current = "";
+        replayCurrentQuestionTTS();
+        break;
+    }
+  }, [state?.ttsCommand]);
+
+  // Replay question event listener
+  useEffect(() => {
+    const handleReplay = () => {
+      lastQuestionRef.current = "";
+      if (!state || !ttsActive) return;
+      let currentQ = "";
+      let questionSeatId: number | undefined;
+
+      if (state.currentRound === "khoiDong" && state.khoiDong) {
+        currentQ = state.khoiDong.current?.q || "";
+        const segIdx = state.khoiDong.segIdx ?? 0;
+        const curSeg = state.khoiDong.segments?.[segIdx];
+        if (curSeg?.kind === "solo" && curSeg.seat != null) {
+          questionSeatId = curSeg.seat;
+        }
+      } else if (state.currentRound === "vcnv" && state.vcnv) {
+        const curIdx = state.vcnv.currentRow;
+        const isCenter = curIdx === 4;
+        const rawQ = isCenter ? (state.vcnv.centerQuestion?.q || "") : (state.vcnv.rows[curIdx]?.hint || "");
+        currentQ = stripVcnvLetterCount(rawQ);
+      } else if (state.currentRound === "tangToc" && state.tangToc) {
+        currentQ = state.tangToc.questions[state.tangToc.qIdx]?.q || "";
+      } else if (state.currentRound === "veDich" && state.veDich) {
+        currentQ = state.veDich.current?.q?.q || "";
+        const curSeat = state.veDich.order?.[state.veDich.turnIdx];
+        if (curSeat != null) questionSeatId = curSeat;
+      } else if (state.currentRound === "cauHoiPhu" && state.cauHoiPhu) {
+        currentQ = state.cauHoiPhu.questions[state.cauHoiPhu.qIdx]?.q || "";
+      }
+
+      if (currentQ) {
+        lastQuestionRef.current = currentQ;
+        speakSmartQuestion(currentQ, {
+          season: effectiveAudioSeason,
+          round: state.currentRound || undefined,
+          seatId: questionSeatId,
+          segIdx: state.currentRound === "khoiDong" ? state.khoiDong?.segIdx : undefined,
+          rowIdx: state.currentRound === "vcnv" ? state.vcnv?.currentRow : undefined,
+        });
+      }
+    };
+
+    window.addEventListener("olympia:tts-replay", handleReplay);
+    return () => window.removeEventListener("olympia:tts-replay", handleReplay);
+  }, [state, ttsActive, effectiveAudioSeason]);
+
+  // Automated Countdown Expiration Hook across all rounds
+  const handledTimeoutsRef = useRef<Set<string>>(new Set());
+  const timeoutDelayTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!state || !ttsActive || state.stage !== "playing" || !state.currentRound) return;
+
+    let timeoutKey: string | null = null;
+    let speechText = "";
+    let speechRole: "khanh_vy" | "ngoc_huy" = "ngoc_huy";
+    let delayMs = 600;
+
+    // 1. Khởi Động: Turn Finish or Segment Done
+    if (state.currentRound === "khoiDong" && state.khoiDong) {
+      const kd = state.khoiDong;
+      const segIdx = kd.segIdx ?? 0;
+      const curSeg = kd.segments?.[segIdx];
+      const isSolo = curSeg?.kind === "solo";
+
+      // Segment finished or global timer expired
+      if (kd.phase === "segmentDone" || (curSeg?.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0)) {
+        timeoutKey = `kd-finish-seg-${segIdx}`;
+        if (!handledTimeoutsRef.current.has(timeoutKey)) {
+          speechRole = "ngoc_huy";
+          delayMs = 900; // wait for kd_finish_turn fanfare
+          if (isSolo && curSeg?.seat != null) {
+            const contestantName = state.seats[curSeg.seat]?.name || `Thí sinh ${curSeg.seat + 1}`;
+            const contestantScore = state.seats[curSeg.seat]?.score ?? 0;
+            speechText = `Thời gian dành cho lượt thi đã kết thúc. Bạn ${contestantName} đã hoàn thành lượt Khởi Động với ${contestantScore} điểm!`;
+          } else {
+            speechText = "Thời gian dành cho lượt thi Khởi Động chung đã kết thúc!";
+          }
+        }
+      }
+    }
+
+    // 2. VCNV: 15s Row Thinking Timer Expiration
+    else if (state.currentRound === "vcnv" && state.vcnv) {
+      const v = state.vcnv;
+      if (v.phase === "question" && v.timer && v.timer.startedAt == null && v.timer.remainingMs <= 0) {
+        timeoutKey = `vcnv-timeout-row-${v.currentRow}`;
+        if (!handledTimeoutsRef.current.has(timeoutKey)) {
+          speechRole = "khanh_vy";
+          speechText = "Đã hết thời gian 15 giây suy nghĩ!";
+          delayMs = 300;
+        }
+      }
+    }
+
+    // 3. Tăng Tốc: Question Thinking Timer Expiration
+    else if (state.currentRound === "tangToc" && state.tangToc) {
+      const tt = state.tangToc;
+      if (tt.phase === "question" && tt.timer && tt.timer.startedAt == null && tt.timer.remainingMs <= 0) {
+        timeoutKey = `tangtoc-timeout-q-${tt.qIdx}`;
+        if (!handledTimeoutsRef.current.has(timeoutKey)) {
+          speechRole = "ngoc_huy";
+          speechText = "Đã hết thời gian!";
+          delayMs = 400;
+        }
+      }
+    }
+
+    // 4. Về Đích: Main Thinking Timer Expiration or Steal 5s Expiration
+    else if (state.currentRound === "veDich" && state.veDich) {
+      const vd = state.veDich;
+      if (vd.phase === "thinking" && vd.timer && vd.timer.startedAt == null && vd.timer.remainingMs <= 0) {
+        timeoutKey = `vedich-timeout-turn-${vd.turnIdx}-q-${vd.qIdx}`;
+        if (!handledTimeoutsRef.current.has(timeoutKey)) {
+          speechRole = "ngoc_huy";
+          speechText = "Đã hết thời gian suy nghĩ!";
+          delayMs = 300;
+        }
+      } else if (
+        vd.phase === "stealing" &&
+        vd.steal?.open &&
+        vd.steal?.buzzedSeat == null &&
+        vd.steal?.timer &&
+        vd.steal.timer.startedAt == null &&
+        vd.steal.timer.remainingMs <= 0
+      ) {
+        timeoutKey = `vedich-steal-timeout-turn-${vd.turnIdx}-q-${vd.qIdx}`;
+        if (!handledTimeoutsRef.current.has(timeoutKey)) {
+          speechRole = "khanh_vy";
+          speechText = "Đã hết 5 giây giành quyền trả lời!";
+          delayMs = 300;
+        }
+      }
+    }
+
+    // Execute speech if a new timeout is detected
+    if (timeoutKey && speechText && !handledTimeoutsRef.current.has(timeoutKey)) {
+      handledTimeoutsRef.current.add(timeoutKey);
+      if (timeoutDelayTimerRef.current) clearTimeout(timeoutDelayTimerRef.current);
+      timeoutDelayTimerRef.current = setTimeout(() => {
+        timeoutDelayTimerRef.current = null;
+        speakOlympiaTTS(speechText, {
+          role: speechRole,
+          round: state.currentRound || undefined,
+          season: effectiveAudioSeason,
+          segment: "question",
+        });
+      }, delayMs);
+    }
+  }, [
+    state?.currentRound,
+    state?.stage,
+    state?.khoiDong?.phase,
+    state?.khoiDong?.segIdx,
+    state?.khoiDong?.globalTimer?.remainingMs,
+    state?.vcnv?.phase,
+    state?.vcnv?.currentRow,
+    state?.vcnv?.timer?.remainingMs,
+    state?.vcnv?.timer?.startedAt,
+    state?.tangToc?.phase,
+    state?.tangToc?.qIdx,
+    state?.tangToc?.timer?.remainingMs,
+    state?.tangToc?.timer?.startedAt,
+    state?.veDich?.phase,
+    state?.veDich?.turnIdx,
+    state?.veDich?.qIdx,
+    state?.veDich?.timer?.remainingMs,
+    state?.veDich?.timer?.startedAt,
+    state?.veDich?.steal?.open,
+    state?.veDich?.steal?.buzzedSeat,
+    state?.veDich?.steal?.timer?.remainingMs,
+    state?.veDich?.steal?.timer?.startedAt,
+    ttsActive,
+    effectiveAudioSeason,
+    state?.seats,
   ]);
 
   // VCNV chronological CNV buzzer sequence announcement
@@ -595,7 +843,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         prevVerdictRef.current = vKey;
         smoothStopOlympiaTTS(20);
         if (state.khoiDong.lastVerdict === "correct") {
-          speakOlympiaResult(true, undefined, {
+          speakOlympiaResult(true, state.khoiDong.current?.a, {
             season: effectiveAudioSeason,
             round: "khoiDong",
             segIdx: state.khoiDong.segIdx,
@@ -617,7 +865,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         prevVerdictRef.current = vKey;
         smoothStopOlympiaTTS(20);
         if (state.veDich.lastVerdict === "correct" || state.veDich.lastVerdict === "stealCorrect") {
-          speakOlympiaResult(true, undefined, { season: effectiveAudioSeason, round: "veDich" });
+          speakOlympiaResult(true, state.veDich.current?.q?.a, { season: effectiveAudioSeason, round: "veDich" });
         } else if (state.veDich.current?.q?.a) {
           speakOlympiaResult(false, state.veDich.current.q.a, { season: effectiveAudioSeason, round: "veDich" });
         }

@@ -74,8 +74,12 @@ export interface SpeakTTSOptions {
   speedCategory?: TtsSpeedCategory;
   preferServer?: boolean;
   engine?: "server" | "webspeech" | "auto";
-  pitch?: string;
+  pitch?: number | string;
+  voice?: string;
+  voiceConfig?: McVoiceCustomization;
   noCancel?: boolean;
+  vars?: Record<string, string | number | undefined | null>;
+  deterministic?: boolean;
   onEnd?: () => void;
   onError?: (err: unknown) => void;
 }
@@ -179,45 +183,77 @@ export interface OlympiaRankedContestant {
   pitchRate: number;
 }
 
+export const VARIABLE_ALIAS_MAP: Record<string, string[]> = {
+  tenThiSinh: ["tenThiSinh", "name", "contestantName", "ten"],
+  tenTruong: ["tenTruong", "school", "schoolName", "truong"],
+  diemSo: ["diemSo", "score", "points", "diem"],
+  thuHang: ["thuHang", "rank", "hang"],
+  thayDoiHang: ["thayDoiHang", "rankChange", "thayDoi"],
+  thoiGianConLai: ["thoiGianConLai", "timeLeft", "remainingTime", "thoiGian"],
+  dapAnDung: ["dapAnDung", "correctAnswer", "answer", "dapAn"],
+  tenPhong: ["tenPhong", "roomName"],
+  soChuCai: ["soChuCai", "letterCount"],
+  soHangNgang: ["soHangNgang", "rowNumber"],
+  soGiayNhanhNhat: ["soGiayNhanhNhat", "fastestSeconds"],
+  tenNhanhNhat: ["tenNhanhNhat", "fastestContestant"],
+  soThuTu: ["soThuTu", "orderNumber"],
+  noiDungCauHoi: ["noiDungCauHoi", "questionContent", "content"],
+  viTri: ["viTri", "soGhe", "seatNumber", "position"],
+  tenGiaiBa: ["tenGiaiBa", "thirdPlaceName"],
+  diemGiaiBa: ["diemGiaiBa", "thirdPlaceScore"],
+  tenGiaiNhi: ["tenGiaiNhi", "secondPlaceName"],
+  tenTruongGiaiNhi: ["tenTruongGiaiNhi", "secondPlaceSchool"],
+  diemGiaiNhi: ["diemGiaiNhi", "secondPlaceScore"],
+  tenQuanQuan: ["tenQuanQuan", "championName", "firstPlaceName"],
+  tenTruongQuanQuan: ["tenTruongQuanQuan", "championSchool", "firstPlaceSchool"],
+  diemQuanQuan: ["diemQuanQuan", "championScore", "firstPlaceScore"],
+};
+
 /**
  * Standard Default Olympia Broadcast Scripts (VTV3 format)
  */
 export const DEFAULT_OLYMPIA_SCRIPTS: CustomTtsScriptConfig = {
   lobbyGreeting: [
-    "Chào mừng các bạn thí sinh và quý vị khán giả đã đến với trường quay S14 của Đường lên đỉnh Olympia! Trận đấu sẽ chính thức bắt đầu trong ít phút nữa.",
+    "Chào mừng các bạn thí sinh và quý vị khán giả đã đến với trường quay S14 của Đường lên đỉnh Olympia! Trận đấu {tenPhong} sẽ chính thức bắt đầu trong ít phút nữa. Các bạn hãy kiểm tra lại đường truyền, thiết bị và chuẩn bị tinh thần thật sẵn sàng nhé!",
     "Xin chào mừng tất cả các bạn đã có mặt tại trường quay Đường lên đỉnh Olympia. Hãy chuẩn bị tinh thần thật sẵn sàng để bước vào hành trình chinh phục đỉnh núi tri thức!",
   ],
   openingDuo: {
-    khanhVy: "Xin nhiệt liệt chào đón quý vị khán giả và 4 nhà leo núi đến với cuộc thi tuần này của Đường lên đỉnh Olympia!",
-    ngocHuy: "Đúng vậy thưa quý vị, 4 thí sinh của chúng ta hôm nay đã sẵn sàng, tràn đầy tự tin và quyết tâm để chinh phục chiếc Vòng nguyệt quế vinh quang!",
+    khanhVy: "Xin nhiệt liệt chào đón quý vị khán giả và các bạn đang theo dõi cuộc thi Đường lên đỉnh Olympia ngày hôm nay!",
+    ngocHuy: "Đúng vậy thưa quý vị, 4 nhà leo núi của chúng ta hôm nay đã sẵn sàng, tràn đầy tự tin và quyết tâm để chinh phục đỉnh núi tri thức và chiếc Vòng nguyệt quế vinh quang!",
   },
   contestantIntroPattern: "Xin được giới thiệu thí sinh {tenThiSinh} đến từ trường {tenTruong}.",
   roundIntros: {
+    khoiDongSolo: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động! Người đầu tiên bước vào lượt thi cá nhân là bạn {tenThiSinh} đến từ trường {tenTruong}. Bạn sẽ có 6 câu hỏi để ghi những điểm số đầu tiên. Chúc bạn thật tự tin, bình tĩnh và có một màn khởi động thành công rực rỡ!",
+    khoiDongShared: "Và bây giờ là lượt thi Khởi Động chung! Các bạn thí sinh hãy chuẩn bị sẵn sàng tay trên bàn phím chuông, chúc cả 4 bạn sẽ có một màn khởi động thật suôn sẻ, bứt phá và giành được thật nhiều điểm số!",
     khoiDong: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động!",
-    vuotChuongNgaiVat: "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật!",
-    tangToc: "Cơ hội nâng cao điểm số rất lớn đang chờ đón 4 thí sinh ở phần thi thứ ba: Tăng Tốc!",
-    veDich: "Và bây giờ là phần thi quyết định, phần thi cuối cùng của trận đấu: Về Đích!",
-    cauHoiPhu: "Do có sự bằng điểm ở vị trí phân định, chúng ta sẽ bước vào phần thi Câu hỏi phụ!",
+    vuotChuongNgaiVat: "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật! Thử thách của chúng ta ngày hôm nay là một Chướng ngại vật gồm {soChuCai} chữ cái. Mỗi câu trả lời đúng ở các hàng ngang sẽ mở ra một góc hình ảnh gợi ý. Chúc 4 thí sinh thi đấu thật tập trung và bản lĩnh!",
+    tangToc: "Cơ hội nâng cao điểm số và tạo ra bước ngoặt đang chờ đón 4 thí sinh ở phần thi thứ ba: Tăng tốc! Có 4 câu hỏi với thời gian suy nghĩ lần lượt là 10, 20, 30 và 40 giây. Các bạn hãy tận dụng tối đa từng phần trăm giây để giành lấy số điểm tối đa 40, 30, 20 và 10 điểm nhé!",
+    veDich: "Và bây giờ là phần thi quyết định, phần thi cuối cùng của trận đấu: Về Đích! Nơi thể hiện bản lĩnh, chiến thuật và ý chí kiên định của các nhà leo núi. Điểm số hoàn toàn có thể thay đổi sau từng câu hỏi!",
+    cauHoiPhu: "Do có sự bằng điểm ở vị trí phân định, chúng ta sẽ bước vào phần thi Câu hỏi phụ để tìm ra người chiến thắng xứng đáng!",
   },
   correctResponses: [
-    "Chính xác! Chúc mừng bạn!",
+    "Chính xác! Thêm 10 điểm!",
+    "Rất chuẩn xác!",
     "Câu trả lời hoàn toàn chính xác!",
-    "Rất xuất sắc, bạn có thêm điểm!",
+    "{dapAnDung}? Vâng, hoàn toàn chính xác!",
+    "{dapAnDung}! Đúng rồi!",
+    "{dapAnDung} chính là câu trả lời chính xác!",
   ],
   wrongResponses: [
-    "Rất tiếc, câu trả lời chưa chính xác.",
-    "Chưa đúng rồi bạn ơi, rất tiếc!",
-    "Rất tiếc cơ hội đã trôi qua.",
+    "{dapAnDung} mới là đáp án chính xác, rất tiếc!",
+    "Rất tiếc, câu trả lời đúng phải là {dapAnDung}.",
+    "Chưa đúng rồi, đáp án là {dapAnDung}.",
+    "Không phải, phải là {dapAnDung}.",
   ],
-  postMatchOpening: "Kính thưa quý vị khán giả, cả 4 phần thi đầy kịch tính đã khép lại. Bây giờ chúng ta hãy cùng tổng kết điểm số chung cuộc của các nhà leo núi!",
+  postMatchOpening: "Kính thưa quý vị khán giả và các bạn, những giây phút thi đấu căng thẳng, kịch tính và đầy cảm xúc của trận đấu ngày hôm nay đã chính thức khép lại. Bây giờ, chúng ta hãy cùng nhìn lại điểm số chung cuộc và vinh danh những nhà leo núi xuất sắc nhất!",
   awardTiers: {
-    third: "Xin được chúc mừng và trao Giải Ba cho bạn {tenThiSinh} với {diemSo} điểm!",
-    second: "Xin được vinh danh Giải Nhì thuộc về bạn {tenThiSinh} với {diemSo} điểm!",
-    first: "Và xin nhiệt liệt chúc mừng Quán quân của cuộc thi hôm nay, chủ nhân của chiếc Vòng nguyệt quế: Bạn {tenThiSinh} với {diemSo} điểm!",
+    third: "Xin được chúc mừng và trao Giải Ba của cuộc thi hôm nay cho bạn {tenGiaiBa} với tổng số điểm là {diemGiaiBa} điểm!",
+    second: "Và xin được vinh danh Giải Nhì thuộc về bạn {tenGiaiNhi} đến từ trường {tenTruongGiaiNhi} với số điểm rất ấn tượng: {diemGiaiNhi} điểm!",
+    first: "Và bây giờ, khoảnh khắc được mong đợi nhất... Xin nhiệt liệt chúc mừng Quán quân của Đường lên đỉnh Olympia tuần này, chủ nhân của chiếc Vòng nguyệt quế vinh quang: Bạn {tenQuanQuan} đến từ {tenTruongQuanQuan} với {diemQuanQuan} điểm!",
   },
   closingFarewell: [
-    "Cuộc thi hôm nay đã tìm ra được chủ nhân xứng đáng của chiếc Vòng nguyệt quế. Xin cảm ơn quý vị khán giả đã luôn đồng hành cùng Đường lên đỉnh Olympia!",
-    "Hẹn gặp lại quý vị khán giả và các bạn trong những cuộc tranh tài tiếp theo của Đường lên đỉnh Olympia. Xin kính chào tạm biệt và hẹn gặp lại!",
+    "Một trận đấu vô cùng xuất sắc và xứng đáng. Xin cảm ơn quý vị khán giả đã luôn đồng hành, cổ vũ nhiệt tình cho các nhà leo núi của chúng ta!",
+    "Hẹn gặp lại quý vị khán giả và các bạn trong những cuộc tranh tài tiếp theo của Đường lên đỉnh Olympia! Xin kính chào tạm biệt và hẹn gặp lại!",
   ],
   mcVoiceConfig: {
     khanhVy: { pitch: 1.12, rate: 1.05 },
@@ -240,9 +276,23 @@ export function interpolateTemplate(
   vars: Record<string, string | number | undefined | null>
 ): string {
   if (!template) return "";
-  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => {
-    const val = vars[key];
-    return val !== undefined && val !== null ? String(val) : `{${key}}`;
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+    // 1. Direct lookup
+    if (vars[key] !== undefined && vars[key] !== null) {
+      return String(vars[key]);
+    }
+    // 2. Alias resolution
+    for (const [canonical, aliases] of Object.entries(VARIABLE_ALIAS_MAP)) {
+      if (aliases.includes(key) || canonical === key) {
+        for (const alias of aliases) {
+          if (vars[alias] !== undefined && vars[alias] !== null) {
+            return String(vars[alias]);
+          }
+        }
+      }
+    }
+    // 3. Retain unprovided token safely
+    return match;
   });
 }
 
@@ -1452,6 +1502,10 @@ let stopRequested = false;
 let boundaryCleanupTimer: any = null;
 let buzzerPauseTimer: any = null;
 let dramaticStealTimer: any = null;
+let olympiaTtsVolume = 1.0;
+let isOlympiaTtsPausedState = false;
+let activeGainNodeRef: GainNode | null = null;
+let activeHtmlAudioRef: HTMLAudioElement | null = null;
 
 /**
  * Estimates word-boundary offsets (in ms) proportionally across an utterance duration.
@@ -1507,6 +1561,8 @@ export function computeBoundaryStopDelayMs(
  * - Web Speech: waits for next `onboundary` or computed boundary delay before cancel
  */
 export function smoothStopOlympiaTTS(fadeMs: number = 45, maxWaitMs: number = 160): number {
+  playbackEpoch++;
+
   if (boundaryCleanupTimer) {
     clearTimeout(boundaryCleanupTimer);
     boundaryCleanupTimer = null;
@@ -1522,7 +1578,6 @@ export function smoothStopOlympiaTTS(fadeMs: number = 45, maxWaitMs: number = 16
   if (activeFadeStopper) {
     const fn = activeFadeStopper;
     activeFadeStopper = null;
-    playbackEpoch++;
     return fn(fadeMs, maxWaitMs);
   }
 
@@ -1616,6 +1671,116 @@ export function cancelTTS(): void {
   } catch {}
 }
 
+export function getOlympiaTtsVolume(): number {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = window.localStorage?.getItem("olympia_tts_volume");
+      if (saved != null) {
+        const parsed = parseFloat(saved);
+        if (Number.isFinite(parsed)) return Math.max(0, Math.min(1, parsed));
+      }
+    } catch {}
+  }
+  return olympiaTtsVolume;
+}
+
+export function setOlympiaTtsVolume(volume: number): void {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1.0));
+  olympiaTtsVolume = clamped;
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage?.setItem("olympia_tts_volume", String(clamped));
+    } catch {}
+  }
+  if (activeGainNodeRef) {
+    try {
+      const ctx = getOrCreateAudioContext();
+      if (ctx) {
+        activeGainNodeRef.gain.setValueAtTime(clamped, ctx.currentTime);
+      } else {
+        activeGainNodeRef.gain.value = clamped;
+      }
+    } catch {}
+  }
+  if (activeHtmlAudioRef) {
+    try {
+      activeHtmlAudioRef.volume = clamped;
+    } catch {}
+  }
+}
+
+export function isOlympiaTtsPaused(): boolean {
+  return isOlympiaTtsPausedState;
+}
+
+export function pauseOlympiaTTS(): void {
+  isOlympiaTtsPausedState = true;
+  if (typeof window === "undefined") return;
+  try {
+    const ctx = getOrCreateAudioContext();
+    if (ctx && ctx.state === "running" && typeof ctx.suspend === "function") {
+      void ctx.suspend().catch(() => {});
+    }
+  } catch {}
+  if ("speechSynthesis" in window) {
+    try {
+      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+        window.speechSynthesis.pause();
+      }
+    } catch {}
+  }
+  if (activeHtmlAudioRef && !activeHtmlAudioRef.paused) {
+    try {
+      activeHtmlAudioRef.pause();
+    } catch {}
+  }
+}
+
+export function resumeOlympiaTTS(): void {
+  isOlympiaTtsPausedState = false;
+  if (typeof window === "undefined") return;
+  try {
+    const ctx = getOrCreateAudioContext();
+    if (ctx && ctx.state === "suspended" && typeof ctx.resume === "function") {
+      void ctx.resume().catch(() => {});
+    }
+  } catch {}
+  if ("speechSynthesis" in window) {
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    } catch {}
+  }
+  if (activeHtmlAudioRef && activeHtmlAudioRef.paused) {
+    try {
+      void activeHtmlAudioRef.play().catch(() => {});
+    } catch {}
+  }
+}
+
+export function skipOlympiaTTS(): void {
+  smoothStopOlympiaTTS(30, 80);
+}
+
+export function replayCurrentQuestionTTS(): void {
+  smoothStopOlympiaTTS(30, 80);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("olympia:tts-replay"));
+  }
+}
+
+export function speakTimerExpiredTTS(round?: string, options?: SpeakTTSOptions): void {
+  if (!ttsEnabled || typeof window === "undefined") return;
+  const role = options?.role || "ngoc_huy";
+  speakOlympiaTTS("Hết giờ!", {
+    ...options,
+    role,
+    segment: "question",
+    round,
+  });
+}
+
 function cancelPlaybackOnly(): void {
   playbackEpoch++;
   stopRequested = false;
@@ -1656,30 +1821,101 @@ function cancelPlaybackOnly(): void {
   }
 }
 
+function cleanVoiceNameForGender(name: string): string {
+  return name
+    .replace(/\s*[-–(].*$/i, "") // strips "- Vietnamese (Vietnam)"
+    .replace(/\bvi[eệ]t\s*nam(?:ese)?\b/gi, "")
+    .replace(/\bvietnam(?:ese)?\b/gi, "")
+    .replace(/\bvi-vn\b/gi, "")
+    .trim();
+}
+
+function selectSeparatedVoices(
+  voices: SpeechSynthesisVoice[],
+  femaleRegex: RegExp,
+  maleRegex: RegExp
+): { khanh_vy: SpeechSynthesisVoice | null; ngoc_huy: SpeechSynthesisVoice | null } {
+  if (voices.length === 0) return { khanh_vy: null, ngoc_huy: null };
+
+  if (voices.length === 1) {
+    const v = voices[0];
+    const cleaned = cleanVoiceNameForGender(v.name);
+    const isMale = maleRegex.test(cleaned) && !femaleRegex.test(cleaned);
+    const isFemale = femaleRegex.test(cleaned) && !maleRegex.test(cleaned);
+    return {
+      khanh_vy: isMale ? null : v,
+      ngoc_huy: isFemale ? null : v,
+    };
+  }
+
+  // 1. Find best female voice for Khánh Vy (matches female, avoids male; fallback to neutral)
+  let kvIdx = voices.findIndex((v) => {
+    const c = cleanVoiceNameForGender(v.name);
+    return femaleRegex.test(c) && !maleRegex.test(c);
+  });
+  if (kvIdx < 0) {
+    kvIdx = voices.findIndex((v) => femaleRegex.test(cleanVoiceNameForGender(v.name)));
+  }
+  if (kvIdx < 0) {
+    // Pick gender-neutral voice (does not match male)
+    kvIdx = voices.findIndex((v) => !maleRegex.test(cleanVoiceNameForGender(v.name)));
+  }
+  // If all voices are explicitly male, kvIdx remains -1 (do not cross-assign male voice to Khánh Vy)
+
+  // 2. Find best male voice for Ngọc Huy (matches male, avoids female; fallback to neutral)
+  let nhIdx = voices.findIndex((v, i) => {
+    if (i === kvIdx) return false;
+    const c = cleanVoiceNameForGender(v.name);
+    return maleRegex.test(c) && !femaleRegex.test(c);
+  });
+  if (nhIdx < 0) {
+    nhIdx = voices.findIndex(
+      (v, i) => i !== kvIdx && maleRegex.test(cleanVoiceNameForGender(v.name))
+    );
+  }
+  if (nhIdx < 0) {
+    // Pick gender-neutral voice (does not match female)
+    nhIdx = voices.findIndex(
+      (v, i) => i !== kvIdx && !femaleRegex.test(cleanVoiceNameForGender(v.name))
+    );
+  }
+  // If all voices are explicitly female, nhIdx remains -1 (do not cross-assign female voice to Ngọc Huy)
+
+  return {
+    khanh_vy: kvIdx >= 0 ? (voices[kvIdx] ?? null) : null,
+    ngoc_huy: nhIdx >= 0 ? (voices[nhIdx] ?? null) : null,
+  };
+}
+
 /**
  * Resolves browser Web Speech API voice and acoustic parameters for MC role & language.
+ * Enforces strict dual MC voice separation and mutual exclusion.
  */
 export function resolveMCVoiceConfig(
   role: DualMcRole,
-  lang: TtsLang = "vi"
+  lang: TtsLang = "vi",
+  customConfig?: McVoiceCustomization
 ): {
   voice: SpeechSynthesisVoice | null;
   pitch: number;
+  rate?: number;
 } {
   const customVoiceSetting =
+    customConfig ||
     activeCustomTtsScripts?.mcVoiceConfig?.[role] ||
     (role === "khanh_vy"
       ? activeCustomTtsScripts?.mcVoiceConfig?.khanhVy
       : activeCustomTtsScripts?.mcVoiceConfig?.ngocHuy);
-  const defaultPitch = role === "khanh_vy" ? 1.12 : 0.88;
-  const pitch = customVoiceSetting?.pitch !== undefined ? customVoiceSetting.pitch : defaultPitch;
+
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    return { voice: null, pitch };
+    const defaultPitch = role === "khanh_vy" ? 1.12 : 0.88;
+    const defaultRate = role === "khanh_vy" ? 1.05 : 1.04;
+    const pitch = customVoiceSetting?.pitch !== undefined ? customVoiceSetting.pitch : defaultPitch;
+    const rate = customVoiceSetting?.rate !== undefined ? customVoiceSetting.rate : defaultRate;
+    return { voice: null, pitch, rate };
   }
 
-  if (cachedViVoices.length === 0 && cachedEnVoices.length === 0) {
-    refreshOlympiaVoices();
-  }
+  refreshOlympiaVoices();
 
   // If host selected a specific custom voiceURI in TTS Manager, prioritize it
   if (customVoiceSetting?.voiceURI) {
@@ -1688,45 +1924,45 @@ export function resolveMCVoiceConfig(
       (v) => v.voiceURI === customVoiceSetting.voiceURI || v.name === customVoiceSetting.voiceURI
     );
     if (matched) {
-      return { voice: matched, pitch };
+      const defaultPitch = role === "khanh_vy" ? 1.12 : 0.88;
+      const pitch = customVoiceSetting.pitch !== undefined ? customVoiceSetting.pitch : defaultPitch;
+      return { voice: matched, pitch, rate: customVoiceSetting.rate };
     }
   }
 
-  if (lang === "en") {
-    const enVoices = cachedEnVoices.length > 0 ? cachedEnVoices : (refreshOlympiaVoices(), cachedEnVoices);
-    let selectedVoice: SpeechSynthesisVoice | null = null;
-    if (role === "khanh_vy") {
-      selectedVoice =
-        enVoices.find((v) => /jenny|aria|samantha|victoria|karen|zira|female/i.test(v.name)) ||
-        enVoices[0] ||
-        null;
-    } else {
-      selectedVoice =
-        enVoices.find((v) => /guy|andrew|daniel|alex|david|mark|male/i.test(v.name)) ||
-        enVoices[enVoices.length > 1 ? 1 : 0] ||
-        null;
-    }
-    return { voice: selectedVoice, pitch };
-  }
+  const isEn = lang === "en";
+  const pool = isEn ? cachedEnVoices : cachedViVoices;
 
-  const viVoices = cachedViVoices.length > 0 ? cachedViVoices : refreshOlympiaVoices();
-  let selectedVoice: SpeechSynthesisVoice | null = null;
-  if (role === "khanh_vy") {
-    selectedVoice =
-      viVoices.find(
-        (v) => /hoaimy|female|loan|nữ/i.test(v.name) || /vietnam.*female/i.test(v.name)
-      ) ||
-      viVoices[0] ||
-      null;
-    return { voice: selectedVoice, pitch };
-  }
-  selectedVoice =
-    viVoices.find(
-      (v) => /namminh|male|an|nam/i.test(v.name) || /vietnam.*male/i.test(v.name)
-    ) ||
-    viVoices[viVoices.length > 1 ? 1 : 0] ||
-    null;
-  return { voice: selectedVoice, pitch };
+  const femaleRegex = isEn
+    ? /\b(?:jenny|aria|samantha|victoria|karen|zira|female)\b/i
+    : /\b(?:hoaimy|female|loan|nữ|linh|mai|chi|ha|huong)\b/i;
+  const maleRegex = isEn
+    ? /\b(?:guy|andrew|daniel|alex|david|mark|male)\b/i
+    : /\b(?:namminh|male|an|nam|minh|trung|huy|duc|thanh|khoi)\b/i;
+
+  const separated = selectSeparatedVoices(pool, femaleRegex, maleRegex);
+  const selectedVoice = role === "khanh_vy" ? separated.khanh_vy : separated.ngoc_huy;
+
+  // Acoustic separation when only 1 voice exists or when voices are single-gender / shared
+  const isAcousticDifferentiated =
+    pool.length === 1 ||
+    (pool.length > 1 &&
+      (separated.khanh_vy === null ||
+        separated.ngoc_huy === null ||
+        separated.khanh_vy === separated.ngoc_huy ||
+        separated.khanh_vy?.name === separated.ngoc_huy?.name));
+
+  const defaultPitch = isAcousticDifferentiated
+    ? (role === "khanh_vy" ? 1.16 : 0.84)
+    : (role === "khanh_vy" ? 1.12 : 0.88);
+  const defaultRate = isAcousticDifferentiated
+    ? (role === "khanh_vy" ? 1.05 : 1.00)
+    : (role === "khanh_vy" ? 1.05 : 1.04);
+
+  const pitch = customVoiceSetting?.pitch !== undefined ? customVoiceSetting.pitch : defaultPitch;
+  const rate = customVoiceSetting?.rate !== undefined ? customVoiceSetting.rate : defaultRate;
+
+  return { voice: selectedVoice, pitch, rate };
 }
 
 function shouldAttemptServerTts(options?: SpeakTTSOptions): boolean {
@@ -1734,17 +1970,26 @@ function shouldAttemptServerTts(options?: SpeakTTSOptions): boolean {
   if (options?.engine === "webspeech") return false;
   if (Date.now() < engineStatus.serverCooldownUntil) return false;
 
+  const isOffline =
+    (typeof navigator !== "undefined" && navigator.onLine === false) ||
+    (typeof window !== "undefined" && (window.navigator as any)?.onLine === false);
+  if (isOffline) return false;
+
   const hasCustomFetch = typeof transportConfig.fetchImpl === "function";
   const hasGlobalFetch = typeof globalThis.fetch === "function";
   if (!hasCustomFetch && !hasGlobalFetch) return false;
 
-  if (hasCustomFetch || options?.preferServer || options?.engine === "server") {
+  if (hasCustomFetch) return true;
+
+  // In browser environments where origin is available for relative /api/olympia/tts fetch
+  const origin = window.location?.origin;
+  const hasValidOrigin = typeof origin === "string" && /^https?:\/\/|^file:\/\//i.test(origin);
+  if (hasValidOrigin) {
     return true;
   }
 
-  if (typeof window.speechSynthesis === "undefined") {
-    const origin = window.location?.origin;
-    return typeof origin === "string" && /^https?:\/\/|^file:\/\//i.test(origin);
+  if (options?.preferServer || options?.engine === "server") {
+    return true;
   }
 
   return false;
@@ -1775,7 +2020,8 @@ function speakWebSpeechSegmentSync(
   role: DualMcRole,
   rate: number,
   epoch: number,
-  onDone: (completed: boolean) => void
+  onDone: (completed: boolean) => void,
+  options?: SpeakTTSOptions
 ): void {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     onDone(false);
@@ -1787,11 +2033,11 @@ function speakWebSpeechSegmentSync(
   }
 
   try {
-    const { voice, pitch } = resolveMCVoiceConfig(role, seg.lang);
+    const { voice, pitch, rate: voiceRate } = resolveMCVoiceConfig(role, seg.lang, options?.voiceConfig);
     const utterance = new SpeechSynthesisUtterance(seg.text);
     utterance.lang = seg.lang === "en" ? "en-US" : "vi-VN";
     utterance.pitch = pitch;
-    utterance.rate = rate;
+    utterance.rate = options?.baseRate !== undefined ? rate : (voiceRate ?? rate);
     if (voice) utterance.voice = voice;
 
     const speechStartedAt = Date.now();
@@ -1878,13 +2124,20 @@ function speakWebSpeechSegmentsSync(
       return;
     }
     const seg = segments[idx++];
-    speakWebSpeechSegmentSync(seg, role, rate, epoch, (completed) => {
-      if (!completed || epoch !== playbackEpoch) {
-        resolvePromise?.(false);
-        return;
-      }
-      runNext();
-    });
+    speakWebSpeechSegmentSync(
+      seg,
+      role,
+      rate,
+      epoch,
+      (completed) => {
+        if (!completed || epoch !== playbackEpoch) {
+          resolvePromise?.(false);
+          return;
+        }
+        runNext();
+      },
+      options
+    );
   };
   runNext();
 }
@@ -1918,14 +2171,33 @@ async function fetchServerTtsAudio(
   }
 
   try {
+    const customCfg =
+      options?.voiceConfig ||
+      activeCustomTtsScripts?.mcVoiceConfig?.[role] ||
+      (role === "khanh_vy"
+        ? activeCustomTtsScripts?.mcVoiceConfig?.khanhVy
+        : activeCustomTtsScripts?.mcVoiceConfig?.ngocHuy);
+
     const payload: Record<string, unknown> = {
       text: seg.text,
       role,
       lang: seg.lang,
       rate,
     };
-    if (options?.pitch) {
-      payload.pitch = options.pitch;
+    const effectivePitch = options?.pitch ?? customCfg?.pitch;
+    if (effectivePitch !== undefined && effectivePitch !== null) {
+      payload.pitch = effectivePitch;
+    }
+
+    const effectiveVoice =
+      options?.voice ??
+      customCfg?.voiceName ??
+      (customCfg?.voiceURI && /^[a-zA-Z0-9_-]+$/.test(customCfg.voiceURI) && /Neural/i.test(customCfg.voiceURI)
+        ? customCfg.voiceURI
+        : undefined);
+
+    if (effectiveVoice) {
+      payload.voice = effectiveVoice;
     }
 
     const res = await fetchFn(endpoint, {
@@ -1984,7 +2256,9 @@ async function playAudioBufferWithWebAudio(
     const source = ctx.createBufferSource();
     const gainNode = ctx.createGain();
     source.buffer = audioBuffer;
-    gainNode.gain.setValueAtTime(1.0, ctx.currentTime);
+    const initialGain = gainNode.gain.value ?? getOlympiaTtsVolume();
+    gainNode.gain.setValueAtTime(initialGain, ctx.currentTime);
+    activeGainNodeRef = gainNode;
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
 
@@ -1998,6 +2272,7 @@ async function playAudioBufferWithWebAudio(
       settled = true;
       activeAudioCleanup = null;
       activeFadeStopper = null;
+      activeGainNodeRef = null;
       try {
         source.onended = null;
       } catch {}
@@ -2066,6 +2341,10 @@ async function playAudioBufferWithHtmlAudio(
   const blob = new Blob([buf], { type: "audio/mpeg" });
   const objectUrl = UrlApi.createObjectURL(blob);
   const audio: HTMLAudioElement = new AudioCtor(objectUrl);
+  try {
+    audio.volume = getOlympiaTtsVolume();
+    activeHtmlAudioRef = audio;
+  } catch {}
 
   return new Promise<boolean>((resolve, reject) => {
     let settled = false;
@@ -2075,6 +2354,7 @@ async function playAudioBufferWithHtmlAudio(
       settled = true;
       activeAudioCleanup = null;
       activeFadeStopper = null;
+      activeHtmlAudioRef = null;
       try {
         audio.onended = null;
         audio.onerror = null;
@@ -2195,7 +2475,7 @@ async function runServerTtsPipeline(
       if (!played || epoch !== playbackEpoch) return false;
     } catch (err: any) {
       prefetchPromise = null;
-      if (epoch !== playbackEpoch || err?.name === "AbortError" && epoch !== playbackEpoch) {
+      if (epoch !== playbackEpoch || err?.name === "AbortError") {
         return false;
       }
       // Server failed or audio decode unavailable -> record fallback and hand remaining segments to Web Speech
@@ -2367,6 +2647,114 @@ export function speakDualMcScript(
 // 5. Results, Round Intros & Legacy Aliases
 // ============================================================================
 
+export interface GradingCalloutResult {
+  text: string;
+  role: DualMcRole;
+}
+
+export function generateGradingCallout(
+  isCorrect: boolean,
+  answer?: string,
+  options?: SpeakTTSOptions,
+  rng: () => number = Math.random
+): GradingCalloutResult {
+  const custom = activeCustomTtsScripts;
+  const cleanAnswer = answer ? summarizeOlympiaAnswer(answer) || answer.trim() : "";
+  const resolvedRole = resolveMCRole({ ...options, segment: "result" });
+
+  if (isCorrect) {
+    if (options?.deterministic) {
+      return { text: "Chính xác!", role: resolvedRole };
+    }
+
+    const defaultTemplates: Array<{ role: DualMcRole; text: string }> = [
+      { role: "khanh_vy", text: "Chính xác! Thêm 10 điểm!" },
+      { role: "ngoc_huy", text: "Rất chuẩn xác!" },
+      { role: "khanh_vy", text: "Câu trả lời hoàn toàn chính xác!" },
+      ...(cleanAnswer
+        ? [
+            { role: "ngoc_huy" as DualMcRole, text: "{dapAnDung}? Vâng, hoàn toàn chính xác!" },
+            { role: "khanh_vy" as DualMcRole, text: "{dapAnDung}! Đúng rồi!" },
+            { role: "ngoc_huy" as DualMcRole, text: "{dapAnDung} chính là câu trả lời chính xác!" },
+          ]
+        : []),
+    ];
+
+    let pickedText: string;
+    let pickedRole = resolvedRole;
+
+    if (custom?.correctResponses && custom.correctResponses.length > 0) {
+      const idx = Math.floor(clamp(rng(), 0, 0.999999) * custom.correctResponses.length);
+      pickedText = custom.correctResponses[idx];
+      if (options?.role && (options.role === "khanh_vy" || options.role === "ngoc_huy")) {
+        pickedRole = options.role;
+      }
+    } else {
+      const idx = Math.floor(clamp(rng(), 0, 0.999999) * defaultTemplates.length);
+      pickedText = defaultTemplates[idx].text;
+      pickedRole = (options?.role as DualMcRole) || resolvedRole;
+    }
+
+    if (options?.role && (options.role === "khanh_vy" || options.role === "ngoc_huy")) {
+      pickedRole = options.role;
+    }
+
+    const text = interpolateTemplate(pickedText, {
+      dapAnDung: cleanAnswer,
+      ...options?.vars,
+    });
+
+    return { text, role: pickedRole };
+  } else {
+    // WRONG ANSWER — STRICT PRINCIPLE: MUST ALWAYS ANNOUNCE THE CORRECT ANSWER
+    if (options?.deterministic) {
+      const defaultText = cleanAnswer
+        ? `Đáp án chính xác là: ${cleanAnswer}`
+        : "Chưa đúng rồi, rất tiếc.";
+      return { text: defaultText, role: resolvedRole };
+    }
+
+    const defaultWrongTemplates: Array<{ role: DualMcRole; text: string }> = [
+      { role: "ngoc_huy", text: "{dapAnDung} mới là đáp án chính xác, rất tiếc!" },
+      { role: "khanh_vy", text: "Rất tiếc, câu trả lời đúng phải là {dapAnDung}." },
+      { role: "ngoc_huy", text: "Chưa đúng rồi, đáp án là {dapAnDung}." },
+      { role: "khanh_vy", text: "Không phải, phải là {dapAnDung}." },
+    ];
+
+    let pickedText: string;
+    let pickedRole = resolvedRole;
+
+    if (custom?.wrongResponses && custom.wrongResponses.length > 0) {
+      const idx = Math.floor(clamp(rng(), 0, 0.999999) * custom.wrongResponses.length);
+      pickedText = custom.wrongResponses[idx];
+      if (options?.role && (options.role === "khanh_vy" || options.role === "ngoc_huy")) {
+        pickedRole = options.role;
+      }
+    } else {
+      const idx = Math.floor(clamp(rng(), 0, 0.999999) * defaultWrongTemplates.length);
+      pickedText = defaultWrongTemplates[idx].text;
+      pickedRole = (options?.role as DualMcRole) || resolvedRole;
+    }
+
+    if (options?.role && (options.role === "khanh_vy" || options.role === "ngoc_huy")) {
+      pickedRole = options.role;
+    }
+
+    const finalAnswer = cleanAnswer || "đáp án chính xác của chương trình";
+    let text = interpolateTemplate(pickedText, {
+      dapAnDung: finalAnswer,
+      ...options?.vars,
+    });
+
+    // Defensive guarantee: If custom template omitted {dapAnDung}, append it
+    if (!pickedText.includes("{dapAnDung}") && cleanAnswer) {
+      text = `${text.replace(/[\.\!]+$/, "")}. Đáp án là ${cleanAnswer}.`;
+    }
+
+    return { text, role: pickedRole };
+  }
+}
+
 /**
  * Vocalize Result Confirmation or Summarized Answer:
  * - Uses resolveMCRole({ ...options, segment: "result" }) across ALL rounds
@@ -2378,24 +2766,12 @@ export function speakOlympiaResult(
 ): void {
   if (!ttsEnabled || typeof window === "undefined") return;
 
-  const resolvedRole = resolveMCRole({ ...options, segment: "result" });
-
-  if (isCorrect) {
-    speakOlympiaTTS("Chính xác!", {
-      ...options,
-      segment: "result",
-      role: resolvedRole,
-    });
-  } else if (answer) {
-    const summary = summarizeOlympiaAnswer(answer);
-    if (summary) {
-      speakOlympiaTTS(`Đáp án chính xác là: ${summary}`, {
-        ...options,
-        segment: "result",
-        role: resolvedRole,
-      });
-    }
-  }
+  const { text, role } = generateGradingCallout(isCorrect, answer, options);
+  speakOlympiaTTS(text, {
+    ...options,
+    segment: "result",
+    role,
+  });
 }
 
 export const announceResultTTS = (
@@ -2409,15 +2785,23 @@ export const announceResultTTS = (
 export const ROUND_INTRO_LINES: Record<string, { role: MCRole; text: string }> = {
   khoiDong: {
     role: "ngoc_huy",
-    text: "Phần thi Khởi động bắt đầu!",
+    text: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động!",
+  },
+  khoiDongSolo: {
+    role: "ngoc_huy",
+    text: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động! Người đầu tiên bước vào lượt thi cá nhân là bạn {tenThiSinh} đến từ trường {tenTruong}. Bạn sẽ có 6 câu hỏi để ghi những điểm số đầu tiên. Chúc bạn thật tự tin, bình tĩnh và có một màn khởi động thành công rực rỡ!",
+  },
+  khoiDongShared: {
+    role: "ngoc_huy",
+    text: "Và bây giờ là lượt thi Khởi Động chung! Các bạn thí sinh hãy chuẩn bị sẵn sàng tay trên bàn phím chuông, chúc cả 4 bạn sẽ có một màn khởi động thật suôn sẻ, bứt phá và giành được thật nhiều điểm số!",
   },
   vcnv: {
     role: "khanh_vy",
-    text: "Chào mừng các bạn đến với phần thi Vượt chướng ngại vật!",
+    text: "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật!",
   },
   tangToc: {
     role: "ngoc_huy",
-    text: "Phần thi tiếp theo mang tên: Tăng tốc!",
+    text: "Cơ hội nâng cao điểm số rất lớn đang chờ đón 4 thí sinh ở phần thi thứ ba: Tăng tốc!",
   },
   veDich: {
     role: "khanh_vy",
@@ -2425,21 +2809,36 @@ export const ROUND_INTRO_LINES: Record<string, { role: MCRole; text: string }> =
   },
   cauHoiPhu: {
     role: "ngoc_huy",
-    text: "Câu hỏi phụ bắt đầu!",
+    text: "Do có sự bằng điểm ở vị trí phân định, chúng ta sẽ bước vào phần thi Câu hỏi phụ!",
   },
 };
 
 export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): void {
-  const customIntro = activeCustomTtsScripts?.roundIntros?.[round];
-  const intro = ROUND_INTRO_LINES[round];
+  let targetKey = round;
+  if (round === "khoiDong") {
+    if (options?.segKind === "shared") {
+      targetKey = "khoiDongShared";
+    } else if (options?.segKind === "solo" || options?.seatId !== undefined) {
+      targetKey = "khoiDongSolo";
+    }
+  }
+
+  const customIntro =
+    activeCustomTtsScripts?.roundIntros?.[targetKey] ||
+    activeCustomTtsScripts?.roundIntros?.[round];
+  const intro = ROUND_INTRO_LINES[targetKey] || ROUND_INTRO_LINES[round];
   if (!customIntro && !intro) return;
-  const text = customIntro || intro.text;
+
+  let text = customIntro || intro.text;
+  if (options?.vars) {
+    text = interpolateTemplate(text, options.vars);
+  }
   const role = options?.role || intro?.role || "khanh_vy";
   speakOlympiaTTS(text, {
     ...options,
     role,
     segment: "round_intro",
-    round,
+    round: targetKey,
   });
 }
 

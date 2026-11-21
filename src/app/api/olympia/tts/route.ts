@@ -4,7 +4,7 @@ import {
   TtsUpstreamError,
   TtsValidationError,
   getTtsCacheStats,
-  synthesizeEdgeTts,
+  synthesizeEdgeTtsStream,
   type SynthesizeTtsInput,
 } from "@/lib/olympia/server-tts";
 
@@ -32,17 +32,32 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await synthesizeEdgeTts(body as SynthesizeTtsInput);
-    return new Response(new Uint8Array(result.audio), {
+    const result = await synthesizeEdgeTtsStream(body as SynthesizeTtsInput);
+    if (result.cacheHit && result.audio) {
+      return new Response(new Uint8Array(result.audio), {
+        status: 200,
+        headers: {
+          "Content-Type": "audio/mpeg",
+          "Content-Length": String(result.audio.byteLength),
+          "Cache-Control": "no-store",
+          "X-TTS-Engine": "edge-neural",
+          "X-TTS-Voice": result.voice,
+          "X-TTS-Lang": result.lang,
+          "X-TTS-Cache": "hit",
+        },
+      });
+    }
+
+    return new Response(result.stream, {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Length": String(result.audio.byteLength),
+        "Transfer-Encoding": "chunked",
         "Cache-Control": "no-store",
         "X-TTS-Engine": "edge-neural",
         "X-TTS-Voice": result.voice,
         "X-TTS-Lang": result.lang,
-        "X-TTS-Cache": result.cacheHit ? "hit" : "miss",
+        "X-TTS-Cache": "miss",
       },
     });
   } catch (err) {

@@ -1,0 +1,121 @@
+{
+  "version": "1.0.0",
+  "name": "Kịch bản Chuẩn Truyền hình Đường lên đỉnh Olympia (VTV3)",
+  "description": "Kịch bản phát thanh truyền hình đồng bộ 2 MC, độ trễ delay, góc quay camera 3D và trạng thái tự động/thủ công",
+  "timeline": {
+    "lobby": {
+      "trigger": "AUTO",
+      "delayMs": 3000,
+      "camera": 1,
+      "role": "khanh_vy",
+      "text": "Chào mừng các bạn thí sinh và quý vị khán giả đã đến với trường quay S14 của Đường lên đỉnh Olympia! Trận đấu {tenPhong} sẽ chính thức bắt đầu trong ít phút nữa. Các bạn hãy kiểm tra lại đường truyền, thiết bị và chuẩn bị tinh thần thật sẵn sàng nhé!"
+    },
+    "opening": {
+      "trigger": "MANUAL",
+      "button": "BẮT ĐẦU TRẬN ĐẤU",
+      "fanfare": "contest_intro",
+      "delayMs": 1200,
+      "camera": 3,
+      "duo": [
+        {
+          "role": "khanh_vy",
+          "delayMs": 1200,
+          "text": "Xin nhiệt liệt chào đón quý vị khán giả và các bạn đang theo dõi cuộc thi Đường lên đỉnh Olympia ngày hôm nay!"
+        },
+        {
+          "role": "ngoc_huy",
+          "delayMs": 350,
+          "text": "Đúng vậy thưa quý vị, 4 nhà leo núi của chúng ta hôm nay đã sẵn sàng, tràn đầy tự tin và quyết tâm để chinh phục đỉnh núi tri thức và chiếc Vòng nguyệt quế vinh quang!"
+        }
+      ]
+    },
+    "contestantIntro": {
+      "trigger": "AUTO",
+      "camera": 18,
+      "delayMs": 600,
+      "pattern": "Và ở vị trí số {viTri}, xin được giới thiệu bạn {tenThiSinh}, đến từ trường {tenTruong}!"
+    },
+    "roundIntro": {
+      "trigger": "AUTO_AFTER_VIDEO",
+      "delayMs": 800,
+      "camera": 3,
+      "muteDuringVideo": true,
+      "scripts": {
+        "khoiDongSolo": {
+          "role": "ngoc_huy",
+          "text": "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động! Người đầu tiên bước vào lượt thi cá nhân là bạn {tenThiSinh} đến từ trường {tenTruong}. Bạn sẽ có 6 câu hỏi để ghi những điểm số đầu tiên. Chúc bạn thật tự tin, bình tĩnh và có một màn khởi động thành công rực rỡ!"
+        },
+        "khoiDongShared": {
+          "role": "ngoc_huy",
+          "text": "Và bây giờ là lượt thi Khởi Động chung! Các bạn thí sinh hãy chuẩn bị sẵn sàng tay trên bàn phím chuông, chúc cả 4 bạn sẽ có một màn khởi động thật suôn sẻ, bứt phá và giành được thật nhiều điểm số!"
+        },
+        "vcnv": {
+          "role": "khanh_vy",
+          "text": "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật! Thử thách của chúng ta ngày hôm nay là một Chướng ngại vật gồm {soChuCai} chữ cái. Mỗi câu trả lời đúng ở các hàng ngang sẽ mở ra một góc hình ảnh gợi ý. Chúc 4 thí sinh thi đấu thật tập trung và bản lĩnh!"
+        },
+        "tangToc": {
+          "role": "ngoc_huy",
+          "text": "Cơ hội nâng cao điểm số và tạo ra bước ngoặt đang chờ đón 4 thí sinh ở phần thi thứ ba: Tăng Tốc! Có 4 câu hỏi với thời gian suy nghĩ lần lượt là 10, 20, 30 và 40 giây. Các bạn hãy tận dụng tối đa từng phần trăm giây để giành lấy số điểm tối đa 40, 30, 20 và 10 điểm nhé!"
+        },
+        "veDich": {
+          "role": "ngoc_huy",
+          "text": "Và bây giờ là phần thi quyết định, phần thi cuối cùng của trận đấu: Về Đích! Nơi thể hiện bản lĩnh, chiến thuật và ý chí kiên định của các nhà leo núi. Điểm số hoàn toàn có thể thay đổi sau từng câu hỏi!"
+        },
+        "cauHoiPhu": {
+          "role": "ngoc_huy",
+          "text": "Do có sự bằng điểm ở vị trí phân định, chúng ta sẽ bước vào phần thi Câu hỏi phụ để tìm ra người chiến thắng xứng đáng!"
+        }
+      }
+    },
+    "inGameFeedback": {
+      "correct": [
+        { "role": "khanh_vy", "text": "Chính xác! Thêm 10 điểm!" },
+        { "role": "ngoc_huy", "text": "Rất chuẩn xác!" },
+        { "role": "khanh_vy", "text": "Câu trả lời hoàn toàn chính xác!" },
+        { "role": "ngoc_huy", "text": "{dapAnDung}? Vâng, hoàn toàn chính xác!" },
+        { "role": "khanh_vy", "text": "{dapAnDung}! Đúng rồi!" },
+        { "role": "ngoc_huy", "text": "{dapAnDung} chính là câu trả lời chính xác!" }
+      ],
+      "wrong": [
+        { "role": "ngoc_huy", "text": "{dapAnDung} mới là đáp án chính xác, rất tiếc!" },
+        { "role": "khanh_vy", "text": "Rất tiếc, câu trả lời đúng phải là {dapAnDung}." },
+        { "role": "ngoc_huy", "text": "Chưa đúng rồi, đáp án là {dapAnDung}." },
+        { "role": "khanh_vy", "text": "Không phải, phải là {dapAnDung}." }
+      ]
+    },
+    "scoreSummary": {
+      "trigger": "MANUAL",
+      "button": "TỔNG KẾT ĐIỂM (B)",
+      "cameraSequence": [3, 5, 6, 7, 8],
+      "delayPerSeatMs": 400,
+      "opening": {
+        "role": "khanh_vy",
+        "text": "Bây giờ, hãy cùng xem lại điểm số của 4 nhà leo núi sau phần thi vừa rồi."
+      }
+    },
+    "awards": {
+      "trigger": "MANUAL",
+      "podium3D": true,
+      "third": {
+        "role": "ngoc_huy",
+        "delayMs": 700,
+        "text": "Xin được chúc mừng và trao Giải Ba của cuộc thi hôm nay cho bạn {tenGiaiBa} với tổng số điểm là {diemGiaiBa} điểm!"
+      },
+      "second": {
+        "role": "khanh_vy",
+        "delayMs": 700,
+        "text": "Và xin được vinh danh Giải Nhì thuộc về bạn {tenGiaiNhi} đến từ trường {tenTruongGiaiNhi} với số điểm rất ấn tượng: {diemGiaiNhi} điểm!"
+      },
+      "first": {
+        "role": "duo",
+        "delayMs": 1200,
+        "text": "Và bây giờ, khoảnh khắc được mong đợi nhất... Xin nhiệt liệt chúc mừng Quán quân của Đường lên đỉnh Olympia tuần này, chủ nhân của chiếc Vòng nguyệt quế vinh quang: Bạn {tenQuanQuan} đến từ {tenTruongQuanQuan} với {diemQuanQuan} điểm!"
+      },
+      "farewell": {
+        "role": "duo",
+        "delayMs": 1500,
+        "text": "Hẹn gặp lại quý vị khán giả và các bạn trong những cuộc tranh tài tiếp theo của Đường lên đỉnh Olympia! Xin kính chào tạm biệt và hẹn gặp lại!"
+      }
+    }
+  }
+}

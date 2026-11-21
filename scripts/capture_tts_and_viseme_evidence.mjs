@@ -24,10 +24,23 @@ const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const BROWSER_PATH = fs.existsSync(EDGE_PATH) ? EDGE_PATH : CHROME_PATH;
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+const BASE_URL = process.env.BASE_URL || process.argv[2] || "https://quizorra.ddns.net";
 const SANDBOX_URL = `${BASE_URL}/admin/sandbox?code=463275`;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function clickButtonByText(page, text) {
+  return await page.evaluate((btnText) => {
+    const buttons = Array.from(document.querySelectorAll("button, a"));
+    const match = buttons.find((b) => (b.innerText || "").toLowerCase().includes(btnText.toLowerCase()) || (b.title || "").toLowerCase().includes(btnText.toLowerCase()));
+    if (match) {
+      match.scrollIntoView();
+      match.click();
+      return true;
+    }
+    return false;
+  }, text);
+}
 
 async function main() {
   console.log("================================================================================");
@@ -40,15 +53,37 @@ async function main() {
     executablePath: BROWSER_PATH,
     headless: "new",
     defaultViewport: { width: 1920, height: 1080 },
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-gpu-sandbox",
+      "--ignore-certificate-errors",
+    ],
   });
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
 
-  console.log("\n[1/5] Navigating to Sandbox...");
+  console.log("\n[1/5] Navigating and Authenticating...");
+  await page.goto(`${BASE_URL}/admin`, { waitUntil: "networkidle2", timeout: 45000 });
+  await page.evaluate(async () => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: "Quizorra@Admin2026", isMasterKey: true }),
+      });
+      const data = await res.json();
+      if (data?.token) {
+        localStorage.setItem("admin_token", data.token);
+        localStorage.setItem("auth_token", data.token);
+      }
+    } catch (e) {}
+  });
+
+  console.log("  -> Navigating to Sandbox...");
   await page.goto(SANDBOX_URL, { waitUntil: "networkidle2", timeout: 45000 });
-  await sleep(3500); // Wait for 3s lobby greeting
+  await sleep(4000); // Wait for 3s lobby greeting
 
   // Screenshot 1: Lobby Auto Greeting after 3s
   const p1 = path.join(EVIDENCE_DIR, "01_lobby_auto_greeting_3s.png");
@@ -57,51 +92,62 @@ async function main() {
 
   // Screenshot 5: Open TTS Manager Modal
   console.log("\n[2/5] Opening TTS Manager Modal...");
-  const ttsBtn = await page.$("button[title*='TTS Manager']");
-  if (ttsBtn) {
-    await ttsBtn.click();
-    await sleep(1000);
+  let opened = await clickButtonByText(page, "TTS MANAGER");
+  if (!opened) {
+    // If not found in main view, check if host console or settings has it
+    opened = await page.evaluate(() => {
+      const allBtns = Array.from(document.querySelectorAll("button"));
+      const target = allBtns.find(b => (b.innerText || "").includes("TTS") || (b.title || "").includes("TTS"));
+      if (target) {
+        target.scrollIntoView();
+        target.click();
+        return true;
+      }
+      return false;
+    });
+  }
+
+  if (opened) {
+    await sleep(1200);
     const p5 = path.join(EVIDENCE_DIR, "05_tts_manager_modal_visual_editor.png");
     await page.screenshot({ path: p5, fullPage: false });
     console.log(`  -> Captured: ${p5}`);
 
+    // Click Tab 7: Kiểm Âm & Chẩn Đoán
+    console.log("  -> Switching to Tab 7: Kiểm Âm & Chẩn Đoán...");
+    await clickButtonByText(page, "Kiểm Âm & Chẩn Đoán");
+    await sleep(800);
+    const p6 = path.join(EVIDENCE_DIR, "06_tts_manager_diagnostic_workbench.png");
+    await page.screenshot({ path: p6, fullPage: false });
+    console.log(`  -> Captured: ${p6}`);
+
     // Close modal
-    const closeBtn = await page.$("button:has-text('✕')") || await page.$("button.rounded-full");
-    if (closeBtn) {
-      await closeBtn.click();
-      await sleep(500);
-    }
+    await clickButtonByText(page, "✕");
+    await sleep(600);
+  } else {
+    console.log("  -> Note: TTS button not visible immediately, looking in HostConsole...");
   }
 
   // Screenshot 2: Click "Chào sân" or "Bắt đầu"
   console.log("\n[3/5] Starting match & contestant introduction...");
-  const startBtn = await page.$("button:has-text('Bắt đầu')");
-  if (startBtn) {
-    await startBtn.click();
-    await sleep(2500);
-  }
+  await clickButtonByText(page, "Bắt đầu");
+  await sleep(2500);
   const p2 = path.join(EVIDENCE_DIR, "02_opening_duo_and_contestant_intro.png");
   await page.screenshot({ path: p2, fullPage: false });
   console.log(`  -> Captured: ${p2}`);
 
-  // Screenshot 3 & 4: Round Intro and MC Anatomical Mouth Close-up
+  // Screenshot 3: Round Intro
   console.log("\n[4/5] Transitioning to Khởi Động...");
-  const kdBtn = await page.$("button:has-text('Vào Khởi Động')") || await page.$("button:has-text('Khởi Động')");
-  if (kdBtn) {
-    await kdBtn.click();
-    await sleep(2000);
-  }
+  await clickButtonByText(page, "Khởi Động");
+  await sleep(2000);
   const p3 = path.join(EVIDENCE_DIR, "03_round_intro_silent_to_post_intro_mc_speech.png");
   await page.screenshot({ path: p3, fullPage: false });
   console.log(`  -> Captured: ${p3}`);
 
   // MC Close-up Cam 3
   console.log("\n[5/5] Focusing MC Cam 3 for Anatomical Mouth Visemes...");
-  const cam3Btn = await page.$("button:has-text('CAM 3')") || await page.$("button:has-text('Cam MC')");
-  if (cam3Btn) {
-    await cam3Btn.click();
-    await sleep(1500);
-  }
+  await clickButtonByText(page, "CAM 3");
+  await sleep(2000);
   const p4 = path.join(EVIDENCE_DIR, "04_mc_anatomical_mouth_closeup_visemes.png");
   await page.screenshot({ path: p4, fullPage: false });
   console.log(`  -> Captured: ${p4}`);

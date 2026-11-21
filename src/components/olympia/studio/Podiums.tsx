@@ -3345,7 +3345,33 @@ export function McPresenters({
     });
   }, []);
 
-  useFrame(() => {
+  const speakerBlendRef = useRef({
+    kvSpeak: 0,
+    nhSpeak: 0,
+    kvListen: 0,
+    nhListen: 0,
+  });
+
+  useFrame((_stateThree, delta) => {
+    const activeSpeaker =
+      typeof window !== "undefined"
+        ? (window as any).__olympiaTtsSpeaker
+        : null;
+
+    const targetKvSpeak = activeSpeaker === "khanh_vy" ? 1.0 : 0.0;
+    const targetNhSpeak = activeSpeaker === "ngoc_huy" ? 1.0 : 0.0;
+    const targetKvListen = activeSpeaker === "ngoc_huy" ? 1.0 : 0.0;
+    const targetNhListen = activeSpeaker === "khanh_vy" ? 1.0 : 0.0;
+
+    const safeDelta = Math.min(typeof delta === "number" && delta > 0 ? delta : 0.016, 0.05);
+    const lerpFactor = Math.min(1.0, safeDelta * 7.5);
+
+    const blend = speakerBlendRef.current;
+    blend.kvSpeak = THREE.MathUtils.lerp(blend.kvSpeak, targetKvSpeak, lerpFactor);
+    blend.nhSpeak = THREE.MathUtils.lerp(blend.nhSpeak, targetNhSpeak, lerpFactor);
+    blend.kvListen = THREE.MathUtils.lerp(blend.kvListen, targetKvListen, lerpFactor);
+    blend.nhListen = THREE.MathUtils.lerp(blend.nhListen, targetNhListen, lerpFactor);
+
     const now = serverNow ? serverNow() : Date.now();
     const isEntranceActive = Boolean(state?.entranceState?.active);
     const isIntro = Boolean((introStartedAt || state?.introTimer) && (state?.introStandby ?? true));
@@ -3552,23 +3578,44 @@ export function McPresenters({
     // Natural television presenter micro-breathing & conversational articulation (~3.2s cadence)
     // Eliminates static wax-statue pose when standing at dais or MC desk
     const speechTime = now * 0.00196; // ~3.2s period
+    const t = now * 0.001;
     const talkSub = Math.sin(speechTime * 1.7 + 0.5);
     const kvMicBreathe = Math.sin(speechTime * 1.2) * 0.035 + talkSub * 0.012;
     const nhMicBreathe = Math.cos(speechTime * 1.1) * 0.035 - talkSub * 0.012;
     const kvCardBreathe = Math.cos(speechTime * 0.9) * 0.022;
     const nhCardBreathe = Math.sin(speechTime * 0.9) * 0.022;
-    const mcBodySway = Math.sin(speechTime * 0.75) * 0.014;
 
     const idleBreathing = Math.sin(now * 0.002) * 0.004;
     const effectiveYOffset = isWalking ? bounce : idleBreathing;
 
+    // Active speaker sway vs attentive inward turn:
+    const kvIdleSway = Math.sin(t * 1.5) * 0.012;
+    const kvSpeakSway = Math.sin(t * 3.2) * 0.028;
+    const kvTurnToNh = -0.14; // ~8° inward turn towards Ngọc Huy when listening
+
+    const nhIdleSway = -Math.sin(t * 1.5) * 0.012;
+    const nhSpeakSway = Math.sin(t * 2.8) * 0.024;
+    const nhTurnToKv = 0.14; // ~8° inward turn towards Khánh Vy when listening
+
     if (kvRef.current) {
       kvRef.current.position.set(kvX, kvY + effectiveYOffset, kvZ);
-      kvRef.current.rotation.y = kvRotY + (isWalking ? 0 : mcBodySway);
+      kvRef.current.rotation.y =
+        kvRotY +
+        (isWalking
+          ? 0
+          : kvIdleSway * (1 - blend.kvSpeak - blend.kvListen) +
+            kvSpeakSway * blend.kvSpeak +
+            kvTurnToNh * blend.kvListen);
     }
     if (nhRef.current) {
       nhRef.current.position.set(nhX, nhY + effectiveYOffset, nhZ);
-      nhRef.current.rotation.y = nhRotY + (isWalking ? 0 : -mcBodySway);
+      nhRef.current.rotation.y =
+        nhRotY +
+        (isWalking
+          ? 0
+          : nhIdleSway * (1 - blend.nhSpeak - blend.nhListen) +
+            nhSpeakSway * blend.nhSpeak +
+            nhTurnToKv * blend.nhListen);
     }
 
     if (kvLeftLegRef.current && kvRightLegRef.current) {
@@ -3617,18 +3664,36 @@ export function McPresenters({
       kvLeftWristRef.current.rotation.z = 0.08;
     }
 
+    const kvSpeakLean = 0.026 + Math.sin(t * 4.2) * 0.016;
+    const kvListenNod = 0.016 + Math.sin(t * 2.2) * 0.016;
+    const kvSpeakTilt = Math.sin(t * 2.6 + 0.4) * 0.020;
+
+    const nhSpeakLean = 0.024 + Math.sin(t * 3.6) * 0.014;
+    const nhListenNod = 0.014 + Math.sin(t * 1.9) * 0.014;
+    const nhSpeakTilt = -Math.sin(t * 2.2 + 0.2) * 0.015;
+
+    const kvGestureMotion = Math.sin(t * 3.5) * 0.07;
+    const nhGestureMotion = Math.sin(t * 3.0) * 0.06;
+
+    if (kvRef.current) {
+      kvRef.current.rotation.z = isWalking ? 0 : kvSpeakTilt * blend.kvSpeak;
+    }
+    if (nhRef.current) {
+      nhRef.current.rotation.z = isWalking ? 0 : nhSpeakTilt * blend.nhSpeak;
+    }
+
     if (kvRightArmRef.current) {
       kvRightArmRef.current.rotation.x = kvHoldFolderX;
       kvRightArmRef.current.rotation.y = -0.16;
       kvRightArmRef.current.rotation.z = 0.12;
     }
     if (kvRightForearmRef.current) {
-      kvRightForearmRef.current.rotation.x = kvHoldForearmX;
+      kvRightForearmRef.current.rotation.x = kvHoldForearmX + kvGestureMotion * blend.kvSpeak;
       kvRightForearmRef.current.rotation.y = 0.32;
       kvRightForearmRef.current.rotation.z = -0.35;
     }
     if (kvRightWristRef.current) {
-      kvRightWristRef.current.rotation.x = 0.18 + talkSub * 0.02;
+      kvRightWristRef.current.rotation.x = 0.18 + talkSub * 0.02 + kvGestureMotion * 0.5 * blend.kvSpeak;
       kvRightWristRef.current.rotation.y = 0;
       kvRightWristRef.current.rotation.z = -0.08;
     }
@@ -3642,12 +3707,12 @@ export function McPresenters({
       nhLeftArmRef.current.rotation.z = -0.10;
     }
     if (nhLeftForearmRef.current) {
-      nhLeftForearmRef.current.rotation.x = nhHoldForearmX;
+      nhLeftForearmRef.current.rotation.x = nhHoldForearmX + nhGestureMotion * blend.nhSpeak;
       nhLeftForearmRef.current.rotation.y = -0.28;
       nhLeftForearmRef.current.rotation.z = 0.30;
     }
     if (nhLeftWristRef.current) {
-      nhLeftWristRef.current.rotation.x = 0.16 + talkSub * 0.02;
+      nhLeftWristRef.current.rotation.x = 0.16 + talkSub * 0.02 + nhGestureMotion * 0.5 * blend.nhSpeak;
       nhLeftWristRef.current.rotation.y = 0;
       nhLeftWristRef.current.rotation.z = 0.06;
     }
@@ -3706,8 +3771,12 @@ export function McPresenters({
         nhRightArmRef.current.rotation.x = -1.25;
       }
     } else {
-      if (kvRef.current) kvRef.current.rotation.x = 0;
-      if (nhRef.current) nhRef.current.rotation.x = 0;
+      if (kvRef.current) {
+        kvRef.current.rotation.x = isWalking ? 0 : kvSpeakLean * blend.kvSpeak + kvListenNod * blend.kvListen;
+      }
+      if (nhRef.current) {
+        nhRef.current.rotation.x = isWalking ? 0 : nhSpeakLean * blend.nhSpeak + nhListenNod * blend.nhListen;
+      }
     }
   });
 

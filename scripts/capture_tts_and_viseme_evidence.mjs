@@ -92,38 +92,55 @@ async function main() {
 
   // Screenshot 5: Open TTS Manager Modal
   console.log("\n[2/5] Opening TTS Manager Modal...");
-  let opened = await clickButtonByText(page, "TTS MANAGER");
-  if (!opened) {
-    // If not found in main view, check if host console or settings has it
+  let opened = false;
+  for (let attempt = 0; attempt < 10; attempt++) {
     opened = await page.evaluate(() => {
       const allBtns = Array.from(document.querySelectorAll("button"));
-      const target = allBtns.find(b => (b.innerText || "").includes("TTS") || (b.title || "").includes("TTS"));
+      const target = allBtns.find(
+        (b) =>
+          (b.innerText || "").toUpperCase().includes("TTS MANAGER") ||
+          (b.title || "").toLowerCase().includes("tts manager")
+      );
       if (target) {
-        target.scrollIntoView();
+        target.scrollIntoView({ behavior: "instant", block: "center" });
         target.click();
         return true;
       }
       return false;
     });
+    if (opened) break;
+    await sleep(1000);
   }
 
   if (opened) {
-    await sleep(1200);
+    await sleep(1500);
     const p5 = path.join(EVIDENCE_DIR, "05_tts_manager_modal_visual_editor.png");
     await page.screenshot({ path: p5, fullPage: false });
     console.log(`  -> Captured: ${p5}`);
 
     // Click Tab 7: Kiểm Âm & Chẩn Đoán
     console.log("  -> Switching to Tab 7: Kiểm Âm & Chẩn Đoán...");
-    await clickButtonByText(page, "Kiểm Âm & Chẩn Đoán");
-    await sleep(800);
+    await page.evaluate(() => {
+      const tabs = Array.from(document.querySelectorAll("button"));
+      const diagTab = tabs.find((b) => (b.innerText || "").includes("Kiểm Âm & Chẩn Đoán"));
+      if (diagTab) {
+        diagTab.click();
+        return true;
+      }
+      return false;
+    });
+    await sleep(1000);
     const p6 = path.join(EVIDENCE_DIR, "06_tts_manager_diagnostic_workbench.png");
     await page.screenshot({ path: p6, fullPage: false });
     console.log(`  -> Captured: ${p6}`);
 
     // Close modal
-    await clickButtonByText(page, "✕");
-    await sleep(600);
+    await page.evaluate(() => {
+      const allBtns = Array.from(document.querySelectorAll("button"));
+      const closeBtn = allBtns.find((b) => (b.innerText || "").trim() === "✕");
+      if (closeBtn) closeBtn.click();
+    });
+    await sleep(800);
   } else {
     console.log("  -> Note: TTS button not visible immediately, looking in HostConsole...");
   }

@@ -1781,6 +1781,7 @@ export class OlympiaGame {
         fresh.seats = st.seats.map((s) => ({ ...s, score: 0 }));
         fresh.name = st.name;
         if (st.ttsSettings) fresh.ttsSettings = { ...st.ttsSettings };
+        if (st.customTtsScripts) fresh.customTtsScripts = { ...st.customTtsScripts };
         this.state = fresh;
         return OK;
       }
@@ -1856,6 +1857,21 @@ export class OlympiaGame {
           return OK;
         }
         this.commitPendingCnvWin(now);
+        return OK;
+      }
+      case "tts:updateScripts": {
+        if (!a.scripts || typeof a.scripts !== "object") {
+          return fail("Kịch bản TTS không hợp lệ");
+        }
+        st.customTtsScripts = a.scripts as any;
+        return OK;
+      }
+      case "tts:resetScripts": {
+        st.customTtsScripts = null;
+        return OK;
+      }
+      case "tts:markLobbyGreetingTriggered": {
+        st.lobbyGreetingTriggered = true;
         return OK;
       }
       case "audio:stop_bgm":

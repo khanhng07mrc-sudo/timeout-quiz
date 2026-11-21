@@ -10,6 +10,7 @@ import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
 import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
 import OlympiaMatchReportModal from "./OlympiaMatchReportModal";
+import { TtsManagerModal } from "./TtsManagerModal";
 import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
 import QRCode from "qrcode";
 import ScaledDisplayFrame from "./ScaledDisplayFrame";
@@ -118,6 +119,7 @@ export const HostConsole = React.memo(function HostConsole({
   const [showAudioDrawer, setShowAudioDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showTtsManager, setShowTtsManager] = useState(false);
   const [showMiniDisplay, setShowMiniDisplay] = useState(false);
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [manualSeat, setManualSeat] = useState<number>(0);
@@ -521,6 +523,19 @@ export const HostConsole = React.memo(function HostConsole({
           >
             <span>📢</span>
             <span>Thử 2 MC</span>
+          </button>
+
+          {/* Dedicated Visual TTS Script Manager Modal Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowTtsManager(true)}
+            className={`rounded font-black cursor-pointer border border-purple-400/50 bg-purple-600/25 text-purple-200 hover:bg-purple-600/40 shrink-0 transition flex items-center gap-1 text-[10px] sm:text-xs shadow-sm ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            }`}
+            title="Mở bảng Quản lý kịch bản & Mô hình giọng nói TTS (TTS Manager)"
+          >
+            <span>🎛️</span>
+            <span>TTS MANAGER</span>
           </button>
 
           {/* Dual-Theme Broadcast Switcher */}
@@ -2614,6 +2629,13 @@ export const HostConsole = React.memo(function HostConsole({
       <OlympiaTranscriptModal open={showTranscript} onClose={() => setShowTranscript(false)} state={state} />
       <OlympiaRulesWikipediaModal open={showRules} onClose={() => setShowRules(false)} initialSeason={state.rulesetId} />
       <OlympiaMatchReportModal open={showReport} onClose={() => setShowReport(false)} state={state} />
+      <TtsManagerModal
+        isOpen={showTtsManager}
+        onClose={() => setShowTtsManager(false)}
+        currentScripts={state.customTtsScripts}
+        onSave={(updated) => call("tts:updateScripts", { scripts: updated })}
+        onReset={() => call("tts:resetScripts")}
+      />
 
       {/* QR Code Modal */}
       <RoomQRCodeModal

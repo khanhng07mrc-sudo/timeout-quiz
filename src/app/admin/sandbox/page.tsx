@@ -34,6 +34,7 @@ import { useTranslation, type Language } from "@/lib/i18n";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
+import { TtsManagerModal } from "@/components/olympia/TtsManagerModal";
 import HostConsole from "@/components/olympia/HostConsole";
 import { ROUND_LABELS, type ChpQuestionLimit, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
 import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
@@ -496,6 +497,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const [cheatMenuPos, setCheatMenuPos] = useState({ top: 0, right: 0 });
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showOlympiaSeasonModal, setShowOlympiaSeasonModal] = useState(false);
+  const [showTtsManagerModal, setShowTtsManagerModal] = useState(false);
   const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
   const [showMagicWheelMCDropdown, setShowMagicWheelMCDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
@@ -12290,6 +12292,16 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     <span>Thử 2 MC</span>
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={() => setShowTtsManagerModal(true)}
+                    className="px-2 py-0.5 rounded-lg border border-purple-400/50 bg-purple-600/25 text-purple-200 hover:bg-purple-600/40 text-[11px] font-black transition flex items-center gap-1 cursor-pointer shadow-sm"
+                    title="Mở bảng Quản lý kịch bản & Mô hình giọng nói TTS (TTS Manager)"
+                  >
+                    <span>🎛️</span>
+                    <span>TTS MANAGER</span>
+                  </button>
+
                   <Link
                     href={`/olympia/display/${code}`}
                     target="_blank"
@@ -14152,6 +14164,15 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         mode={roomState?.mode || selectedMode}
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
+      />
+
+      {/* ── Olympia TTS Script Manager Modal ───────────────────────────────── */}
+      <TtsManagerModal
+        isOpen={showTtsManagerModal}
+        onClose={() => setShowTtsManagerModal(false)}
+        currentScripts={olympiaState?.customTtsScripts}
+        onSave={(updated) => sendOlympiaAction("tts:updateScripts", { scripts: updated })}
+        onReset={() => sendOlympiaAction("tts:resetScripts")}
       />
 
       {/* ── Modal: Chọn & Đổi mùa thi đấu Olympia (O13 - O27) ── */}

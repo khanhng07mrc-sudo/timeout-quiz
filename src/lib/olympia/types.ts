@@ -682,6 +682,10 @@ export interface OlympiaState {
   manualAudioMode?: boolean;
   /** TTS synchronization settings (authoritative on server, spoken on DisplayScreen only) */
   ttsSettings?: TtsSettingsState;
+  /** Custom editable TTS script templates and MC voice customizations */
+  customTtsScripts?: CustomTtsScriptConfig | null;
+  /** Whether the automatic 3s lobby greeting has been triggered in the current room */
+  lobbyGreetingTriggered?: boolean;
   /** Latest TTS command event issued by Host / engine */
   ttsCommand?: TtsCommandEvent | null;
   /** Monotonic sequence counter for ttsCommand */
@@ -708,6 +712,35 @@ export type TtsCommandAction =
   | "test_voices"
   | "custom"
   | "stop";
+
+export interface McVoiceCustomization {
+  pitch?: number;
+  rate?: number;
+  voiceURI?: string;
+  voiceName?: string;
+}
+
+export interface CustomTtsScriptConfig {
+  lobbyGreeting?: string[];
+  openingDuo?: { khanhVy: string; ngocHuy: string };
+  contestantIntroPattern?: string;
+  roundIntros?: Record<string, string>;
+  correctResponses?: string[];
+  wrongResponses?: string[];
+  postMatchOpening?: string;
+  awardTiers?: {
+    third?: string;
+    second?: string;
+    first?: string;
+  };
+  closingFarewell?: string[];
+  mcVoiceConfig?: {
+    khanhVy?: McVoiceCustomization;
+    ngocHuy?: McVoiceCustomization;
+    khanh_vy?: McVoiceCustomization;
+    ngoc_huy?: McVoiceCustomization;
+  };
+}
 
 export interface TtsSettingsState {
   enabled: boolean;

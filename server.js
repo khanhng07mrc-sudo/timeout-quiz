@@ -107424,6 +107424,7 @@ var OlympiaGame = class _OlympiaGame {
         fresh.seats = st.seats.map((s) => ({ ...s, score: 0 }));
         fresh.name = st.name;
         if (st.ttsSettings) fresh.ttsSettings = { ...st.ttsSettings };
+        if (st.customTtsScripts) fresh.customTtsScripts = { ...st.customTtsScripts };
         this.state = fresh;
         return OK;
       }
@@ -107493,6 +107494,21 @@ var OlympiaGame = class _OlympiaGame {
           return OK;
         }
         this.commitPendingCnvWin(now);
+        return OK;
+      }
+      case "tts:updateScripts": {
+        if (!a.scripts || typeof a.scripts !== "object") {
+          return fail("K\u1ECBch b\u1EA3n TTS kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        st.customTtsScripts = a.scripts;
+        return OK;
+      }
+      case "tts:resetScripts": {
+        st.customTtsScripts = null;
+        return OK;
+      }
+      case "tts:markLobbyGreetingTriggered": {
+        st.lobbyGreetingTriggered = true;
         return OK;
       }
       case "audio:stop_bgm":

@@ -16,6 +16,8 @@
  * - Strict 6-mode per-turn MC alternation, hype fillers, data-grounded explanations, VCNV/TT grouping & typo checks
  */
 
+import type { CustomTtsScriptConfig, McVoiceCustomization } from "./types";
+
 export type MCRole = "khanh_vy" | "ngoc_huy" | "khanhVy" | "ngocHuy" | "auto" | "random";
 export type DualMcRole = "khanh_vy" | "ngoc_huy";
 export type TtsLang = "vi" | "en";
@@ -175,6 +177,73 @@ export interface OlympiaRankedContestant {
     | "6_NhacKhac/summary_rank_4";
   playbackRate: number;
   pitchRate: number;
+}
+
+/**
+ * Standard Default Olympia Broadcast Scripts (VTV3 format)
+ */
+export const DEFAULT_OLYMPIA_SCRIPTS: CustomTtsScriptConfig = {
+  lobbyGreeting: [
+    "Chào mừng các bạn thí sinh và quý vị khán giả đã đến với trường quay S14 của Đường lên đỉnh Olympia! Trận đấu sẽ chính thức bắt đầu trong ít phút nữa.",
+    "Xin chào mừng tất cả các bạn đã có mặt tại trường quay Đường lên đỉnh Olympia. Hãy chuẩn bị tinh thần thật sẵn sàng để bước vào hành trình chinh phục đỉnh núi tri thức!",
+  ],
+  openingDuo: {
+    khanhVy: "Xin nhiệt liệt chào đón quý vị khán giả và 4 nhà leo núi đến với cuộc thi tuần này của Đường lên đỉnh Olympia!",
+    ngocHuy: "Đúng vậy thưa quý vị, 4 thí sinh của chúng ta hôm nay đã sẵn sàng, tràn đầy tự tin và quyết tâm để chinh phục chiếc Vòng nguyệt quế vinh quang!",
+  },
+  contestantIntroPattern: "Xin được giới thiệu thí sinh {tenThiSinh} đến từ trường {tenTruong}.",
+  roundIntros: {
+    khoiDong: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động!",
+    vuotChuongNgaiVat: "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật!",
+    tangToc: "Cơ hội nâng cao điểm số rất lớn đang chờ đón 4 thí sinh ở phần thi thứ ba: Tăng Tốc!",
+    veDich: "Và bây giờ là phần thi quyết định, phần thi cuối cùng của trận đấu: Về Đích!",
+    cauHoiPhu: "Do có sự bằng điểm ở vị trí phân định, chúng ta sẽ bước vào phần thi Câu hỏi phụ!",
+  },
+  correctResponses: [
+    "Chính xác! Chúc mừng bạn!",
+    "Câu trả lời hoàn toàn chính xác!",
+    "Rất xuất sắc, bạn có thêm điểm!",
+  ],
+  wrongResponses: [
+    "Rất tiếc, câu trả lời chưa chính xác.",
+    "Chưa đúng rồi bạn ơi, rất tiếc!",
+    "Rất tiếc cơ hội đã trôi qua.",
+  ],
+  postMatchOpening: "Kính thưa quý vị khán giả, cả 4 phần thi đầy kịch tính đã khép lại. Bây giờ chúng ta hãy cùng tổng kết điểm số chung cuộc của các nhà leo núi!",
+  awardTiers: {
+    third: "Xin được chúc mừng và trao Giải Ba cho bạn {tenThiSinh} với {diemSo} điểm!",
+    second: "Xin được vinh danh Giải Nhì thuộc về bạn {tenThiSinh} với {diemSo} điểm!",
+    first: "Và xin nhiệt liệt chúc mừng Quán quân của cuộc thi hôm nay, chủ nhân của chiếc Vòng nguyệt quế: Bạn {tenThiSinh} với {diemSo} điểm!",
+  },
+  closingFarewell: [
+    "Cuộc thi hôm nay đã tìm ra được chủ nhân xứng đáng của chiếc Vòng nguyệt quế. Xin cảm ơn quý vị khán giả đã luôn đồng hành cùng Đường lên đỉnh Olympia!",
+    "Hẹn gặp lại quý vị khán giả và các bạn trong những cuộc tranh tài tiếp theo của Đường lên đỉnh Olympia. Xin kính chào tạm biệt và hẹn gặp lại!",
+  ],
+  mcVoiceConfig: {
+    khanhVy: { pitch: 1.12, rate: 1.05 },
+    ngocHuy: { pitch: 0.88, rate: 1.04 },
+  },
+};
+
+let activeCustomTtsScripts: CustomTtsScriptConfig | null = null;
+
+export function setGlobalCustomTtsScripts(scripts: CustomTtsScriptConfig | null): void {
+  activeCustomTtsScripts = scripts;
+}
+
+export function getGlobalCustomTtsScripts(): CustomTtsScriptConfig | null {
+  return activeCustomTtsScripts;
+}
+
+export function interpolateTemplate(
+  template: string,
+  vars: Record<string, string | number | undefined | null>
+): string {
+  if (!template) return "";
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => {
+    const val = vars[key];
+    return val !== undefined && val !== null ? String(val) : `{${key}}`;
+  });
 }
 
 export interface AwardCeremonyStep {
@@ -1597,13 +1666,30 @@ export function resolveMCVoiceConfig(
   voice: SpeechSynthesisVoice | null;
   pitch: number;
 } {
-  const pitch = role === "khanh_vy" ? 1.12 : 0.88;
+  const customVoiceSetting =
+    activeCustomTtsScripts?.mcVoiceConfig?.[role] ||
+    (role === "khanh_vy"
+      ? activeCustomTtsScripts?.mcVoiceConfig?.khanhVy
+      : activeCustomTtsScripts?.mcVoiceConfig?.ngocHuy);
+  const defaultPitch = role === "khanh_vy" ? 1.12 : 0.88;
+  const pitch = customVoiceSetting?.pitch !== undefined ? customVoiceSetting.pitch : defaultPitch;
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     return { voice: null, pitch };
   }
 
   if (cachedViVoices.length === 0 && cachedEnVoices.length === 0) {
     refreshOlympiaVoices();
+  }
+
+  // If host selected a specific custom voiceURI in TTS Manager, prioritize it
+  if (customVoiceSetting?.voiceURI) {
+    const all = window.speechSynthesis.getVoices();
+    const matched = all.find(
+      (v) => v.voiceURI === customVoiceSetting.voiceURI || v.name === customVoiceSetting.voiceURI
+    );
+    if (matched) {
+      return { voice: matched, pitch };
+    }
   }
 
   if (lang === "en") {
@@ -1632,7 +1718,7 @@ export function resolveMCVoiceConfig(
       ) ||
       viVoices[0] ||
       null;
-    return { voice: selectedVoice, pitch: 1.12 };
+    return { voice: selectedVoice, pitch };
   }
   selectedVoice =
     viVoices.find(
@@ -1640,7 +1726,7 @@ export function resolveMCVoiceConfig(
     ) ||
     viVoices[viVoices.length > 1 ? 1 : 0] ||
     null;
-  return { voice: selectedVoice, pitch: 0.88 };
+  return { voice: selectedVoice, pitch };
 }
 
 function shouldAttemptServerTts(options?: SpeakTTSOptions): boolean {
@@ -1656,8 +1742,12 @@ function shouldAttemptServerTts(options?: SpeakTTSOptions): boolean {
     return true;
   }
 
-  const origin = window.location?.origin;
-  return typeof origin === "string" && /^https?:\/\/|^file:\/\//i.test(origin);
+  if (typeof window.speechSynthesis === "undefined") {
+    const origin = window.location?.origin;
+    return typeof origin === "string" && /^https?:\/\/|^file:\/\//i.test(origin);
+  }
+
+  return false;
 }
 
 function prepareLanguageSegments(
@@ -2340,12 +2430,16 @@ export const ROUND_INTRO_LINES: Record<string, { role: MCRole; text: string }> =
 };
 
 export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): void {
+  const customIntro = activeCustomTtsScripts?.roundIntros?.[round];
   const intro = ROUND_INTRO_LINES[round];
-  if (!intro) return;
-  speakOlympiaTTS(intro.text, {
+  if (!customIntro && !intro) return;
+  const text = customIntro || intro.text;
+  const role = options?.role || intro?.role || "khanh_vy";
+  speakOlympiaTTS(text, {
     ...options,
-    role: options?.role || intro.role,
+    role,
     segment: "round_intro",
+    round,
   });
 }
 
@@ -2383,6 +2477,22 @@ export function buildLobbyGreetingScript(options?: {
 }): DualMcScriptSegment[] {
   const cleanRoom = (options?.roomName || "").trim();
   const variant = Math.abs(options?.variantIdx ?? 0) % 3;
+
+  if (activeCustomTtsScripts?.lobbyGreeting && activeCustomTtsScripts.lobbyGreeting.length > 0) {
+    const list = activeCustomTtsScripts.lobbyGreeting;
+    const text = interpolateTemplate(list[variant % list.length], {
+      roomName: cleanRoom,
+      tenPhong: cleanRoom,
+    });
+    return [
+      {
+        role: "khanh_vy",
+        kind: "greeting",
+        pauseAfterMs: 250,
+        text,
+      },
+    ];
+  }
 
   if (variant === 1) {
     return [
@@ -2448,6 +2558,29 @@ export function buildOpeningDuoScript(options?: {
   const trimmed = (options?.roomName || "").trim();
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
 
+  if (activeCustomTtsScripts?.openingDuo) {
+    return [
+      {
+        role: "khanh_vy",
+        kind: "greeting",
+        pauseAfterMs: 300,
+        text: interpolateTemplate(activeCustomTtsScripts.openingDuo.khanhVy, {
+          roomName: trimmed,
+          tenPhong: trimmed,
+        }),
+      },
+      {
+        role: "ngoc_huy",
+        kind: "hype",
+        pauseAfterMs: 320,
+        text: interpolateTemplate(activeCustomTtsScripts.openingDuo.ngocHuy, {
+          roomName: trimmed,
+          tenPhong: trimmed,
+        }),
+      },
+    ];
+  }
+
   if (variant === 1) {
     return [
       {
@@ -2507,6 +2640,18 @@ export function formatContestantIntroLine(
   const spokenName = getContestantSpokenName(seat.name) || `Thí sinh số ${seatNumber}`;
   const school = (seat.school || "").trim();
   const isLast = index === total - 1 && total >= 2;
+
+  if (activeCustomTtsScripts?.contestantIntroPattern) {
+    const prefix = isLast ? "Và " : "";
+    const line = interpolateTemplate(activeCustomTtsScripts.contestantIntroPattern, {
+      viTri: seatNumber,
+      soGhe: seatNumber,
+      tenThiSinh: spokenName,
+      tenTruong: school ? normalizeVietnameseTTS(school) : "",
+    });
+    return `${prefix}${line}`.trim();
+  }
+
   const prefix = isLast ? "Và ở vị trí số" : "Ở vị trí số";
   const schoolClause = school ? `, đến từ ${normalizeVietnameseTTS(school)}` : "";
   return `${prefix} ${seatNumber} là bạn ${spokenName}${schoolClause}.`;

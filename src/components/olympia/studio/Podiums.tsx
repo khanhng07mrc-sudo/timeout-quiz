@@ -1082,19 +1082,23 @@ function ProceduralNose({
 }
 
 /**
- * Upgraded Procedural East Asian 3D Mouth (Stylized Realism VTV):
- * - Natural broadcast smile with sculpted Cupid's bow and full vermilion contour
- * - Anatomically proportionate width (~5.0cm, aligned with inner pupils)
- * - Soft upward smile commissure corners and clean pearlescent dental line
- * - Placed with golden ratio philtrum (~1.1 - 1.2cm below nose base)
+ * Procedural Anatomical 3D Mouth & Dynamic Lip-Sync Viseme Model:
+ * - Upper Lip with sculpted Cupid's bow vermilion and philtrum contour
+ * - Mandible-articulated Lower Lip dropping naturally on vowels
+ * - Recessed dark Oral Cavity (vòm khoang họng) providing realistic anatomical depth
+ * - Separated Upper and Lower Dental Arches (hàm răng trên & hàm răng dưới)
+ * - Sculpted 3D Tongue (lưỡi 3D) elevating and sliding with speech phoneme rhythm
+ * - Natural broadcast smile at rest, transitioning smoothly to expressive speech
  */
-function ProceduralMouth({
+export function AnatomicalMouth3D({
   position = [0, 0, 0],
   rotation = [0, 0, 0],
   scale = 1.0,
   lipColor = "#b83250",
   smile = 0.08,
   openSmile = true,
+  role,
+  isSpeaking: manualIsSpeaking,
 }: {
   position?: [number, number, number];
   rotation?: [number, number, number];
@@ -1102,54 +1106,155 @@ function ProceduralMouth({
   lipColor?: string;
   smile?: number;
   openSmile?: boolean;
+  role?: "khanh_vy" | "ngoc_huy";
+  isSpeaking?: boolean;
 }) {
+  const jawRef = useRef<THREE.Group>(null);
+  const tongueRef = useRef<THREE.Group>(null);
+  const cavityRef = useRef<THREE.Mesh>(null);
+  const upperLipRef = useRef<THREE.Group>(null);
+  const lowerLipRef = useRef<THREE.Mesh>(null);
+  const leftCommissureRef = useRef<THREE.Mesh>(null);
+  const rightCommissureRef = useRef<THREE.Mesh>(null);
+
+  useFrame(({ clock }) => {
+    const isSpeaking =
+      manualIsSpeaking !== undefined
+        ? manualIsSpeaking
+        : typeof window !== "undefined" && role
+        ? (window as any).__olympiaTtsSpeaker === role
+        : false;
+
+    const t = clock.getElapsedTime();
+    let speechFactor = 0;
+    if (isSpeaking) {
+      const primary = Math.sin(t * 15.0) * 0.5 + 0.5;
+      const secondary = Math.cos(t * 7.5) * 0.35 + 0.65;
+      speechFactor = primary * secondary;
+    }
+
+    const jawDrop = speechFactor * 0.0055;
+    const upperLipLift = speechFactor * 0.0012;
+    const tongueLift = speechFactor * (Math.sin(t * 18.0) * 0.0015 + 0.0012);
+    const tongueSlide = speechFactor * (Math.cos(t * 12.0) * 0.0012);
+
+    if (jawRef.current) {
+      jawRef.current.position.y = -0.0026 - jawDrop;
+    }
+    if (lowerLipRef.current) {
+      lowerLipRef.current.position.y = -0.0032 - jawDrop;
+    }
+    if (upperLipRef.current) {
+      upperLipRef.current.position.y = 0.0018 + upperLipLift;
+    }
+    if (cavityRef.current) {
+      cavityRef.current.position.y = -0.0015 - jawDrop * 0.5;
+      cavityRef.current.scale.y = 0.65 + speechFactor * 0.95;
+    }
+    if (tongueRef.current) {
+      tongueRef.current.visible = speechFactor > 0.05 || openSmile;
+      tongueRef.current.position.y = -0.0032 - jawDrop * 0.6 + tongueLift;
+      tongueRef.current.position.z = -0.0005 + tongueSlide;
+    }
+    if (leftCommissureRef.current) {
+      leftCommissureRef.current.position.y = smile * 0.035 - jawDrop * 0.25;
+    }
+    if (rightCommissureRef.current) {
+      rightCommissureRef.current.position.y = smile * 0.035 - jawDrop * 0.25;
+    }
+  });
+
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {/* Upper Lip with sculpted Cupid's bow and natural curve (width ~4.8cm) */}
-      <group position={[0, 0.0018, 0.0030]}>
-        {/* Left Cupid wing */}
+      {/* 1. Deep Oral Cavity Interior (Hốc vòm họng tối màu) */}
+      <mesh
+        ref={cavityRef}
+        position={[0, -0.0015, -0.0025]}
+        scale={[1.0, 0.65, 0.85]}
+      >
+        <sphereGeometry args={[0.016, 12, 12]} />
+        <meshStandardMaterial color="#1a060c" roughness={0.92} metalness={0.0} />
+      </mesh>
+
+      {/* 2. Sculpted 3D Tongue (Lưỡi 3D chuyển động nâng hạ và trượt theo âm tiết) */}
+      <group ref={tongueRef} position={[0, -0.0032, -0.0005]}>
+        <mesh rotation={[-0.12, 0, 0]}>
+          <capsuleGeometry args={[0.0042, 0.015, 6, 10]} />
+          <meshStandardMaterial color="#d45f78" roughness={0.52} metalness={0.04} />
+        </mesh>
+        <mesh position={[0, 0.0008, 0.0025]} scale={[1.1, 0.6, 1.2]}>
+          <sphereGeometry args={[0.0045, 10, 10]} />
+          <meshStandardMaterial color="#d45f78" roughness={0.48} metalness={0.04} />
+        </mesh>
+      </group>
+
+      {/* 3. Upper Dental Arch (Hàm răng trên - men răng trắng ngọc) */}
+      <group position={[0, -0.0002, 0.0018]}>
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.028, 0.0022, 0.0030]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.18} metalness={0.06} />
+        </mesh>
+        <mesh position={[0, -0.0004, 0.0016]} scale={[0.15, 1.05, 0.2]}>
+          <boxGeometry args={[0.002, 0.0020, 0.001]} />
+          <meshStandardMaterial color="#cbd5e1" roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* 4. Lower Dental Arch (Hàm răng dưới - hạ thấp theo xương hàm dưới) */}
+      <group ref={jawRef} position={[0, -0.0026, 0.0012]}>
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.024, 0.0020, 0.0028]} />
+          <meshStandardMaterial color="#f1f5f9" roughness={0.22} metalness={0.06} />
+        </mesh>
+      </group>
+
+      {/* 5. Sculpted Upper Lip (Môi trên với rãnh nhân trung Cupid's bow mềm mại) */}
+      <group ref={upperLipRef} position={[0, 0.0018, 0.0030]}>
         <mesh position={[-0.012, smile * 0.020, 0]} rotation={[0, 0, Math.PI / 2 + 0.08]}>
           <capsuleGeometry args={[0.0036, 0.024, 8, 14]} />
           <meshStandardMaterial color={lipColor} roughness={0.34} />
         </mesh>
-        {/* Right Cupid wing */}
         <mesh position={[0.012, smile * 0.020, 0]} rotation={[0, 0, Math.PI / 2 - 0.08]}>
           <capsuleGeometry args={[0.0036, 0.024, 8, 14]} />
           <meshStandardMaterial color={lipColor} roughness={0.34} />
         </mesh>
-        {/* Subtle Cupid tubercle center peak */}
         <mesh position={[0, -0.0003, 0.0022]}>
           <sphereGeometry args={[0.0038, 10, 10]} />
           <meshStandardMaterial color={lipColor} roughness={0.34} />
         </mesh>
       </group>
 
-      {/* Full Plump Lower Lip (contoured vermilion, width ~4.6cm) */}
-      <mesh position={[0, -0.0032, 0.0026]} rotation={[0, 0, Math.PI / 2]}>
+      {/* 6. Sculpted Lower Lip (Môi dưới viền mọng - hạ thấp theo xương hàm dưới) */}
+      <mesh
+        ref={lowerLipRef}
+        position={[0, -0.0032, 0.0026]}
+        rotation={[0, 0, Math.PI / 2]}
+      >
         <capsuleGeometry args={[0.0046, 0.036, 8, 16]} />
         <meshStandardMaterial color={lipColor} roughness={0.32} />
       </mesh>
 
-      {/* Left and Right Smile Commissures (Corners of the mouth with upward smile lift) */}
-      <mesh position={[-0.023, smile * 0.035, 0.0022]}>
+      {/* 7. Left and Right Smile Commissures (Khóe môi nhếch cười tự nhiên) */}
+      <mesh
+        ref={leftCommissureRef}
+        position={[-0.023, smile * 0.035, 0.0022]}
+      >
         <sphereGeometry args={[0.0028, 8, 8]} />
         <meshStandardMaterial color={lipColor} roughness={0.36} />
       </mesh>
-      <mesh position={[0.023, smile * 0.035, 0.0022]}>
+      <mesh
+        ref={rightCommissureRef}
+        position={[0.023, smile * 0.035, 0.0022]}
+      >
         <sphereGeometry args={[0.0028, 8, 8]} />
         <meshStandardMaterial color={lipColor} roughness={0.36} />
       </mesh>
-
-      {/* Pearlescent Teeth line (Visible in open confident broadcast smile) */}
-      {openSmile && (
-        <mesh position={[0, -0.0004, 0.0020]}>
-          <boxGeometry args={[0.030, 0.0026, 0.0028]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.20} metalness={0.06} />
-        </mesh>
-      )}
     </group>
   );
 }
+
+// Backward-compatible alias
+export const ProceduralMouth = AnatomicalMouth3D;
 
 /**
  * Procedural Sculpted Ear:
@@ -3742,6 +3847,7 @@ export function McPresenters({
           lipColor="#c24b60"
           smile={0.08}
           openSmile={true}
+          role="khanh_vy"
         />
 
         {/* Signature Delicate Titanium Wireframe Eyeglasses (Pantos rounded-rectangle) */}
@@ -4090,6 +4196,7 @@ export function McPresenters({
           lipColor="#a45e4e"
           smile={0.07}
           openSmile={true}
+          role="ngoc_huy"
         />
 
         {/* Natural Upright Masculine Neck (bare skin under chin is only 2.8cm!) */}

@@ -51,6 +51,9 @@ import {
   generateGroupedAnswerCommentary,
   generateTangTocTimeCallout,
   resolveTurnHosts,
+  buildLobbyGreetingScript,
+  speakDualMcScript,
+  setGlobalCustomTtsScripts,
 } from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -647,15 +650,59 @@ export default function DisplayScreen({ code }: { code: string }) {
     effectiveAudioSeason,
   ]);
 
-  // Vocalize round intro greeting when transitioning into a new competition round
-  const prevRoundRef = useRef<string | null>(null);
+  // Synchronize custom TTS scripts from authoritative room state
+  useEffect(() => {
+    setGlobalCustomTtsScripts(state?.customTtsScripts ?? null);
+  }, [state?.customTtsScripts]);
+
+  // Automatic 3-second Lobby Greeting after opening a room
+  const lobbyGreetingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (!state || !ttsActive || state.stage !== "lobby" || state.lobbyGreetingTriggered) return;
+    if (lobbyGreetingTimerRef.current) return;
+
+    lobbyGreetingTimerRef.current = setTimeout(() => {
+      lobbyGreetingTimerRef.current = null;
+      if (state.stage === "lobby" && !state.lobbyGreetingTriggered) {
+        const script = buildLobbyGreetingScript({ roomName: state.name });
+        speakDualMcScript(script, {
+          onEnd: () => {
+            emit("action", { type: "tts:markLobbyGreetingTriggered" });
+          },
+        });
+      }
+    }, 3000);
+
+    return () => {
+      if (lobbyGreetingTimerRef.current) {
+        clearTimeout(lobbyGreetingTimerRef.current);
+        lobbyGreetingTimerRef.current = null;
+      }
+    };
+  }, [state?.stage, state?.lobbyGreetingTriggered, state?.name, ttsActive, emit]);
+
+  // Vocalize round intro greeting ONLY after the round intro video/banner has finished 100%
+  const prevSpokenRoundRef = useRef<string | null>(null);
   useEffect(() => {
     if (!state || !ttsActive || state.stage !== "playing" || !state.currentRound) return;
-    if (state.currentRound !== prevRoundRef.current) {
-      prevRoundRef.current = state.currentRound;
+    // Round intro is active if banner is displaying OR roundIntroDoneAt has not been marked
+    const isIntroActive = Boolean(state.banner || !state.roundIntroDoneAt);
+    if (isIntroActive) {
+      // Keep TTS silent while round intro video and fanfare is playing
+      return;
+    }
+    if (state.currentRound !== prevSpokenRoundRef.current) {
+      prevSpokenRoundRef.current = state.currentRound;
       speakRoundIntroTTS(state.currentRound, { season: effectiveAudioSeason });
     }
-  }, [state?.stage, state?.currentRound, ttsActive, effectiveAudioSeason]);
+  }, [
+    state?.stage,
+    state?.currentRound,
+    state?.banner,
+    state?.roundIntroDoneAt,
+    ttsActive,
+    effectiveAudioSeason,
+  ]);
 
   if (join && !join.ok) {
     return (

@@ -52,6 +52,7 @@ import {
   generateTangTocTimeCallout,
   resolveTurnHosts,
   buildLobbyGreetingScript,
+  buildOpeningDuoScript,
   speakDualMcScript,
   setGlobalCustomTtsScripts,
   pauseOlympiaTTS,
@@ -197,12 +198,14 @@ export default function DisplayScreen({ code }: { code: string }) {
       window.self !== window.top);
   const [audioOn, setAudioOn] = useState(!isExplicitMuteParam);
   const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (!e.data || typeof e.data !== "object") return;
       const type = e.data.type;
       if (type === "UNLOCK_AUDIO") {
+        setAudioUnlocked(true);
         if (!isExplicitMuteParam) {
           setAudioOn(true);
         }
@@ -275,6 +278,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   }, []);
 
   const handleUserUnlock = useCallback(() => {
+    setAudioUnlocked(true);
     if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
       (window as any).__OLYMPIA_UNLOCK_AUDIO__();
     }
@@ -730,7 +734,7 @@ export default function DisplayScreen({ code }: { code: string }) {
             coHost,
             season: effectiveAudioSeason,
             round: state.currentRound || undefined,
-            reflexPauseMs: 500,
+            reflexPauseMs: 650,
           });
         }
       } else {
@@ -903,31 +907,18 @@ export default function DisplayScreen({ code }: { code: string }) {
     setGlobalCustomTtsScripts(state?.customTtsScripts ?? null);
   }, [state?.customTtsScripts]);
 
-  // Automatic 3-second Lobby Greeting after opening a room
-  const lobbyGreetingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Vocalize Opening Duo Greeting ONLY when match actually starts (stage === "playing")
+  // In stage === "lobby", system remains 100% SILENT as required.
+  const openingGreetingSpokenRef = useRef<boolean>(false);
   useEffect(() => {
-    if (!state || !ttsActive || state.stage !== "lobby" || state.lobbyGreetingTriggered) return;
-    if (lobbyGreetingTimerRef.current) return;
-
-    lobbyGreetingTimerRef.current = setTimeout(() => {
-      lobbyGreetingTimerRef.current = null;
-      if (state.stage === "lobby" && !state.lobbyGreetingTriggered) {
-        const script = buildLobbyGreetingScript({ roomName: state.name });
-        speakDualMcScript(script, {
-          onEnd: () => {
-            emit("action", { type: "tts:markLobbyGreetingTriggered" });
-          },
-        });
-      }
-    }, 3000);
-
-    return () => {
-      if (lobbyGreetingTimerRef.current) {
-        clearTimeout(lobbyGreetingTimerRef.current);
-        lobbyGreetingTimerRef.current = null;
-      }
-    };
-  }, [state?.stage, state?.lobbyGreetingTriggered, state?.name, ttsActive, emit]);
+    if (!state || !ttsActive || state.stage !== "playing" || openingGreetingSpokenRef.current) return;
+    openingGreetingSpokenRef.current = true;
+    const script = buildOpeningDuoScript({ roomName: state.name });
+    speakDualMcScript(script, {
+      season: effectiveAudioSeason,
+      preferServer: true,
+    });
+  }, [state?.stage, state?.name, ttsActive, effectiveAudioSeason]);
 
   // Vocalize round intro greeting ONLY after the round intro video/banner has finished 100%
   const prevSpokenRoundRef = useRef<string | null>(null);
@@ -1253,6 +1244,19 @@ export default function DisplayScreen({ code }: { code: string }) {
             questionRevealed={cameraState.questionRevealed ?? Boolean(state?.khoiDong?.questionRevealed)}
           />
         </div>
+
+        {/* Banner Kích hoạt Âm thanh Màn chiếu (Audio Autoplay Unlock Banner) */}
+        {!audioUnlocked && (
+          <button
+            type="button"
+            onClick={handleUserUnlock}
+            className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-xl border border-amber-400/80 bg-gradient-to-r from-amber-600/90 to-yellow-600/90 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs shadow-2xl flex items-center gap-2 cursor-pointer transition animate-pulse"
+            title="Nhấp để bật âm thanh trường quay 3D và tiếng đọc MC"
+          >
+            <span className="text-sm">🔊</span>
+            <span>KÍCH HOẠT ÂM THANH TRƯỜNG QUAY</span>
+          </button>
+        )}
 
         {/* Sảnh chờ / Lobby */}
         {state.stage === "lobby" && !state.entranceState?.active && (

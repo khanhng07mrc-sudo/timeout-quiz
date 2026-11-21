@@ -1133,15 +1133,119 @@ export function StudioWalls({
  * - 16 suspended broadcast stage luminaires (Fresnel spotlights with clamps, barndoors & lenses)
  * - Visible metal specular finish even when studio is dimmed
  */
+/**
+ * Broadcast Volumetric Light Beam Cone:
+ * Projects a soft, translucent light cone through the atmosphere between start and target positions.
+ */
+function VolumetricLightBeam({
+  start,
+  target,
+  color = "#38bdf8",
+  opacity = 0.2,
+  radiusTop = 0.08,
+  radiusBottom = 1.0,
+}: {
+  start: [number, number, number];
+  target: [number, number, number];
+  color?: string;
+  opacity?: number;
+  radiusTop?: number;
+  radiusBottom?: number;
+}) {
+  const { center, quaternion, height } = useMemo(() => {
+    const s = new THREE.Vector3(...start);
+    const t = new THREE.Vector3(...target);
+    const dir = new THREE.Vector3().subVectors(t, s);
+    const h = dir.length();
+    const c = new THREE.Vector3().addVectors(s, t).multiplyScalar(0.5);
+    const q = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      dir.clone().normalize()
+    );
+    return { center: [c.x, c.y, c.z] as [number, number, number], quaternion: q, height: h };
+  }, [start[0], start[1], start[2], target[0], target[1], target[2]]);
+
+  return (
+    <mesh position={center} quaternion={quaternion}>
+      <cylinderGeometry args={[radiusTop, radiusBottom, height, 16, 1, true]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={opacity}
+        blending={THREE.AdditiveBlending}
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+/**
+ * Realistic VTV3 Studio S14 Broadcast Ceiling Truss & Lighting Network (Y = 6.2m)
+ * Features:
+ * - Lowered from 11.5m to 6.2m to tightly frame the upper broadcast camera view
+ * - Dual concentric circular aluminum trusses (R = 5.2m and R = 8.6m) with cross-lacing
+ * - Outer rectangular boundary box-trusses (18m x 15m)
+ * - 8 radial connecting structural cross-beams
+ * - 16 suspended broadcast stage luminaires (Fresnel spotlights with clamps, barndoors & lenses)
+ * - Visible metal specular finish even when studio is dimmed
+ */
 export function StudioCeilingRig({ 
   isDimmed = false, 
   liveFactor = 1.0, 
-  quality = "HIGH" 
+  quality = "HIGH",
+  currentRound = null,
 }: { 
   isDimmed?: boolean; 
   liveFactor?: number; 
   quality?: "HIGH" | "MEDIUM" | "LIGHT"; 
+  currentRound?: string | null;
 }) {
+  const roundLightingTheme = useMemo(() => {
+    switch (currentRound) {
+      case "khoiDong":
+        return {
+          spotColor: "#e0f2fe",
+          lensColor: "#38bdf8",
+          lensEmissive: "#0284c7",
+          beamColor: "#38bdf8",
+          intensityMultiplier: 1.15,
+        };
+      case "vcnv":
+        return {
+          spotColor: "#c7d2fe",
+          lensColor: "#818cf8",
+          lensEmissive: "#4338ca",
+          beamColor: "#818cf8",
+          intensityMultiplier: 0.95,
+        };
+      case "tangToc":
+        return {
+          spotColor: "#fef08a",
+          lensColor: "#fbbf24",
+          lensEmissive: "#d97706",
+          beamColor: "#fbbf24",
+          intensityMultiplier: 1.25,
+        };
+      case "veDich":
+        return {
+          spotColor: "#fed7aa",
+          lensColor: "#f43f5e",
+          lensEmissive: "#be123c",
+          beamColor: "#f43f5e",
+          intensityMultiplier: 0.55,
+        };
+      default:
+        return {
+          spotColor: "#fffbeb",
+          lensColor: "#e0f2fe",
+          lensEmissive: "#38bdf8",
+          beamColor: "#e0f2fe",
+          intensityMultiplier: 1.0,
+        };
+    }
+  }, [currentRound]);
+
   const trussMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -1165,13 +1269,14 @@ export function StudioCeilingRig({
   const fixtureLensMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: isDimmed ? "#1e293b" : "#e0f2fe",
-        emissive: isDimmed ? "#075985" : "#38bdf8",
-        emissiveIntensity: isDimmed ? 0.35 : 1.25,
+        color: isDimmed ? "#1e293b" : roundLightingTheme.lensColor,
+        emissive: isDimmed ? "#075985" : roundLightingTheme.lensEmissive,
+        emissiveIntensity: isDimmed ? 0.35 : 1.6,
         roughness: 0.15,
         metalness: 0.85,
+        toneMapped: false,
       }),
-    [isDimmed]
+    [isDimmed, roundLightingTheme]
   );
 
   const barndoorMat = useMemo(
@@ -1324,7 +1429,7 @@ export function StudioCeilingRig({
           </group>
         );
       })}
-      {/* ── CEILING STUDIO SPOTLIGHTS ── */}
+      {/* ── CEILING STUDIO SPOTLIGHTS & VOLUMETRIC BEAMS ── */}
       {quality !== "LIGHT" ? (
         <>
           {([
@@ -1335,24 +1440,33 @@ export function StudioCeilingRig({
             [ 4.5, 5.5, -3.5,  2.0, 0.5, -5.0],
             [ 0,   5.5, -4.5,  0,   0.8, -6.0],
           ] as [number,number,number,number,number,number][]).map(([px,py,pz,tx,ty,tz], i) => (
-            <spotLight
-              key={`ceil-spot-${i}`}
-              position={[px, py, pz]}
-              target-position={[tx, ty, tz]}
-              intensity={isDimmed ? 1.5 : 7.0 * liveFactor}
-              color="#fff6e8"
-              angle={0.42}
-              penumbra={0.65}
-              distance={10}
-              decay={2}
-              castShadow={false}
-            />
+            <React.Fragment key={`ceil-light-group-${i}`}>
+              <TargetedSpotLight
+                position={[px, py, pz]}
+                targetPosition={[tx, ty, tz]}
+                intensity={(isDimmed ? 2.5 : 8.5 * roundLightingTheme.intensityMultiplier) * liveFactor}
+                color={roundLightingTheme.spotColor}
+                angle={0.48}
+                penumbra={0.65}
+                distance={16}
+                decay={1.2}
+                castShadow={false}
+              />
+              <VolumetricLightBeam
+                start={[px, py, pz]}
+                target={[tx, ty, tz]}
+                color={roundLightingTheme.beamColor}
+                opacity={isDimmed ? 0.06 : 0.22 * liveFactor}
+                radiusTop={0.08}
+                radiusBottom={1.15}
+              />
+            </React.Fragment>
           ))}
         </>
       ) : (
         <>
-          <spotLight position={[0, 5.5, -2.0]} target-position={[0, 0, -3.5]} intensity={isDimmed ? 1.0 : 5.0 * liveFactor} color="#fff6e8" angle={0.6} penumbra={0.7} distance={12} decay={2} castShadow={false} />
-          <spotLight position={[0, 5.5, -4.0]} target-position={[0, 0, -5.5]} intensity={isDimmed ? 1.0 : 4.5 * liveFactor} color="#fff6e8" angle={0.55} penumbra={0.7} distance={11} decay={2} castShadow={false} />
+          <TargetedSpotLight position={[0, 5.5, -2.0]} targetPosition={[0, 0, -3.5]} intensity={(isDimmed ? 1.8 : 6.0) * liveFactor} color={roundLightingTheme.spotColor} angle={0.6} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
+          <TargetedSpotLight position={[0, 5.5, -4.0]} targetPosition={[0, 0, -5.5]} intensity={(isDimmed ? 1.8 : 5.5) * liveFactor} color={roundLightingTheme.spotColor} angle={0.55} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
         </>
       )}
     </group>
@@ -3176,18 +3290,27 @@ function KhoiDongBulbFixture({
     return [podiumPos[0], 0.90, podiumPos[2]];
   }, [podiumPos]);
 
+  // Compute local target offset relative to fixture position
+  const localTarget = useMemo<[number, number, number]>(() => {
+    return [
+      +(targetPos[0] - fixturePos[0]).toFixed(3),
+      +(targetPos[1] - fixturePos[1]).toFixed(3),
+      +(targetPos[2] - fixturePos[2]).toFixed(3),
+    ];
+  }, [targetPos, fixturePos]);
+
   const targetObj = useMemo(() => {
     const obj = new THREE.Object3D();
-    obj.position.set(targetPos[0], targetPos[1], targetPos[2]);
+    obj.position.set(localTarget[0], localTarget[1], localTarget[2]);
     obj.updateMatrixWorld();
     return obj;
-  }, [targetPos]);
+  }, [localTarget]);
 
   useEffect(() => {
     if (aimGroupRef.current) {
-      aimGroupRef.current.lookAt(targetPos[0], targetPos[1], targetPos[2]);
+      aimGroupRef.current.lookAt(localTarget[0], localTarget[1], localTarget[2]);
     }
-  }, [targetPos]);
+  }, [localTarget]);
 
   useFrame(() => {
     const now = serverNow ? serverNow() : Date.now();
@@ -3260,6 +3383,18 @@ function KhoiDongBulbFixture({
         decay={1.15}
         castShadow={false}
       />
+
+      {/* 4. Volumetric Light Beam Cone from ceiling bulb down to podium */}
+      {isKD && (
+        <VolumetricLightBeam
+          start={[0, 0, 0]}
+          target={localTarget}
+          color="#38bdf8"
+          opacity={0.22}
+          radiusTop={0.065}
+          radiusBottom={0.85}
+        />
+      )}
     </group>
   );
 }
@@ -3765,7 +3900,12 @@ export function StudioLighting({
         serverNow={serverNow}
       />
       <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
-      <StudioCeilingRig isDimmed={isVeDichDimmed} liveFactor={liveFactor} quality={quality} />
+      <StudioCeilingRig
+        isDimmed={isVeDichDimmed}
+        liveFactor={liveFactor}
+        quality={quality}
+        currentRound={currentRound}
+      />
       <AudienceAmphitheater
         audienceFadeProgress={audienceFadeProgress}
         quality={quality}

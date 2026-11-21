@@ -389,6 +389,22 @@ export function normalizeVietnameseTTS(rawText: string): string {
   t = t.replace(/\brad\/s\b/gi, "ra đi an một giây");
   t = t.replace(/\bkg\/m3\b/gi, "ki lô gam trên mét khối");
   t = t.replace(/\bg\/cm3\b/gi, "gam trên xen ti mét khối");
+  t = t.replace(/\bkWh\b/gi, "ki lô oát giờ");
+  t = t.replace(/\bkW\b/gi, "ki lô oát");
+  t = t.replace(/\bha\b/gi, "héc ta");
+  // Chemical formulas & Acronyms
+  t = t.replace(/\bCO2\b/gi, "Cac-bo-nic");
+  t = t.replace(/\bH2O\b/gi, "Nước");
+  t = t.replace(/\bUNESCO\b/gi, "U-nét-xcô");
+  t = t.replace(/\bASEAN\b/gi, "A-xê-an");
+  t = t.replace(/\bWHO\b/gi, "Vê-kép-hát-ô");
+  t = t.replace(/\bDNA\b/gi, "A-đê-en");
+  t = t.replace(/\bRNA\b/gi, "A-e-ren");
+  // Roman numerals for centuries
+  t = t.replace(/\bthế\s*kỷ\s*XXI\b/gi, "thế kỷ hai mươi mốt");
+  t = t.replace(/\bthế\s*kỷ\s*XX\b/gi, "thế kỷ hai mươi");
+  t = t.replace(/\bthế\s*kỷ\s*XIX\b/gi, "thế kỷ mười chín");
+  t = t.replace(/\bthế\s*kỷ\s*XVIII\b/gi, "thế kỷ mười tám");
   // Convert standalone fractions (e.g. 1/2) while protecting dd/mm/yyyy dates (e.g. 2/9/1945)
   t = t.replace(/\b(\d+\/\d+\/\d+)\b|\b(\d+)\/(\d+)\b/g, (full, dateStr, num, den) => {
     if (dateStr) return dateStr;
@@ -652,6 +668,10 @@ export function getSeasonReadingRate(
     typeof segmentOrOptions === "object" && segmentOrOptions !== null
       ? segmentOrOptions.baseRate
       : undefined;
+  const round =
+    typeof segmentOrOptions === "object" && segmentOrOptions !== null
+      ? (segmentOrOptions as any).round
+      : undefined;
 
   const category = explicitCategory ?? getTtsSpeedCategory(segment);
   const effectiveBaseRate = clamp(
@@ -662,15 +682,23 @@ export function getSeasonReadingRate(
 
   let tempo: number;
   if (category === "question") {
-    const s = (season || "O26").toUpperCase();
-    const isRapidSeason =
-      s.includes("O20") ||
-      s.includes("O21") ||
-      s.includes("O22") ||
-      s === "20" ||
-      s === "21" ||
-      s === "22";
-    tempo = isRapidSeason ? 1.4 : 1.08;
+    if (round === "khoiDong") {
+      tempo = 1.18;
+    } else if (round === "vcnv" || round === "tangToc") {
+      tempo = 1.08;
+    } else if (round === "veDich") {
+      tempo = 0.98;
+    } else {
+      const s = (season || "O26").toUpperCase();
+      const isRapidSeason =
+        s.includes("O20") ||
+        s.includes("O21") ||
+        s.includes("O22") ||
+        s === "20" ||
+        s === "21" ||
+        s === "22";
+      tempo = isRapidSeason ? 1.4 : 1.08;
+    }
     if (wordCount > 25) {
       tempo = Math.min(1.65, tempo * 1.12);
     }
@@ -2155,7 +2183,12 @@ async function fetchServerTtsAudio(
   }
 
   const endpoint = transportConfig.endpoint || DEFAULT_ENDPOINT;
-  const timeoutMs = transportConfig.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutMs =
+    transportConfig.timeoutMs !== undefined && transportConfig.timeoutMs !== DEFAULT_TIMEOUT_MS
+      ? transportConfig.timeoutMs
+      : options?.engine === "server"
+      ? DEFAULT_TIMEOUT_MS
+      : 600;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   activeAbortController = controller;
 
@@ -4031,21 +4064,34 @@ export function getLastBuzzedContestant(): string | null {
 export function generateBuzzerCallout(
   name: string,
   isConsecutive: boolean = false,
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
+  style: "broadcast" | "concise" = "concise"
 ): string {
   const cleanName = getContestantSpokenName(name);
   if (!cleanName) return "";
 
-  const baseVariants = [
-    `${cleanName}!`,
-    `Xin mời ${cleanName}!`,
-    `Mời ${cleanName}!`,
-  ];
+  const baseVariants =
+    style === "broadcast"
+      ? [
+          `Vâng, chúng tôi đã nhận được tín hiệu từ ${cleanName}, xin mời bạn!`,
+          `Tín hiệu chuông rất nhanh đến từ ${cleanName}, xin mời bạn!`,
+          `Đã có tín hiệu từ ${cleanName}, câu trả lời của bạn là gì?`,
+          `Xin mời ${cleanName}!`,
+          `Rất nhanh, xin mời ${cleanName}!`,
+        ]
+      : [
+          `${cleanName}!`,
+          `Xin mời ${cleanName}!`,
+          `Mời ${cleanName}!`,
+        ];
 
   let picked: string;
   if (isConsecutive) {
     if (rng() < 0.65) {
-      picked = `Tiếp tục là ${cleanName}!`;
+      picked =
+        style === "broadcast"
+          ? `Tiếp tục là tín hiệu từ ${cleanName}, xin mời bạn!`
+          : `Tiếp tục là ${cleanName}!`;
     } else {
       const idx = Math.floor(clamp(rng(), 0, 0.999999) * baseVariants.length);
       picked = baseVariants[idx];
@@ -4107,7 +4153,7 @@ export function handleBuzzerInterrupt(
   // 2. Post-bell callout (~500ms)
   buzzerPauseTimer = setTimeout(() => {
     buzzerPauseTimer = null;
-    const callout = generateBuzzerCallout(contestantName, isConsecutive);
+    const callout = generateBuzzerCallout(contestantName, isConsecutive, Math.random, "broadcast");
     const coHost =
       normalizeDualRole(options?.coHost) ||
       (options?.readingHost === "khanh_vy"

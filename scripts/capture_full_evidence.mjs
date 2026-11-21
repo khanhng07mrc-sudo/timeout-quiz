@@ -89,10 +89,10 @@ async function main() {
     timeout: 30000,
   });
 
-  // Wait 3.5s for Lobby Auto Greeting
-  console.log("  -> Waiting 3.5s for automated lobby greeting...");
-  await sleep(4000);
-  const p1 = path.join(EVIDENCE_DIR, "01_lobby_auto_greeting_3s.png");
+  // Wait in Lobby
+  console.log("  -> Verifying Lobby: 100% Silent waiting screen with Audio Unlock banner...");
+  await sleep(3500);
+  const p1 = path.join(EVIDENCE_DIR, "01_lobby_silent_waiting.png");
   await displayPage.screenshot({ path: p1, fullPage: false });
   console.log(`  -> Captured: ${p1}`);
 
@@ -147,35 +147,35 @@ async function main() {
   await sleep(600);
 
   // Start Intro Sequence
-  console.log("\n[5/7] Triggering match start & contestant introduction...");
+  console.log("\n[5/8] Triggering match start & contestant introduction...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const startBtn = btns.find((b) => (b.innerText || "").includes("Bắt đầu"));
     if (startBtn) startBtn.click();
   });
-  await sleep(3000);
+  await sleep(3500);
 
   // Capture Screenshot 2 on Display Page
-  const p2 = path.join(EVIDENCE_DIR, "02_opening_duo_and_contestant_intro.png");
+  const p2 = path.join(EVIDENCE_DIR, "02_match_start_auto_greeting.png");
   await displayPage.screenshot({ path: p2, fullPage: false });
   console.log(`  -> Captured: ${p2}`);
 
   // Transition to Khởi Động
-  console.log("\n[6/7] Transitioning to Khởi Động...");
+  console.log("\n[6/8] Transitioning to Khởi Động (Sapphire Blue Ceiling Rig & Volumetric Beams)...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const kdBtn = btns.find((b) => (b.innerText || "").includes("Khởi Động"));
     if (kdBtn) kdBtn.click();
   });
-  await sleep(3000);
+  await sleep(3500);
 
-  // Capture Screenshot 3 on Display Page
-  const p3 = path.join(EVIDENCE_DIR, "03_round_intro_silent_to_post_intro_mc_speech.png");
+  // Capture Screenshot 3 on Display Page (Ceiling rig & beams)
+  const p3 = path.join(EVIDENCE_DIR, "03_studio_ceiling_rig_and_volumetric_beams.png");
   await displayPage.screenshot({ path: p3, fullPage: false });
   console.log(`  -> Captured: ${p3}`);
 
   // CAM 3 Close-up on MC
-  console.log("\n[7/7] Switching Display to CAM 3 for Anatomical Mouth Visemes...");
+  console.log("\n[7/8] Switching Display to CAM 3 for Anatomical Mouth Visemes...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const camBtn = btns.find((b) => (b.innerText || "").includes("CAM 3"));
@@ -187,6 +187,19 @@ async function main() {
   const p4 = path.join(EVIDENCE_DIR, "04_mc_anatomical_mouth_closeup_visemes.png");
   await displayPage.screenshot({ path: p4, fullPage: false });
   console.log(`  -> Captured: ${p4}`);
+
+  // Transition to Tăng Tốc (Amber Gold Lighting)
+  console.log("\n[8/8] Transitioning to Tăng Tốc for Amber Gold Lighting & Volumetric Shafts...");
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const ttBtn = btns.find((b) => (b.innerText || "").includes("Tăng Tốc"));
+    if (ttBtn) ttBtn.click();
+  });
+  await sleep(3500);
+
+  const p7 = path.join(EVIDENCE_DIR, "07_round_lighting_tang_toc_amber.png");
+  await displayPage.screenshot({ path: p7, fullPage: false });
+  console.log(`  -> Captured: ${p7}`);
 
   await browser.close();
   console.log("\n================================================================================");

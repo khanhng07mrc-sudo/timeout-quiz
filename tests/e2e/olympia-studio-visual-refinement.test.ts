@@ -137,6 +137,24 @@ test("R2.1: idleSymbols formula list specifies peripheral safe-zone distribution
       `idleSymbols must include symbol ${sym}`
     );
   }
+
+  // Assert adjusted safe-zone coordinates for repositioned formulas
+  assert.ok(
+    centralLedWallContent.includes('{ text: "H₂O", x: 0.16, y: 0.06,'),
+    "H₂O must be positioned at upper-left margin [0.16, 0.06]"
+  );
+  assert.ok(
+    centralLedWallContent.includes('{ text: "Δλ", x: 0.84, y: 0.06,'),
+    "Δλ must be positioned at upper-right margin [0.84, 0.06]"
+  );
+  assert.ok(
+    centralLedWallContent.includes('{ text: "F=ma", x: 0.09, y: 0.58,'),
+    "F=ma must be positioned in left wing at [0.09, 0.58]"
+  );
+  assert.ok(
+    centralLedWallContent.includes('{ text: "E=mc²", x: 0.91, y: 0.58,'),
+    "E=mc² must be positioned in right wing at [0.91, 0.58]"
+  );
 });
 
 test("R2.2: Formula sizing is refined between 0.030 and 0.038 width (~38-48px at 1280px)", () => {
@@ -178,6 +196,140 @@ test("R2.5: Vietnamese diacritic protection for title 'ĐƯỜNG LÊN ĐỈNH OL
     centralLedWallContent.includes("ctx.lineWidth = 1.5;"),
     "Inner highlight stroke must be 1.5"
   );
+});
+
+test("R2.6: idleSymbols safe-zone collision test asserting zero penetration across 60 seconds of animation drift", () => {
+  const symbolRegex = /\{\s*text:\s*"([^"]+)",\s*x:\s*([0-9.]+),\s*y:\s*([0-9.]+),\s*size:\s*Math\.round\(width\s*\*\s*([0-9.]+)\)\s*\}/g;
+  const parsedSymbols: Array<{ text: string; x: number; y: number; sizeFactor: number }> = [];
+  let match: RegExpExecArray | null;
+  while ((match = symbolRegex.exec(centralLedWallContent)) !== null) {
+    parsedSymbols.push({
+      text: match[1],
+      x: parseFloat(match[2]),
+      y: parseFloat(match[3]),
+      sizeFactor: parseFloat(match[4]),
+    });
+  }
+
+  assert.equal(parsedSymbols.length, 12, "Must extract exactly 12 idle formula symbols");
+
+  // Glyph metrics specification
+  const glyphSpecs: Record<string, { w: number; h: number }> = {
+    "∑": { w: 48, h: 48 },
+    "√x": { w: 60, h: 44 },
+    "F=ma": { w: 104, h: 40 },
+    "∫ f(x)dx": { w: 140, h: 42 },
+    "π": { w: 46, h: 46 },
+    "E=mc²": { w: 120, h: 42 },
+    "H₂O": { w: 75, h: 37 },
+    "Δλ": { w: 62, h: 38 },
+    "sin θ": { w: 90, h: 38 },
+    "v=s/t": { w: 85, h: 38 },
+    "Ω": { w: 44, h: 42 },
+    "∞": { w: 50, h: 44 },
+  };
+
+  const logoZone = { xMin: 0.24, xMax: 0.76, yMin: 0.08, yMax: 0.62 };
+  const titleZone = { xMin: 0.15, xMax: 0.85, yMin: 0.66, yMax: 0.80 };
+
+  const resolutions = [
+    { width: 1280, height: 720 },
+    { width: 960, height: 540 },
+  ];
+
+  for (const { width, height } of resolutions) {
+    const scale = width / 1280;
+    // Test across 60 seconds of animation drift in 0.1s steps (601 steps)
+    for (let s = 0; s <= 600; s++) {
+      const timeSec = s * 0.1;
+
+      for (let idx = 0; idx < parsedSymbols.length; idx++) {
+        const sym = parsedSymbols[idx];
+        const driftX = sym.x * width + Math.sin(timeSec * 0.5 + idx * 1.4) * 5;
+        const driftY = sym.y * height + Math.cos(timeSec * 0.6 + idx * 1.1) * 4;
+
+        const spec = glyphSpecs[sym.text];
+        assert.ok(spec, `Glyph spec must exist for ${sym.text}`);
+        const halfW = (spec.w * scale) / 2;
+        const halfH = (spec.h * scale) / 2;
+
+        const normLeft = (driftX - halfW) / width;
+        const normRight = (driftX + halfW) / width;
+        const normTop = (driftY - halfH) / height;
+        const normBottom = (driftY + halfH) / height;
+
+        const overlapLogo =
+          normRight > logoZone.xMin &&
+          normLeft < logoZone.xMax &&
+          normBottom > logoZone.yMin &&
+          normTop < logoZone.yMax;
+        assert.ok(
+          !overlapLogo,
+          `Logo safe zone collision detected for formula "${sym.text}" at resolution ${width}x${height}, time ${timeSec.toFixed(1)}s`
+        );
+
+        const overlapTitle =
+          normRight > titleZone.xMin &&
+          normLeft < titleZone.xMax &&
+          normBottom > titleZone.yMin &&
+          normTop < titleZone.yMax;
+        assert.ok(
+          !overlapTitle,
+          `Title safe zone collision detected for formula "${sym.text}" at resolution ${width}x${height}, time ${timeSec.toFixed(1)}s`
+        );
+      }
+    }
+  }
+});
+
+test("R2.7: idleSymbols pairwise clearance >= 50px and canvas boundary containment [0.05, 0.95] x [0.04, 0.96]", () => {
+  const symbolRegex = /\{\s*text:\s*"([^"]+)",\s*x:\s*([0-9.]+),\s*y:\s*([0-9.]+),\s*size:\s*Math\.round\(width\s*\*\s*([0-9.]+)\)\s*\}/g;
+  const parsedSymbols: Array<{ text: string; x: number; y: number }> = [];
+  let match: RegExpExecArray | null;
+  while ((match = symbolRegex.exec(centralLedWallContent)) !== null) {
+    parsedSymbols.push({
+      text: match[1],
+      x: parseFloat(match[2]),
+      y: parseFloat(match[3]),
+    });
+  }
+
+  // All formula centers must remain within canvas boundaries [0.05, 0.95] x [0.04, 0.96]
+  for (const sym of parsedSymbols) {
+    assert.ok(
+      sym.x >= 0.05 && sym.x <= 0.95,
+      `Formula center X for ${sym.text} (${sym.x}) must be within [0.05, 0.95]`
+    );
+    assert.ok(
+      sym.y >= 0.04 && sym.y <= 0.96,
+      `Formula center Y for ${sym.text} (${sym.y}) must be within [0.04, 0.96]`
+    );
+  }
+
+  // Test across 60 seconds drift at 1280x720 and 960x540 for >= 50px pairwise clearance
+  for (const width of [1280, 960]) {
+    const height = Math.round(width * (9 / 16));
+    for (let s = 0; s <= 600; s += 5) {
+      const timeSec = s * 0.1;
+      const positions = parsedSymbols.map((sym, idx) => ({
+        text: sym.text,
+        x: sym.x * width + Math.sin(timeSec * 0.5 + idx * 1.4) * 5,
+        y: sym.y * height + Math.cos(timeSec * 0.6 + idx * 1.1) * 4,
+      }));
+
+      for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+          const dx = positions[i].x - positions[j].x;
+          const dy = positions[i].y - positions[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          assert.ok(
+            dist >= 50,
+            `Pairwise clearance violation between "${positions[i].text}" and "${positions[j].text}": ${dist.toFixed(1)}px < 50px`
+          );
+        }
+      }
+    }
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

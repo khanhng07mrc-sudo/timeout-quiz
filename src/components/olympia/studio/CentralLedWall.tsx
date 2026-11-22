@@ -1352,14 +1352,14 @@ function renderLedScreenToCanvas(
     // Left Wing Corridor
     { text: "∑", x: 0.12, y: 0.20, size: Math.round(width * 0.038) },
     { text: "√x", x: 0.10, y: 0.44, size: Math.round(width * 0.034) },
-    { text: "F=ma", x: 0.12, y: 0.66, size: Math.round(width * 0.031) },
+    { text: "F=ma", x: 0.09, y: 0.58, size: Math.round(width * 0.031) },
     // Right Wing Corridor
     { text: "∫ f(x)dx", x: 0.88, y: 0.20, size: Math.round(width * 0.033) },
     { text: "π", x: 0.90, y: 0.44, size: Math.round(width * 0.036) },
-    { text: "E=mc²", x: 0.88, y: 0.66, size: Math.round(width * 0.033) },
+    { text: "E=mc²", x: 0.91, y: 0.58, size: Math.round(width * 0.033) },
     // Top Flank Coronet (clear of logo apex)
-    { text: "H₂O", x: 0.28, y: 0.09, size: Math.round(width * 0.030) },
-    { text: "Δλ", x: 0.72, y: 0.09, size: Math.round(width * 0.031) },
+    { text: "H₂O", x: 0.16, y: 0.06, size: Math.round(width * 0.030) },
+    { text: "Δλ", x: 0.84, y: 0.06, size: Math.round(width * 0.031) },
     // Bottom Horizon Baseline (clear of title ribbon)
     { text: "sin θ", x: 0.22, y: 0.89, size: Math.round(width * 0.030) },
     { text: "v=s/t", x: 0.40, y: 0.91, size: Math.round(width * 0.030) },

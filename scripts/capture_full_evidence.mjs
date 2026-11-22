@@ -193,21 +193,32 @@ async function main() {
     const startKd = btns.find((b) => (b.innerText || "").includes("BẮT ĐẦU") && !(b.innerText || "").includes("TRẬN"));
     if (startKd) startKd.click();
   });
-  // Wait for kd:start ready sound & startCooldownUntil to expire
-  await sleep(3500);
-  await hostPage.keyboard.press("n");
+
+  // Wait for kd:start cooldown (3.5s) to fully expire so CÂU TIẾP (MỞ CÂU 1) becomes enabled
+  console.log("  -> Waiting for Next Question button to become enabled (cooldown expiry)...");
+  await hostPage.waitForFunction(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const nextQ = btns.find((b) => (b.innerText || "").includes("CÂU TIẾP") || (b.innerText || "").includes("MỞ CÂU"));
+    return nextQ && !nextQ.disabled;
+  }, { timeout: 15000 });
+
+  await sleep(600);
+  console.log("  -> Clicking CÂU TIẾP (MỞ CÂU 1)...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const nextQ = btns.find((b) => (b.innerText || "").includes("CÂU TIẾP") || (b.innerText || "").includes("MỞ CÂU"));
-    if (nextQ && !nextQ.disabled) nextQ.click();
+    if (nextQ) nextQ.click();
   });
-  await sleep(2000);
+  await sleep(2500);
 
   // Turn on Subject Placard if currently ẨN
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const subjBtn = btns.find((b) => (b.innerText || "").includes("Lĩnh vực: ẨN") || (b.innerText || "").includes("Đồ hoạ: ẨN"));
-    if (subjBtn) subjBtn.click();
+    const subjBtn = btns.find((b) => (b.title || "").includes("lĩnh vực câu hỏi"));
+    const isHidden = subjBtn && (subjBtn.innerText || "").includes("ẨN");
+    if (subjBtn && isHidden) {
+      subjBtn.click();
+    }
   });
   await sleep(1500);
 

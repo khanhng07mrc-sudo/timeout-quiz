@@ -803,7 +803,7 @@ export function BroadcastCameras({
       return { target: [3.12, 1.02, -7.16], isLive: true }; // Coaxial straight-on MC Desk & Grounded Hexagon Portal
     }
     if (camAngle === 2) {
-      return { target: [5.8, 3.2, -2.2], isLive: true }; // Main LED Wall
+      return { target: [6.65, 3.25, -2.10], isLive: true }; // Main LED Wall
     }
     if (camAngle === 11) {
       return { target: [0.0, 1.8, 9.5], isLive: true }; // Audience / Staircase

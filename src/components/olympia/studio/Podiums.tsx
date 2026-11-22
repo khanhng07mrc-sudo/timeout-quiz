@@ -6210,10 +6210,11 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.000, 0]} renderOrder={9.1} receiveShadow={true}>
         <circleGeometry args={[2.45, 128]} />
         <meshStandardMaterial
-          color="#020617"
-          roughness={0.07}
-          metalness={0.10}
-          envMapIntensity={2.8}
+          color="#121e36"
+          roughness={0.20}
+          metalness={0.25}
+          emissive="#051024"
+          emissiveIntensity={0.15}
           depthWrite={true}
         />
       </mesh>

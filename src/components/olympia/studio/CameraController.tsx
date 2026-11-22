@@ -321,7 +321,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     id: 2,
     label: "Màn LED Chữ Nhật",
     pos: [1.8, 2.6, 0.8],
-    target: [5.8, 3.2, -2.2],
+    target: [6.65, 3.25, -2.10],
   },
   3: {
     id: 3,

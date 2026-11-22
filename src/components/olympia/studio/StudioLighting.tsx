@@ -717,7 +717,7 @@ export function StudioFloor({
 
   // Continuous Global Floor Cove Light Glow Ribbons (Unbroken luminous cyan sheets)
   const coveLeftFloorGlowGeom = useMemo(
-    () => createAnnularGlowGeometry(5.20, 4.20, 0.50 * Math.PI, 1.28 * Math.PI, 64, 0.005),
+    () => createAnnularGlowGeometry(5.20, 4.80, 0.50 * Math.PI, 1.28 * Math.PI, 64, 0.005),
     []
   );
 
@@ -768,7 +768,7 @@ export function StudioFloor({
   }, [rightStepLightPoints]);
 
   const coveRightFloorGlowGeom = useMemo(
-    () => createAnnularGlowGeometry(5.20, 4.20, -0.08 * Math.PI, 0.48 * Math.PI, 64, 0.005),
+    () => createAnnularGlowGeometry(5.20, 4.80, -0.08 * Math.PI, 0.48 * Math.PI, 64, 0.005),
     []
   );
 
@@ -784,10 +784,11 @@ export function StudioFloor({
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
-          color="#0c1527"
-          roughness={0.07}
-          metalness={0.35}
-          envMapIntensity={3.5}
+          color="#15233e"
+          roughness={0.22}
+          metalness={0.30}
+          emissive="#051024"
+          emissiveIntensity={0.16}
         />
       </mesh>
 
@@ -810,10 +811,11 @@ export function StudioFloor({
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]} receiveShadow={true}>
           <primitive object={intermediateTierDeckGeom} attach="geometry" />
           <meshStandardMaterial
-            color="#0e1830"
-            roughness={0.14}
-            metalness={0.20}
-            envMapIntensity={2.2}
+            color="#182c50"
+            roughness={0.24}
+            metalness={0.25}
+            emissive="#061228"
+            emissiveIntensity={0.14}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -982,11 +984,18 @@ export function StudioFloor({
 
       {/* 3. Continuous Glowing Cove Fascia Backplate inside the left slot (100% parametric fit) */}
       <mesh geometry={coveLeftFasciaGeom}>
-        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} toneMapped={false} />
+        <meshStandardMaterial
+          color={ringColor}
+          emissive={ringColor}
+          emissiveIntensity={0.75}
+          roughness={0.45}
+          metalness={0.10}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       {/* 5. Global Diffuse Overhead Fill Light for Left Contestant Cluster (Synchronized with stage lighting color) */}
-      <pointLight position={[-4.2, 5.8, -2.8]} color={ringColor} intensity={4.5 * liveFactor} distance={18} decay={1.8} />
+      <pointLight position={[-4.2, 2.5, -2.8]} color={ringColor} intensity={2.0 * liveFactor} distance={8} decay={1.6} />
 
       {/* ── 4C. STAGE-RIGHT RAISED PLATFORM & COVE LIGHTING (ĐÈN KHE TOÀN CỤC BÊN PHẢI) ── */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1017,7 +1026,14 @@ export function StudioFloor({
 
       {/* Continuous Glowing Cove Fascia Backplate inside the right slot (100% parametric fit) */}
       <mesh geometry={coveRightFasciaGeom}>
-        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} toneMapped={false} />
+        <meshStandardMaterial
+          color={ringColor}
+          emissive={ringColor}
+          emissiveIntensity={0.75}
+          roughness={0.45}
+          metalness={0.10}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       <mesh geometry={rightDaisCoveTrimGeom}>
@@ -1025,7 +1041,7 @@ export function StudioFloor({
       </mesh>
 
       {/* Global Diffuse Overhead Fill Light for Right Stage Cluster (Synchronized with stage lighting color) */}
-      <pointLight position={[4.2, 5.8, -2.8]} color={ringColor} intensity={4.5 * liveFactor} distance={18} decay={1.8} />
+      <pointLight position={[4.2, 2.5, -2.8]} color={ringColor} intensity={2.0 * liveFactor} distance={8} decay={1.6} />
     </group>
   );
 }

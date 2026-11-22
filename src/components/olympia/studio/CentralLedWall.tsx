@@ -620,29 +620,30 @@ function renderOlympiaLogoToCanvas(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  const fontSize = Math.round(width * 0.046);
-  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
+  const fontSize = Math.round(width * 0.040);
+  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
   ctx.letterSpacing = "0.08em";
 
-  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.6, 0, textY + fontSize * 0.6);
+  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.55, 0, textY + fontSize * 0.55);
   textGrad.addColorStop(0.0, "#ffffff");
-  textGrad.addColorStop(0.2, "#fffbd0");
-  textGrad.addColorStop(0.5, "#ffd700");
+  textGrad.addColorStop(0.22, "#fffbd0");
+  textGrad.addColorStop(0.55, "#f59e0b");
   textGrad.addColorStop(0.85, "#b45309");
   textGrad.addColorStop(1.0, "#78350f");
 
-  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 4;
-  ctx.lineWidth = 10;
-  ctx.strokeStyle = "#1e1302";
+  // Restrained dark drop shadow protecting diacritics
+  ctx.shadowColor = "rgba(0, 0, 0, 0.88)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 3;
+  ctx.lineWidth = 3.8;
+  ctx.strokeStyle = "#1a0f02";
   ctx.strokeText(textStr, cx, textY);
 
-  ctx.shadowColor = "rgba(255, 215, 0, 0.7)";
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 2;
-
-  ctx.lineWidth = 3.5;
+  // Subtle gold rim outline
+  ctx.shadowColor = "rgba(245, 158, 11, 0.55)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 1;
+  ctx.lineWidth = 1.5;
   ctx.strokeStyle = "#fffed4";
   ctx.strokeText(textStr, cx, textY);
 
@@ -1345,41 +1346,51 @@ function renderLedScreenToCanvas(
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Dynamic Floating Glossy Scientific Symbols & Stardust Backdrop (Math & Science Board)
+  // 2. Refined Academic Math & Natural Science Formulas (Requirement R2 Redesign)
+  // Distributed into balanced peripheral corridors clear of central logo and title safe zones
   const idleSymbols = [
-    { text: "∑", x: 0.15, y: 0.20, size: Math.round(width * 0.088) },
-    { text: "E=mc²", x: 0.35, y: 0.18, size: Math.round(width * 0.068) },
-    { text: "∫ f(x)dx", x: 0.65, y: 0.18, size: Math.round(width * 0.065) },
-    { text: "Δλ", x: 0.86, y: 0.22, size: Math.round(width * 0.078) },
-    { text: "F=ma", x: 0.16, y: 0.78, size: Math.round(width * 0.068) },
-    { text: "π", x: 0.85, y: 0.76, size: Math.round(width * 0.086) },
-    { text: "Ω", x: 0.68, y: 0.82, size: Math.round(width * 0.078) },
-    { text: "√x", x: 0.12, y: 0.48, size: Math.round(width * 0.075) },
-    { text: "∞", x: 0.88, y: 0.48, size: Math.round(width * 0.080) },
-    { text: "sin θ", x: 0.36, y: 0.82, size: Math.round(width * 0.065) },
-    { text: "H₂O", x: 0.50, y: 0.15, size: Math.round(width * 0.066) },
-    { text: "v=s/t", x: 0.50, y: 0.84, size: Math.round(width * 0.064) },
+    // Left Wing Corridor
+    { text: "∑", x: 0.12, y: 0.20, size: Math.round(width * 0.038) },
+    { text: "√x", x: 0.10, y: 0.44, size: Math.round(width * 0.034) },
+    { text: "F=ma", x: 0.12, y: 0.66, size: Math.round(width * 0.031) },
+    // Right Wing Corridor
+    { text: "∫ f(x)dx", x: 0.88, y: 0.20, size: Math.round(width * 0.033) },
+    { text: "π", x: 0.90, y: 0.44, size: Math.round(width * 0.036) },
+    { text: "E=mc²", x: 0.88, y: 0.66, size: Math.round(width * 0.033) },
+    // Top Flank Coronet (clear of logo apex)
+    { text: "H₂O", x: 0.28, y: 0.09, size: Math.round(width * 0.030) },
+    { text: "Δλ", x: 0.72, y: 0.09, size: Math.round(width * 0.031) },
+    // Bottom Horizon Baseline (clear of title ribbon)
+    { text: "sin θ", x: 0.22, y: 0.89, size: Math.round(width * 0.030) },
+    { text: "v=s/t", x: 0.40, y: 0.91, size: Math.round(width * 0.030) },
+    { text: "Ω", x: 0.60, y: 0.91, size: Math.round(width * 0.033) },
+    { text: "∞", x: 0.78, y: 0.89, size: Math.round(width * 0.034) },
   ];
 
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   idleSymbols.forEach((s, idx) => {
-    const driftX = (s.x * width) + Math.sin(timeSec * 0.6 + idx * 1.4) * 12;
-    const driftY = (s.y * height) + Math.cos(timeSec * 0.7 + idx * 1.1) * 9;
+    const driftX = (s.x * width) + Math.sin(timeSec * 0.5 + idx * 1.4) * 5;
+    const driftY = (s.y * height) + Math.cos(timeSec * 0.6 + idx * 1.1) * 4;
     ctx.save();
     ctx.translate(driftX, driftY);
-    ctx.font = `italic 900 ${s.size}px "Plus Jakarta Sans", "Cambria Math", sans-serif`;
-    ctx.shadowColor = fadeProgress > 0.5 ? "#f43f5e" : "#0284c7";
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 220, 230, 0.90)" : "rgba(224, 242, 254, 0.92)";
-    ctx.fillText(s.text, 0, 0);
-    ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(225, 29, 72, 0.85)" : "rgba(14, 165, 233, 0.85)";
-    ctx.lineWidth = 2.4;
+    ctx.font = `italic 600 ${s.size}px "Cambria Math", "Latin Modern Math", "STIX Two Math", "Times New Roman", "Plus Jakarta Sans", serif`;
+
+    // Ambient radiant glow behind
+    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(244, 63, 94, 0.45)" : "rgba(14, 165, 233, 0.45)";
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(225, 29, 72, 0.55)" : "rgba(2, 132, 199, 0.55)";
+    ctx.lineWidth = 1.6;
     ctx.strokeText(s.text, 0, 0);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
-    ctx.lineWidth = 1.0;
-    ctx.strokeText(s.text, -0.6, -0.8);
+
+    // Multi-stop crisp metallic gradient fill on top
+    const symGrad = ctx.createLinearGradient(0, -s.size * 0.5, 0, s.size * 0.5);
+    symGrad.addColorStop(0, "#ffffff");
+    symGrad.addColorStop(0.5, fadeProgress > 0.5 ? "rgba(254, 205, 211, 0.92)" : "rgba(224, 242, 254, 0.92)");
+    symGrad.addColorStop(1, fadeProgress > 0.5 ? "rgba(251, 113, 133, 0.75)" : "rgba(56, 189, 248, 0.75)");
+    ctx.fillStyle = symGrad;
+    ctx.fillText(s.text, 0, 0);
     ctx.restore();
   });
   ctx.restore();
@@ -1584,33 +1595,30 @@ function renderLedScreenToCanvas(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  const fontSize = Math.round(width * 0.046);
-  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
+  const fontSize = Math.round(width * 0.040);
+  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
   ctx.letterSpacing = "0.08em";
 
-  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.6, 0, textY + fontSize * 0.6);
+  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.55, 0, textY + fontSize * 0.55);
   textGrad.addColorStop(0.0, "#ffffff");
-  textGrad.addColorStop(0.2, "#fffbd0");
-  textGrad.addColorStop(0.5, "#ffd700");
+  textGrad.addColorStop(0.22, "#fffbd0");
+  textGrad.addColorStop(0.55, "#f59e0b");
   textGrad.addColorStop(0.85, "#b45309");
   textGrad.addColorStop(1.0, "#78350f");
 
-  // Outer dark drop shadow
-  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 4;
-  ctx.lineWidth = 10;
-  ctx.strokeStyle = "#1e1302";
+  // Restrained dark drop shadow protecting diacritics
+  ctx.shadowColor = "rgba(0, 0, 0, 0.88)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 3;
+  ctx.lineWidth = 3.8;
+  ctx.strokeStyle = "#1a0f02";
   ctx.strokeText(textStr, cx, textY);
 
-  // Soft golden halo
-  ctx.shadowColor = "rgba(255, 215, 0, 0.7)";
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 2;
-
-  // Inner metallic stroke
-  ctx.lineWidth = 3.5;
+  // Subtle gold rim outline
+  ctx.shadowColor = "rgba(245, 158, 11, 0.55)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 1;
+  ctx.lineWidth = 1.5;
   ctx.strokeStyle = "#fffed4";
   ctx.strokeText(textStr, cx, textY);
 
@@ -1711,7 +1719,7 @@ function renderVerticalTotemToCanvas(
   ctx.shadowColor = "#ffd700";
   ctx.shadowBlur = 20;
   ctx.strokeStyle = "#1e1302";
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 2.4;
   ctx.strokeText("ĐƯỜNG LÊN ĐỈNH OLYMPIA", cx, 310);
   const textGrad = ctx.createLinearGradient(0, 290, 0, 330);
   textGrad.addColorStop(0, "#ffffff");
@@ -3214,114 +3222,114 @@ export function CentralLedWall({
         </mesh>
       </group>
 
-      {/* ── 2. STAGE RIGHT WING: EXPANDED LANDSCAPE 16:9 SCREEN (XOAY -65° VỀ MẶT THÍ SINH + PHỦ SÁT CỬA BỤC MC + 3 LỚP VIỀN GIẬT CẤP) ── */}
-      {/* Đặt tại [5.05, 3.25, -3.15], xoay -65° [-1.134 rad] hướng thẳng góc nhìn của các thí sinh & mở rộng sát cửa bục MC */}
-      <group position={[5.05, 3.25, -3.15]} rotation={[0, -1.134, 0]}>
+      {/* ── 2. STAGE RIGHT WING: ELEVATED LANDSCAPE 16:9 SCREEN (XOAY -65° VỀ MẶT THÍ SINH + 3 LỚP VIỀN GIẬT CẤP) ── */}
+      {/* Đặt tại [6.65, 3.25, -2.10], xoay -65° [-1.134 rad] hướng thẳng góc nhìn của các thí sinh & giữ khoảng cách thông thoáng với bục MC */}
+      <group position={[6.65, 3.25, -2.10]} rotation={[0, -1.134, 0]}>
         {/* Structural Truss Columns behind the Screen */}
-        <mesh position={[-2.95, -1.2, -0.28]}>
-          <boxGeometry args={[0.22, 5.0, 0.22]} />
+        <mesh position={[-2.30, -1.2, -0.28]}>
+          <boxGeometry args={[0.22, 4.4, 0.22]} />
           <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[2.95, -1.2, -0.28]}>
-          <boxGeometry args={[0.22, 5.0, 0.22]} />
+        <mesh position={[2.30, -1.2, -0.28]}>
+          <boxGeometry args={[0.22, 4.4, 0.22]} />
           <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
         </mesh>
 
         {/* Lower backing wall panel spanning underneath screen to floor */}
         <mesh position={[0, -1.9, -0.36]}>
-          <boxGeometry args={[10.6, 3.4, 0.12]} />
+          <boxGeometry args={[5.50, 3.4, 0.12]} />
           <meshStandardMaterial color="#040d22" roughness={0.35} metalness={0.7} />
         </mesh>
 
-        {/* Continuous Horizontal Glowing Neon Tubes Underneath Elevated Screen down to stage floor (spans 10.5m) */}
+        {/* Continuous Horizontal Glowing Neon Tubes Underneath Elevated Screen down to stage floor (spans 5.5m) */}
         {[-3.0, -2.5, -2.0, -1.5].map((slatY, sIdx) => (
           <mesh key={`lower-slat-${sIdx}`} position={[0, slatY, -0.32]}>
-            <boxGeometry args={[10.5, 0.045, 0.045]} />
+            <boxGeometry args={[5.50, 0.045, 0.045]} />
             <meshBasicMaterial color={neonColor} />
           </mesh>
         ))}
 
-        {/* Horizontal LED wall slats behind screen (widened to 9.8m) */}
+        {/* Horizontal LED wall slats behind screen (width 5.4m) */}
         {[-1.2, -0.6, 0.0, 0.6, 1.2].map((slatY, sIdx) => (
           <mesh key={`slat-${sIdx}`} position={[0, slatY, -0.32]}>
-            <boxGeometry args={[9.8, 0.05, 0.05]} />
+            <boxGeometry args={[5.40, 0.05, 0.05]} />
             <meshBasicMaterial color={neonColor} />
           </mesh>
         ))}
 
         {/* ── 3 LỚP VIỀN GIẬT CẤP (3-TIER STEPPED CONCENTRIC BEZELS WITH NEON TUBING) ── */}
-        {/* Lớp viền 1 (Outer Bezel Tier): 6.92m x 4.33m x 0.10m tại Z = -0.14 */}
+        {/* Lớp viền 1 (Outer Bezel Tier): 5.36m x 3.365m x 0.10m tại Z = -0.14 */}
         <mesh position={[0, 0, -0.14]}>
-          <boxGeometry args={[6.92, 4.33, 0.10]} />
+          <boxGeometry args={[5.36, 3.365, 0.10]} />
           <meshStandardMaterial color="#070d1e" metalness={0.92} roughness={0.18} />
         </mesh>
         {/* Viền Neon Lớp 1 */}
-        <mesh position={[0, 2.165, -0.09]}>
-          <boxGeometry args={[6.92, 0.035, 0.035]} />
+        <mesh position={[0, 1.6825, -0.09]}>
+          <boxGeometry args={[5.36, 0.035, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -2.165, -0.09]}>
-          <boxGeometry args={[6.92, 0.035, 0.035]} />
+        <mesh position={[0, -1.6825, -0.09]}>
+          <boxGeometry args={[5.36, 0.035, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-3.46, 0, -0.09]}>
-          <boxGeometry args={[0.035, 4.33, 0.035]} />
+        <mesh position={[-2.68, 0, -0.09]}>
+          <boxGeometry args={[0.035, 3.365, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[3.46, 0, -0.09]}>
-          <boxGeometry args={[0.035, 4.33, 0.035]} />
+        <mesh position={[2.68, 0, -0.09]}>
+          <boxGeometry args={[0.035, 3.365, 0.035]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* Lớp viền 2 (Middle Bezel Tier): 6.52m x 3.93m x 0.12m tại Z = -0.06 */}
+        {/* Lớp viền 2 (Middle Bezel Tier): 5.06m x 3.065m x 0.12m tại Z = -0.06 */}
         <mesh position={[0, 0, -0.06]}>
-          <boxGeometry args={[6.52, 3.93, 0.12]} />
+          <boxGeometry args={[5.06, 3.065, 0.12]} />
           <meshStandardMaterial color="#0f172a" metalness={0.90} roughness={0.20} />
         </mesh>
         {/* Viền Neon Lớp 2 */}
-        <mesh position={[0, 1.965, 0.00]}>
-          <boxGeometry args={[6.52, 0.03, 0.03]} />
+        <mesh position={[0, 1.5325, 0.00]}>
+          <boxGeometry args={[5.06, 0.03, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.965, 0.00]}>
-          <boxGeometry args={[6.52, 0.03, 0.03]} />
+        <mesh position={[0, -1.5325, 0.00]}>
+          <boxGeometry args={[5.06, 0.03, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-3.26, 0, 0.00]}>
-          <boxGeometry args={[0.03, 3.93, 0.03]} />
+        <mesh position={[-2.53, 0, 0.00]}>
+          <boxGeometry args={[0.03, 3.065, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[3.26, 0, 0.00]}>
-          <boxGeometry args={[0.03, 3.93, 0.03]} />
+        <mesh position={[2.53, 0, 0.00]}>
+          <boxGeometry args={[0.03, 3.065, 0.03]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* Lớp viền 3 (Inner Bezel Tier): 6.12m x 3.53m x 0.12m tại Z = 0.02 */}
+        {/* Lớp viền 3 (Inner Bezel Tier): 4.76m x 2.765m x 0.12m tại Z = 0.02 */}
         <mesh position={[0, 0, 0.02]}>
-          <boxGeometry args={[6.12, 3.53, 0.12]} />
+          <boxGeometry args={[4.76, 2.765, 0.12]} />
           <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.22} />
         </mesh>
         {/* Viền Neon Lớp 3 */}
-        <mesh position={[0, 1.765, 0.08]}>
-          <boxGeometry args={[6.12, 0.025, 0.025]} />
+        <mesh position={[0, 1.3825, 0.08]}>
+          <boxGeometry args={[4.76, 0.025, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.765, 0.08]}>
-          <boxGeometry args={[6.12, 0.025, 0.025]} />
+        <mesh position={[0, -1.3825, 0.08]}>
+          <boxGeometry args={[4.76, 0.025, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-3.06, 0, 0.08]}>
-          <boxGeometry args={[0.025, 3.53, 0.025]} />
+        <mesh position={[-2.38, 0, 0.08]}>
+          <boxGeometry args={[0.025, 2.765, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[3.06, 0, 0.08]}>
-          <boxGeometry args={[0.025, 3.53, 0.025]} />
+        <mesh position={[2.38, 0, 0.08]}>
+          <boxGeometry args={[0.025, 2.765, 0.025]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* LED Screen Display Plane (Expanded Aspect Ratio 16:9, 5.92m x 3.33m) */}
+        {/* LED Screen Display Plane (Aspect Ratio 16:9, 4.56m x 2.565m) */}
         <mesh position={[0, 0, 0.085]}>
-          <planeGeometry args={[5.92, 3.33]} />
+          <planeGeometry args={[4.56, 2.565]} />
           {texture ? (
             <meshBasicMaterial map={texture} toneMapped={false} />
           ) : (

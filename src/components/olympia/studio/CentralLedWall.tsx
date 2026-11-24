@@ -1317,6 +1317,7 @@ function render3DFlipClockToCanvas(
 /**
  * Renders Luminous Royal Blue to Electric Cerulean Gradient Background with Diagonal Light Sheen.
  * Fully authentic to VTV3 Đường lên đỉnh Olympia Year 27 broadcast studio graphics (Reference Images 1, 2, 3, 4).
+ * Features bilateral lateral gradients (rich vibrant sapphire flanking edges, luminous electric core, and scanlines).
  */
 function renderVibrantBlueGradientWithSheen(
   ctx: CanvasRenderingContext2D,
@@ -1327,40 +1328,88 @@ function renderVibrantBlueGradientWithSheen(
 ): void {
   const isRed = fadeProgress > 0.5;
 
-  // 1. Rich multi-stop vibrant broadcast gradient
-  const bgGrad = ctx.createLinearGradient(0, height, width, 0);
+  // 1. Bilateral horizontal base gradient (luminous electric blue in center, rich royal blue on both flanks)
+  const baseGrad = ctx.createLinearGradient(0, 0, width, 0);
   if (isRed) {
-    bgGrad.addColorStop(0.0, "#3e030a");
-    bgGrad.addColorStop(0.35, "#7f1d1d");
-    bgGrad.addColorStop(0.70, "#b91c1c");
-    bgGrad.addColorStop(1.0, "#ef4444");
+    baseGrad.addColorStop(0.0, "#4a040b");
+    baseGrad.addColorStop(0.22, "#881320");
+    baseGrad.addColorStop(0.50, "#dc2626");
+    baseGrad.addColorStop(0.78, "#881320");
+    baseGrad.addColorStop(1.0, "#4a040b");
   } else {
-    bgGrad.addColorStop(0.0, "#071b5e");
-    bgGrad.addColorStop(0.35, "#0d369c");
-    bgGrad.addColorStop(0.70, "#1960d8");
-    bgGrad.addColorStop(1.0, "#2a8cf2");
+    // Vibrant broadcast electric sapphire (matching reference Images 1, 2, 6)
+    baseGrad.addColorStop(0.0, "#063bb8");
+    baseGrad.addColorStop(0.20, "#0b50dd");
+    baseGrad.addColorStop(0.50, "#257fff");
+    baseGrad.addColorStop(0.80, "#0b50dd");
+    baseGrad.addColorStop(1.0, "#063bb8");
   }
-  ctx.fillStyle = bgGrad;
+  ctx.fillStyle = baseGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Soft diagonal lighting sheen beam across the screen (Images 1 & 2)
+  // 2. Vertical modulation gradient (soft top & bottom broadcast framing)
+  const vertGrad = ctx.createLinearGradient(0, 0, 0, height);
+  if (isRed) {
+    vertGrad.addColorStop(0.0, "rgba(20, 2, 5, 0.45)");
+    vertGrad.addColorStop(0.35, "rgba(239, 68, 68, 0.20)");
+    vertGrad.addColorStop(0.65, "rgba(220, 38, 38, 0.15)");
+    vertGrad.addColorStop(1.0, "rgba(20, 2, 5, 0.45)");
+  } else {
+    vertGrad.addColorStop(0.0, "rgba(3, 18, 65, 0.40)");
+    vertGrad.addColorStop(0.35, "rgba(56, 189, 248, 0.22)");
+    vertGrad.addColorStop(0.65, "rgba(37, 99, 235, 0.18)");
+    vertGrad.addColorStop(1.0, "rgba(3, 18, 65, 0.40)");
+  }
+  ctx.fillStyle = vertGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // 3. Dynamic sweeping diagonal light beam (Images 1, 2, 6)
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const sheenShift = Math.sin(timeSec * 0.4) * 20;
+  const sheenShift = Math.sin(timeSec * 0.5) * (width * 0.08);
   const beamGrad = ctx.createLinearGradient(
-    -width * 0.1 + sheenShift,
-    height * 1.1,
-    width * 0.9 + sheenShift,
-    -height * 0.1
+    -width * 0.15 + sheenShift,
+    height * 1.15,
+    width * 0.95 + sheenShift,
+    -height * 0.15
   );
   beamGrad.addColorStop(0.0, "rgba(255, 255, 255, 0.0)");
-  beamGrad.addColorStop(0.38, isRed ? "rgba(254, 205, 211, 0.12)" : "rgba(186, 230, 253, 0.14)");
-  beamGrad.addColorStop(0.50, isRed ? "rgba(255, 255, 255, 0.36)" : "rgba(255, 255, 255, 0.38)");
-  beamGrad.addColorStop(0.62, isRed ? "rgba(244, 63, 94, 0.14)" : "rgba(56, 189, 248, 0.16)");
+  beamGrad.addColorStop(0.35, isRed ? "rgba(254, 205, 211, 0.15)" : "rgba(186, 230, 253, 0.18)");
+  beamGrad.addColorStop(0.50, isRed ? "rgba(255, 255, 255, 0.42)" : "rgba(255, 255, 255, 0.45)");
+  beamGrad.addColorStop(0.65, isRed ? "rgba(244, 63, 94, 0.18)" : "rgba(56, 189, 248, 0.20)");
   beamGrad.addColorStop(1.0, "rgba(255, 255, 255, 0.0)");
   ctx.fillStyle = beamGrad;
   ctx.fillRect(0, 0, width, height);
+
+  // 4. Subtle horizontal LED scanlines raster (Image 6: horizontal TV pitch texture)
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+  for (let y = 0; y < height; y += 4) {
+    ctx.fillRect(0, y, width, 1.5);
+  }
   ctx.restore();
+}
+
+/**
+ * Preloaded Title Card PNG Cache using authentic UTM Neutra 3D Typography.
+ * Eliminates client-side font download glitches and guarantees 100% broadcast fidelty.
+ */
+const TITLE_IMAGE_CACHE: Record<string, HTMLImageElement> = {};
+
+function getOrLoadTitleImage(key: string, onLoaded?: () => void): HTMLImageElement | null {
+  if (typeof window === "undefined") return null;
+  if (TITLE_IMAGE_CACHE[key]) {
+    return TITLE_IMAGE_CACHE[key];
+  }
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = `/olympia/led_titles/led_title_${key}.png`;
+  img.onload = () => {
+    TITLE_IMAGE_CACHE[key] = img;
+    onLoaded?.();
+  };
+  TITLE_IMAGE_CACHE[key] = img;
+  return img;
 }
 
 /**
@@ -1550,22 +1599,33 @@ function renderLedScreenToCanvas(
     }
   }
 
-  // 4. Standard Broadcast Mode: 3D Bold White Title Slide (Images 1, 2, 3, 4)
+  // 4. Standard Broadcast Mode: Authentic UTM Neutra 3D Title Slide (Images 1, 2, 3, 4, 6)
   // Completely eliminates score boxes as requested
+  let titleKey = "olympia";
   let displayTitle = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
   if (state?.currentRound === "khoiDong") {
+    titleKey = "khoidong";
     displayTitle = "KHỞI ĐỘNG";
   } else if (state?.currentRound === "vcnv") {
+    titleKey = "vcnv";
     displayTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
   } else if (state?.currentRound === "tangToc") {
+    titleKey = "tangtoc";
     displayTitle = "TĂNG TỐC";
   } else if (state?.currentRound === "veDich") {
+    titleKey = "vedich";
     displayTitle = "VỀ ĐÍCH";
   } else if (state?.currentRound === "cauHoiPhu") {
+    titleKey = "cauhoiphu";
     displayTitle = "CÂU HỎI PHỤ";
   }
 
-  render3DTitleCardToCanvas(ctx, width, height, displayTitle, fadeProgress);
+  const titleImg = TITLE_IMAGE_CACHE[titleKey] || getOrLoadTitleImage(titleKey);
+  if (titleImg && titleImg.complete && titleImg.naturalWidth > 0) {
+    ctx.drawImage(titleImg, 0, 0, width, height);
+  } else {
+    render3DTitleCardToCanvas(ctx, width, height, displayTitle, fadeProgress);
+  }
 }
 
 /**
@@ -2582,10 +2642,64 @@ export function CentralLedWall({
   const starryTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const formulaWallCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const formulaWallTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const mathWallVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [mathWallVideoTexture, setMathWallVideoTexture] = React.useState<THREE.VideoTexture | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
   const lastWallFrameRef = useRef<number>(0);
   const lastScreenFrameRef = useRef<number>(0);
   const lastFadeRef = useRef<number>(-1);
+
+  // Preload UTM Neutra 3D Title PNGs and trigger canvas refresh as soon as loaded
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const titles = ["olympia", "khoidong", "vcnv", "tangtoc", "vedich", "cauhoiphu"];
+    titles.forEach((key) => {
+      getOrLoadTitleImage(key, () => {
+        if (canvasRef.current && textureRef.current) {
+          renderLedScreenToCanvas(canvasRef.current, logoImageRef.current, screenFadeProgress, state);
+          textureRef.current.needsUpdate = true;
+        }
+      });
+    });
+  }, []);
+
+  // Initialize WebM Video Texture for Curved Math & Science Wall (Bends across R=8.6m Cylinder)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const video = document.createElement("video");
+    video.src = "/olympia/math_science_wall.webm";
+    video.crossOrigin = "anonymous";
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+
+    const handleCanPlay = () => {
+      video.play().catch(() => {});
+    };
+    video.addEventListener("canplay", handleCanPlay);
+    video.play().catch(() => {});
+
+    const videoTex = new THREE.VideoTexture(video);
+    videoTex.colorSpace = THREE.SRGBColorSpace;
+    videoTex.minFilter = THREE.LinearFilter;
+    videoTex.magFilter = THREE.LinearFilter;
+    // Invert horizontal UV to fix BackSide cylinder mirroring so all formulas and QUIZORRA logo read properly left-to-right
+    videoTex.wrapS = THREE.RepeatWrapping;
+    videoTex.repeat.x = -1;
+    videoTex.offset.x = 1;
+
+    mathWallVideoRef.current = video;
+    setMathWallVideoTexture(videoTex);
+
+    return () => {
+      video.removeEventListener("canplay", handleCanPlay);
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      videoTex.dispose();
+    };
+  }, []);
 
   // Preload Olympia 2016 logo
   useEffect(() => {
@@ -2813,6 +2927,10 @@ export function CentralLedWall({
     const dt = Math.min(delta, 0.1);
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
+
+    if (mathWallVideoTexture && mathWallVideoRef.current && !mathWallVideoRef.current.paused) {
+      mathWallVideoTexture.needsUpdate = true;
+    }
 
     // Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
     // In Practical Countdown mode, refresh at ~30 FPS (0.033s) for smooth 3D flip card animation
@@ -3241,6 +3359,18 @@ export function CentralLedWall({
             <meshStandardMaterial color="#020817" roughness={0.2} metalness={0.9} />
           )}
         </mesh>
+
+        {/* Soft Floor Downlight Glow Projection under Screen (Alleviates flat black floor with zero dynamic shadow overhead) */}
+        <mesh position={[0, -3.242, 1.4]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[5.2, 3.0]} />
+          <meshBasicMaterial
+            color={screenFadeProgress > 0.5 ? "#991b1b" : "#1248b8"}
+            transparent={true}
+            opacity={0.32}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
       </group>
 
       {/* ── 3. STAGE FAR-RIGHT: VERTICAL TOTEM ARCHITECTURAL SLAT PILLAR (HƯỚNG VỀ PHÍA KHÁN GIẢ) ── */}
@@ -3319,13 +3449,11 @@ export function CentralLedWall({
           <cylinderGeometry
             args={[8.6, 8.6, 2.4, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
           />
-          {formulaWallTexture ? (
+          {mathWallVideoTexture || formulaWallTexture ? (
             <meshBasicMaterial
-              map={formulaWallTexture}
+              map={mathWallVideoTexture || formulaWallTexture}
               side={THREE.BackSide}
               toneMapped={false}
-              transparent
-              alphaTest={0.05}
               color={screenFadeProgress > 0.5 ? "#ffa0b5" : "#ffffff"}
             />
           ) : (
@@ -3333,6 +3461,18 @@ export function CentralLedWall({
           )}
         </mesh>
       </group>
+
+      {/* Soft Floor Downlight Glow Projection under Curved Science & Math Wall */}
+      <mesh position={[FORMULA_WALL_OFFSET_X, 0.008, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[7.8, 9.0, quality === "LIGHT" ? 32 : 64, 1, wallStartAng, wallSweepAng]} />
+        <meshBasicMaterial
+          color={screenFadeProgress > 0.5 ? "#991b1b" : "#0e3ca8"}
+          transparent={true}
+          opacity={0.24}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
 
       {/* Underneath Dark Base Wall (Y = 0 to 1.35m at R = 8.62m) on Stage Left */}
       <mesh position={[FORMULA_WALL_OFFSET_X, 0.675, -0.5]}>

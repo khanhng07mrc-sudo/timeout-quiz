@@ -345,6 +345,123 @@ test("R4.2: Maximum 1 directional shadow-casting light in StudioLighting.tsx", (
   );
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// R5: Stage Right Screen Bilateral Gradient, Scanlines, and Pre-rendered UTM Neutra Title Assets
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n--- Requirement R5: Bilateral Gradient, Scanlines & UTM Neutra Title Assets ---");
+
+test("R5.1: Pre-rendered UTM Neutra 3D Title PNG assets exist in public/olympia/led_titles/", () => {
+  const titlesDir = path.join(rootDir, "public/olympia/led_titles");
+  assert.ok(fs.existsSync(titlesDir), "public/olympia/led_titles directory must exist");
+  const expectedTitles = [
+    "led_title_olympia.png",
+    "led_title_khoidong.png",
+    "led_title_vcnv.png",
+    "led_title_tangtoc.png",
+    "led_title_vedich.png",
+    "led_title_cauhoiphu.png",
+  ];
+  for (const filename of expectedTitles) {
+    const filePath = path.join(titlesDir, filename);
+    assert.ok(fs.existsSync(filePath), `Title asset ${filename} must exist`);
+    const stat = fs.statSync(filePath);
+    assert.ok(stat.size > 50000, `Title asset ${filename} must be > 50 KB (actual: ${stat.size} bytes)`);
+  }
+});
+
+test("R5.2: CentralLedWall preloads title cards via TITLE_IMAGE_CACHE and draws pre-rendered PNG", () => {
+  assert.ok(centralLedWallContent.includes("TITLE_IMAGE_CACHE"), "Must declare TITLE_IMAGE_CACHE");
+  assert.ok(centralLedWallContent.includes("getOrLoadTitleImage"), "Must declare getOrLoadTitleImage");
+  assert.ok(
+    centralLedWallContent.includes("ctx.drawImage(titleImg, 0, 0, width, height)"),
+    "Must draw pre-rendered UTM Neutra title PNG on canvas"
+  );
+});
+
+test("R5.3: renderVibrantBlueGradientWithSheen has bilateral lateral gradients and scanlines", () => {
+  assert.ok(
+    centralLedWallContent.includes('baseGrad.addColorStop(0.0, "#063bb8")') &&
+    centralLedWallContent.includes('baseGrad.addColorStop(1.0, "#063bb8")'),
+    "Gradient must be bilateral with #063bb8 at both flanks"
+  );
+  assert.ok(
+    centralLedWallContent.includes("rgba(0, 0, 0, 0.08)") &&
+    centralLedWallContent.includes("for (let y = 0; y < height; y += 4)"),
+    "Must draw horizontal scanline micro-stripes at 4px pitch"
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// R6: Curved Math & Science Wall WebM Video Texture with Bending across R=8.6m
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n--- Requirement R6: Curved Math & Science Wall WebM Video Texture ---");
+
+test("R6.1: public/olympia/math_science_wall.webm exists and is valid video asset", () => {
+  const webmPath = path.join(rootDir, "public/olympia/math_science_wall.webm");
+  assert.ok(fs.existsSync(webmPath), "public/olympia/math_science_wall.webm must exist");
+  const stat = fs.statSync(webmPath);
+  assert.ok(stat.size > 100000, `Video file must be > 100 KB (actual: ${stat.size} bytes)`);
+});
+
+test("R6.2: CentralLedWall initializes THREE.VideoTexture with horizontal flip for BackSide cylinder", () => {
+  assert.ok(
+    centralLedWallContent.includes('video.src = "/olympia/math_science_wall.webm"'),
+    "Must point video element to /olympia/math_science_wall.webm"
+  );
+  assert.ok(
+    centralLedWallContent.includes("new THREE.VideoTexture(video)"),
+    "Must create THREE.VideoTexture from video element"
+  );
+  assert.ok(
+    centralLedWallContent.includes("videoTex.wrapS = THREE.RepeatWrapping") &&
+    centralLedWallContent.includes("videoTex.repeat.x = -1") &&
+    centralLedWallContent.includes("videoTex.offset.x = 1"),
+    "Must flip UV horizontally to correct for BackSide cylinder mirroring"
+  );
+});
+
+test("R6.3: Curved science & math wall maps video texture onto CylinderGeometry R=8.6m", () => {
+  assert.ok(
+    centralLedWallContent.includes("map={mathWallVideoTexture || formulaWallTexture}"),
+    "Curved wall must map mathWallVideoTexture or fallback to formulaWallTexture"
+  );
+  assert.ok(
+    centralLedWallContent.includes("args={[8.6, 8.6, 2.4,"),
+    "Curved wall must maintain R=8.6m CylinderGeometry"
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// R7: Soft Floor Downlight Glow Projections (Zero Dynamic Shadow Overhead)
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n--- Requirement R7: Floor Downlight Projections from Stage Screens ---");
+
+test("R7.1: Stage Right Screen floor downlight mesh renders with AdditiveBlending", () => {
+  assert.ok(
+    centralLedWallContent.includes("<planeGeometry args={[5.2, 3.0]} />"),
+    "Stage right screen floor downlight plane must be 5.2m x 3.0m"
+  );
+  assert.ok(
+    centralLedWallContent.includes("position={[0, -3.242, 1.4]}"),
+    "Floor downlight plane must be placed at world Y = 0.008m"
+  );
+  assert.ok(
+    centralLedWallContent.includes("blending={THREE.AdditiveBlending}"),
+    "Floor downlight material must use AdditiveBlending"
+  );
+});
+
+test("R7.2: Stage Left Curved Math Wall floor downlight arc renders along R=7.8-9.0m", () => {
+  assert.ok(
+    centralLedWallContent.includes("ringGeometry args={[7.8, 9.0, quality === \"LIGHT\" ? 32 : 64, 1, wallStartAng, wallSweepAng]}"),
+    "Floor downlight arc must sweep from R=7.8 to 9.0m matching wallStartAng and wallSweepAng"
+  );
+  assert.ok(
+    centralLedWallContent.includes("position={[FORMULA_WALL_OFFSET_X, 0.008, -0.5]}"),
+    "Floor downlight arc must be placed at Y = 0.008m"
+  );
+});
+
 console.log("\n================================================================================");
 console.log(`TOTAL REFINEMENT TESTS: ${passCount + failCount}`);
 console.log(`PASSED: ${passCount}`);

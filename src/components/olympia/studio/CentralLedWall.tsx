@@ -1314,6 +1314,121 @@ function render3DFlipClockToCanvas(
  * Pre-rendered Rectangular Secondary LED Display (Stage Right, facing Contestants)
  * Shows either the official Olympia 2016 logo, round title card, or active round question.
  */
+/**
+ * Renders Luminous Royal Blue to Electric Cerulean Gradient Background with Diagonal Light Sheen.
+ * Fully authentic to VTV3 Đường lên đỉnh Olympia Year 27 broadcast studio graphics (Reference Images 1, 2, 3, 4).
+ */
+function renderVibrantBlueGradientWithSheen(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  fadeProgress: number = 0,
+  timeSec: number = 0
+): void {
+  const isRed = fadeProgress > 0.5;
+
+  // 1. Rich multi-stop vibrant broadcast gradient
+  const bgGrad = ctx.createLinearGradient(0, height, width, 0);
+  if (isRed) {
+    bgGrad.addColorStop(0.0, "#3e030a");
+    bgGrad.addColorStop(0.35, "#7f1d1d");
+    bgGrad.addColorStop(0.70, "#b91c1c");
+    bgGrad.addColorStop(1.0, "#ef4444");
+  } else {
+    bgGrad.addColorStop(0.0, "#071b5e");
+    bgGrad.addColorStop(0.35, "#0d369c");
+    bgGrad.addColorStop(0.70, "#1960d8");
+    bgGrad.addColorStop(1.0, "#2a8cf2");
+  }
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. Soft diagonal lighting sheen beam across the screen (Images 1 & 2)
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const sheenShift = Math.sin(timeSec * 0.4) * 20;
+  const beamGrad = ctx.createLinearGradient(
+    -width * 0.1 + sheenShift,
+    height * 1.1,
+    width * 0.9 + sheenShift,
+    -height * 0.1
+  );
+  beamGrad.addColorStop(0.0, "rgba(255, 255, 255, 0.0)");
+  beamGrad.addColorStop(0.38, isRed ? "rgba(254, 205, 211, 0.12)" : "rgba(186, 230, 253, 0.14)");
+  beamGrad.addColorStop(0.50, isRed ? "rgba(255, 255, 255, 0.36)" : "rgba(255, 255, 255, 0.38)");
+  beamGrad.addColorStop(0.62, isRed ? "rgba(244, 63, 94, 0.14)" : "rgba(56, 189, 248, 0.16)");
+  beamGrad.addColorStop(1.0, "rgba(255, 255, 255, 0.0)");
+  ctx.fillStyle = beamGrad;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+}
+
+/**
+ * Renders 3D Embossed Bold White Typography (Images 1 & 2).
+ * Features multi-tier dark depth extrusions, crisp pure white face, embossed border, and soft outer bloom.
+ */
+function render3DTitleCardToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  titleText: string,
+  fadeProgress: number = 0
+): void {
+  const cx = width / 2;
+  const cy = height / 2;
+  const isRed = fadeProgress > 0.5;
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Dynamic sizing based on length to guarantee perfect broadcast framing
+  let fontSize = Math.round(width * 0.095);
+  if (titleText.length > 18) {
+    fontSize = Math.round(width * 0.064);
+  } else if (titleText.length > 12) {
+    fontSize = Math.round(width * 0.078);
+  }
+
+  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", "Segoe UI", sans-serif`;
+  ctx.letterSpacing = "0.04em";
+
+  // 1. Multi-tier deep 3D drop extrusions (depth stack)
+  for (let s = 6; s >= 1; s--) {
+    ctx.fillStyle = isRed ? "rgba(35, 2, 7, 0.88)" : "rgba(2, 8, 30, 0.90)";
+    ctx.fillText(titleText, cx, cy + s * 2.4);
+  }
+
+  // 2. Ambient outer soft cyan/ruby halo
+  ctx.shadowColor = isRed ? "rgba(244, 63, 94, 0.55)" : "rgba(34, 211, 238, 0.55)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 4;
+  ctx.strokeStyle = isRed ? "rgba(254, 205, 211, 0.88)" : "rgba(224, 242, 254, 0.92)";
+  ctx.lineWidth = Math.max(3, fontSize * 0.05);
+  ctx.strokeText(titleText, cx, cy);
+
+  // 3. Crisp Pure White 3D Text Fill
+  const textGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
+  textGrad.addColorStop(0.0, "#ffffff");
+  textGrad.addColorStop(0.70, "#f8fafc");
+  textGrad.addColorStop(1.0, isRed ? "#fecdd3" : "#e0f2fe");
+  ctx.shadowColor = "transparent";
+  ctx.fillStyle = textGrad;
+  ctx.fillText(titleText, cx, cy);
+
+  // 4. Fine Top Bevel Highlight
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.lineWidth = 1.4;
+  ctx.strokeText(titleText, cx, cy - 1.0);
+
+  ctx.restore();
+}
+
+/**
+ * Canvas generator for Stage Right Elevated 16:9 LED Screen.
+ * Renders authentic vibrant blue 3D Title Slide ('ĐƯỜNG LÊN ĐỈNH OLYMPIA' / 'KHỞI ĐỘNG' / ...)
+ * with zero scoreboard rectangles as specified by the user and confirmed in Answer 2.
+ */
 function renderLedScreenToCanvas(
   targetCanvas: HTMLCanvasElement,
   logoImg: HTMLImageElement | null,
@@ -1329,89 +1444,10 @@ function renderLedScreenToCanvas(
   const cx = width / 2;
   const cy = height / 2;
 
-  // 1. Deep Broadcast Cosmic Gradient
-  const bgGrad = ctx.createRadialGradient(cx, cy * 0.85, 80, cx, cy, width * 0.72);
-  const r1 = Math.round(THREE.MathUtils.lerp(8, 75, fadeProgress));
-  const g1 = Math.round(THREE.MathUtils.lerp(28, 8, fadeProgress));
-  const b1 = Math.round(THREE.MathUtils.lerp(75, 18, fadeProgress));
+  // 1. Render Vibrant Blue Gradient Background with diagonal sheen (Images 1, 2, 3, 4)
+  renderVibrantBlueGradientWithSheen(ctx, width, height, fadeProgress, timeSec);
 
-  const r0 = Math.round(THREE.MathUtils.lerp(2, 22, fadeProgress));
-  const g0 = Math.round(THREE.MathUtils.lerp(8, 3, fadeProgress));
-  const b0 = Math.round(THREE.MathUtils.lerp(26, 7, fadeProgress));
-
-  bgGrad.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
-  bgGrad.addColorStop(0.65, `rgb(${r0}, ${g0}, ${b0})`);
-  bgGrad.addColorStop(1, "#020b1e"); // Deep navy background
-
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, width, height);
-
-  // 2. Refined Academic Math & Natural Science Formulas (Requirement R2 Redesign)
-  // Distributed into balanced peripheral corridors clear of central logo and title safe zones
-  const idleSymbols = [
-    // Left Wing Corridor
-    { text: "∑", x: 0.12, y: 0.20, size: Math.round(width * 0.038) },
-    { text: "√x", x: 0.10, y: 0.44, size: Math.round(width * 0.034) },
-    { text: "F=ma", x: 0.09, y: 0.58, size: Math.round(width * 0.031) },
-    // Right Wing Corridor
-    { text: "∫ f(x)dx", x: 0.88, y: 0.20, size: Math.round(width * 0.033) },
-    { text: "π", x: 0.90, y: 0.44, size: Math.round(width * 0.036) },
-    { text: "E=mc²", x: 0.91, y: 0.58, size: Math.round(width * 0.033) },
-    // Top Flank Coronet (clear of logo apex)
-    { text: "H₂O", x: 0.16, y: 0.06, size: Math.round(width * 0.030) },
-    { text: "Δλ", x: 0.84, y: 0.06, size: Math.round(width * 0.031) },
-    // Bottom Horizon Baseline (clear of title ribbon)
-    { text: "sin θ", x: 0.22, y: 0.89, size: Math.round(width * 0.030) },
-    { text: "v=s/t", x: 0.40, y: 0.91, size: Math.round(width * 0.030) },
-    { text: "Ω", x: 0.60, y: 0.91, size: Math.round(width * 0.033) },
-    { text: "∞", x: 0.78, y: 0.89, size: Math.round(width * 0.034) },
-  ];
-
-  ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  idleSymbols.forEach((s, idx) => {
-    const driftX = (s.x * width) + Math.sin(timeSec * 0.5 + idx * 1.4) * 5;
-    const driftY = (s.y * height) + Math.cos(timeSec * 0.6 + idx * 1.1) * 4;
-    ctx.save();
-    ctx.translate(driftX, driftY);
-    ctx.font = `italic 600 ${s.size}px "Cambria Math", "Latin Modern Math", "STIX Two Math", "Times New Roman", "Plus Jakarta Sans", serif`;
-
-    // Ambient radiant glow behind
-    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(244, 63, 94, 0.45)" : "rgba(14, 165, 233, 0.45)";
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(225, 29, 72, 0.55)" : "rgba(2, 132, 199, 0.55)";
-    ctx.lineWidth = 1.6;
-    ctx.strokeText(s.text, 0, 0);
-
-    // Multi-stop crisp metallic gradient fill on top
-    const symGrad = ctx.createLinearGradient(0, -s.size * 0.5, 0, s.size * 0.5);
-    symGrad.addColorStop(0, "#ffffff");
-    symGrad.addColorStop(0.5, fadeProgress > 0.5 ? "rgba(254, 205, 211, 0.92)" : "rgba(224, 242, 254, 0.92)");
-    symGrad.addColorStop(1, fadeProgress > 0.5 ? "rgba(251, 113, 133, 0.75)" : "rgba(56, 189, 248, 0.75)");
-    ctx.fillStyle = symGrad;
-    ctx.fillText(s.text, 0, 0);
-    ctx.restore();
-  });
-  ctx.restore();
-
-  // Cosmic Stardust Particles with dynamic breathing
-  ctx.fillStyle = "#ffffff";
-  const numStars = 80;
-  for (let i = 0; i < numStars; i++) {
-    const sx = (Math.sin(i * 997.1) * 0.5 + 0.5) * width;
-    const sy = (Math.cos(i * 443.7) * 0.5 + 0.5) * height;
-    const size = (i % 3) * 0.7 + 0.8;
-    const alpha = (Math.sin(i * 12.3 + timeSec * 1.8) * 0.35 + 0.55);
-    ctx.globalAlpha = alpha;
-    ctx.beginPath();
-    ctx.arc(sx, sy, size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1.0;
-
-  // 3. Right Screen Projection Mode
-  // 3.1. Requirement R5: 3D Flip Clock for Về Đích Practical Question Countdown
+  // 2. Check for Về Đích 3D flip clock countdown
   const vd = state?.veDich;
   const isPracticeCountdown = Boolean(
     state?.currentRound === "veDich" &&
@@ -1426,101 +1462,54 @@ function renderLedScreenToCanvas(
     return;
   }
 
+  // 3. Resolve Screen Title / Content
   const screenMode = (state as any)?.rightScreenMode || "auto";
 
-  // Explicit overrides from Host Console:
-  if (screenMode === "scoreboard") {
-    renderScoreboardToCanvas(ctx, width, height, state?.seats, fadeProgress);
-    return;
-  }
-
-  if (screenMode === "logo") {
-    renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
-    return;
-  }
-
-  if (screenMode === "roundTitle") {
-    renderRoundTitleToCanvas(ctx, width, height, state?.currentRound, fadeProgress);
-    return;
-  }
-
-  if (screenMode === "roundGraphics") {
-    renderRoundGraphicsToCanvas(ctx, width, height, state, fadeProgress);
-    return;
-  }
-
-  // Auto mode during match intro, contestant entrance, or formal intro standby:
-  if (screenMode === "auto" && (state?.introTimer || state?.entranceState?.active || state?.introStandby)) {
-    renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
-    return;
-  }
-
-  // 4. Resolve Active Round Question Content (for "question" mode or "auto" with active question)
-  let roundTitle: string | null = null;
-  let questionPrompt: string | null = null;
-
-  if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
-    if (screenMode === "question" || state.khoiDong.questionRevealed) {
+  // Explicit Question Mode override
+  if (screenMode === "question") {
+    let roundTitle: string | null = null;
+    let questionPrompt: string | null = null;
+    if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
       roundTitle = "KHỞI ĐỘNG";
       questionPrompt = state.khoiDong.current.q;
-    }
-  } else if (state?.currentRound === "vcnv") {
-    const v = state.vcnv;
-    if (v && (screenMode === "question" || v.phase === "question")) {
+    } else if (state?.currentRound === "vcnv") {
       roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
-      const cur = v.currentRow ?? -1;
-      if (cur >= 0 && cur < 4 && v.rows?.[cur]?.hint) {
-        questionPrompt = v.rows[cur].hint;
-      } else if (cur === 4 && v.centerQuestion?.q) {
-        questionPrompt = v.centerQuestion.q;
-      }
-    }
-  } else if (state?.currentRound === "tangToc") {
-    const tt = state.tangToc;
-    if (tt && tt.qIdx != null && tt.qIdx >= 0 && (screenMode === "question" || tt.phase === "question")) {
-      roundTitle = `TĂNG TỐC — CÂU ${tt.qIdx + 1}`;
-      questionPrompt = tt.questions?.[tt.qIdx]?.q || null;
-    }
-  } else if (state?.currentRound === "veDich") {
-    const vd = state.veDich;
-    if (vd?.current && (screenMode === "question" || vd.phase === "packageReady" || vd.phase === "thinking" || vd.phase === "stealing")) {
-      roundTitle = `VỀ ĐÍCH — ${vd.current.points ?? 20} ĐIỂM`;
-      questionPrompt = vd.current.q?.q || null;
-    }
-  } else if (state?.currentRound === "cauHoiPhu") {
-    const cp = state.cauHoiPhu;
-    if (cp && cp.qIdx != null && cp.qIdx >= 0 && (screenMode === "question" || cp.phase === "question")) {
+      const cur = state.vcnv?.currentRow ?? -1;
+      if (cur >= 0 && cur < 4) questionPrompt = state.vcnv?.rows?.[cur]?.hint || null;
+      else if (cur === 4) questionPrompt = state.vcnv?.centerQuestion?.q || null;
+    } else if (state?.currentRound === "tangToc" && state.tangToc?.qIdx != null) {
+      roundTitle = `TĂNG TỐC — CÂU ${(state.tangToc.qIdx ?? 0) + 1}`;
+      questionPrompt = state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
+    } else if (state?.currentRound === "veDich" && state.veDich?.current) {
+      roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
+      questionPrompt = state.veDich.current.q?.q || null;
+    } else if (state?.currentRound === "cauHoiPhu" && state.cauHoiPhu?.qIdx != null) {
       roundTitle = "CÂU HỎI PHỤ";
-      questionPrompt = cp.questions?.[cp.qIdx]?.q || null;
+      questionPrompt = state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx]?.q || null;
     }
-  }
 
-  if (roundTitle) {
-    // ── DYNAMIC ROUND BROADCAST GRAPHIC ON 3D SCREEN ──
-    ctx.save();
-    // Top Banner
-    const bannerH = height * 0.18;
-    const bannerGrad = ctx.createLinearGradient(0, 0, width, 0);
-    bannerGrad.addColorStop(0, "rgba(0, 180, 255, 0.15)");
-    bannerGrad.addColorStop(0.5, "rgba(0, 220, 255, 0.45)");
-    bannerGrad.addColorStop(1, "rgba(0, 180, 255, 0.15)");
-    ctx.fillStyle = bannerGrad;
-    ctx.fillRect(0, 20, width, bannerH);
+    if (roundTitle && questionPrompt) {
+      ctx.save();
+      const bannerH = height * 0.18;
+      const bannerGrad = ctx.createLinearGradient(0, 0, width, 0);
+      bannerGrad.addColorStop(0, "rgba(0, 180, 255, 0.15)");
+      bannerGrad.addColorStop(0.5, "rgba(0, 220, 255, 0.45)");
+      bannerGrad.addColorStop(1, "rgba(0, 180, 255, 0.15)");
+      ctx.fillStyle = bannerGrad;
+      ctx.fillRect(0, 20, width, bannerH);
 
-    ctx.strokeStyle = "#00e5ff";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(40, 20, width - 80, bannerH);
+      ctx.strokeStyle = "#00e5ff";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(40, 20, width - 80, bannerH);
 
-    ctx.font = '900 52px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "#00f0ff";
-    ctx.shadowBlur = 20;
-    ctx.fillText(roundTitle, cx, 20 + bannerH / 2);
+      ctx.font = '900 52px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "#00f0ff";
+      ctx.shadowBlur = 20;
+      ctx.fillText(roundTitle, cx, 20 + bannerH / 2);
 
-    // Question Box in Center
-    if (questionPrompt) {
       ctx.shadowBlur = 0;
       ctx.fillStyle = "rgba(10, 22, 48, 0.85)";
       ctx.strokeStyle = "rgba(0, 229, 255, 0.55)";
@@ -1532,7 +1521,6 @@ function renderLedScreenToCanvas(
       ctx.fillRect(qx, qy, qw, qh);
       ctx.strokeRect(qx, qy, qw, qh);
 
-      // Question Text with Wrapping
       ctx.font = '700 42px "Plus Jakarta Sans", sans-serif';
       ctx.fillStyle = "#f8fafc";
       ctx.textAlign = "center";
@@ -1557,76 +1545,27 @@ function renderLedScreenToCanvas(
         }
       }
       ctx.fillText(line, cx, y);
+      ctx.restore();
+      return;
     }
-    ctx.restore();
-    return;
   }
 
-  // 4. Default Idle / Opening: Official Olympia 2016 Logo & Golden Title
-  const logoTargetH = height * 0.46;
-  const logoTargetY = height * 0.12;
-
-  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
-    const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
-    const logoW = logoTargetH * aspect;
-    const logoX = cx - logoW / 2;
-
-    ctx.save();
-    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(255, 40, 70, 0.65)" : "rgba(0, 210, 255, 0.55)";
-    ctx.shadowBlur = 35;
-    ctx.drawImage(logoImg, logoX, logoTargetY, logoW, logoTargetH);
-    ctx.restore();
-  } else {
-    ctx.save();
-    ctx.font = '900 96px "Plus Jakarta Sans", sans-serif';
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ffd700";
-    ctx.shadowColor = "#ffb700";
-    ctx.shadowBlur = 25;
-    ctx.fillText("OLYMPIA", cx, logoTargetY + 220);
-    ctx.restore();
+  // 4. Standard Broadcast Mode: 3D Bold White Title Slide (Images 1, 2, 3, 4)
+  // Completely eliminates score boxes as requested
+  let displayTitle = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
+  if (state?.currentRound === "khoiDong") {
+    displayTitle = "KHỞI ĐỘNG";
+  } else if (state?.currentRound === "vcnv") {
+    displayTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
+  } else if (state?.currentRound === "tangToc") {
+    displayTitle = "TĂNG TỐC";
+  } else if (state?.currentRound === "veDich") {
+    displayTitle = "VỀ ĐÍCH";
+  } else if (state?.currentRound === "cauHoiPhu") {
+    displayTitle = "CÂU HỎI PHỤ";
   }
 
-  // 5. Yellow Light-To-Dark Metallic Gradient Typography: "ĐƯỜNG LÊN ĐỈNH OLYMPIA"
-  const textY = logoTargetY + logoTargetH + height * 0.16;
-  const textStr = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
-
-  ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const fontSize = Math.round(width * 0.040);
-  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
-  ctx.letterSpacing = "0.08em";
-
-  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.55, 0, textY + fontSize * 0.55);
-  textGrad.addColorStop(0.0, "#ffffff");
-  textGrad.addColorStop(0.22, "#fffbd0");
-  textGrad.addColorStop(0.55, "#f59e0b");
-  textGrad.addColorStop(0.85, "#b45309");
-  textGrad.addColorStop(1.0, "#78350f");
-
-  // Restrained dark drop shadow protecting diacritics
-  ctx.shadowColor = "rgba(0, 0, 0, 0.88)";
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 3;
-  ctx.lineWidth = 3.8;
-  ctx.strokeStyle = "#1a0f02";
-  ctx.strokeText(textStr, cx, textY);
-
-  // Subtle gold rim outline
-  ctx.shadowColor = "rgba(245, 158, 11, 0.55)";
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 1;
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = "#fffed4";
-  ctx.strokeText(textStr, cx, textY);
-
-  // Gradient Fill
-  ctx.fillStyle = textGrad;
-  ctx.fillText(textStr, cx, textY);
-
-  ctx.restore();
+  render3DTitleCardToCanvas(ctx, width, height, displayTitle, fadeProgress);
 }
 
 /**
@@ -1873,91 +1812,57 @@ interface FormulaSymbolSpec {
 }
 
 const BASE_FORMULA_SYMBOLS = [
-  // Tier 1 (Upper zone, Y: 80 - 130)
-  { text: "∑", x: 100, y: 110, size: 68, rot: -0.02 },
-  { text: "ml", x: 210, y: 115, size: 44, rot: 0.02 },
-  { text: "kg", x: 320, y: 105, size: 48, rot: -0.01 },
-  { text: "µ", x: 430, y: 115, size: 52, rot: 0.02 },
-  { text: "Ψ", x: 550, y: 100, size: 58, rot: -0.02 },
-  { text: "m²", x: 670, y: 95, size: 46, rot: 0.01 },
-  { text: "sin", x: 790, y: 90, size: 46, rot: -0.01 },
-  { text: "Δ", x: 910, y: 85, size: 60, rot: 0.02 },
-  { text: "cos", x: 1030, y: 90, size: 46, rot: -0.01 },
-  { text: "Ω", x: 1150, y: 85, size: 56, rot: 0.02 },
-  { text: "π", x: 1270, y: 90, size: 54, rot: -0.02 },
-  { text: "∫", x: 1390, y: 80, size: 68, rot: 0.02 },
-  { text: "tan", x: 1510, y: 95, size: 46, rot: -0.01 },
-  { text: "E=mc²", x: 1650, y: 85, size: 44, rot: 0.02 },
-  { text: "∇", x: 1790, y: 85, size: 54, rot: -0.02 },
-  { text: "∮", x: 1900, y: 80, size: 64, rot: 0.01 },
+  // Tier 1 (Upper zone, Y: 85 - 125, dispersed ~220px apart)
+  { text: "∑", x: 120, y: 110, size: 54, rot: -0.02 },
+  { text: "kg", x: 340, y: 105, size: 40, rot: -0.01 },
+  { text: "Ψ", x: 570, y: 100, size: 48, rot: -0.02 },
+  { text: "sin θ", x: 800, y: 90, size: 40, rot: -0.01 },
+  { text: "Ω", x: 1040, y: 90, size: 46, rot: 0.02 },
+  { text: "π", x: 1280, y: 90, size: 46, rot: -0.02 },
+  { text: "∫ f(x)dx", x: 1520, y: 85, size: 42, rot: 0.02 },
+  { text: "E=mc²", x: 1740, y: 85, size: 38, rot: 0.02 },
+  { text: "∇", x: 1930, y: 80, size: 46, rot: -0.02 },
 
-  // Tier 2 (Upper-mid zone, Y: 180 - 240)
-  { text: "λ", x: 120, y: 220, size: 54, rot: 0.02 },
-  { text: "lim", x: 240, y: 235, size: 46, rot: -0.02 },
-  { text: "θ", x: 360, y: 215, size: 52, rot: 0.02 },
-  { text: "f(x)", x: 480, y: 230, size: 48, rot: -0.02 },
-  { text: "∞", x: 610, y: 195, size: 62, rot: 0.03 },
-  { text: "√2", x: 730, y: 215, size: 50, rot: -0.01 },
-  { text: "hν", x: 850, y: 195, size: 48, rot: 0.02 },
-  { text: "log", x: 970, y: 220, size: 46, rot: -0.01 },
-  { text: "NaCl", x: 1090, y: 200, size: 48, rot: 0.01 },
-  { text: "α", x: 1210, y: 220, size: 52, rot: -0.02 },
-  { text: "β", x: 1330, y: 195, size: 52, rot: 0.02 },
-  { text: "γ", x: 1450, y: 220, size: 50, rot: -0.02 },
-  { text: "F=ma", x: 1580, y: 200, size: 46, rot: 0.02 },
-  { text: "∂x", x: 1710, y: 215, size: 48, rot: -0.01 },
-  { text: "ħ", x: 1830, y: 200, size: 54, rot: 0.02 },
-  { text: "ATP", x: 1930, y: 215, size: 42, rot: -0.01 },
+  // Tier 2 (Upper-mid zone, Y: 195 - 235, dispersed ~240px apart, staggered)
+  { text: "λ", x: 180, y: 220, size: 46, rot: 0.02 },
+  { text: "lim", x: 420, y: 225, size: 40, rot: -0.02 },
+  { text: "∞", x: 670, y: 205, size: 50, rot: 0.03 },
+  { text: "hν", x: 920, y: 205, size: 42, rot: 0.02 },
+  { text: "α", x: 1160, y: 220, size: 44, rot: -0.02 },
+  { text: "β", x: 1400, y: 205, size: 44, rot: 0.02 },
+  { text: "F=ma", x: 1640, y: 205, size: 40, rot: 0.02 },
+  { text: "ħ", x: 1880, y: 200, size: 46, rot: 0.02 },
 
-  // Tier 3 (Mid zone, Y: 310 - 370)
-  { text: "H₂O", x: 110, y: 340, size: 50, rot: -0.01 },
-  { text: "CO₂", x: 230, y: 355, size: 48, rot: 0.02 },
-  { text: "pH", x: 350, y: 330, size: 48, rot: -0.01 },
-  { text: "mol", x: 470, y: 350, size: 46, rot: 0.02 },
-  { text: "Hz", x: 590, y: 320, size: 50, rot: -0.02 },
-  { text: "Pa", x: 710, y: 345, size: 48, rot: 0.01 },
-  { text: "rad", x: 830, y: 320, size: 46, rot: -0.01 },
-  { text: "dx", x: 950, y: 350, size: 48, rot: 0.02 },
-  { text: "Δt", x: 1070, y: 325, size: 50, rot: -0.01 },
-  { text: "e", x: 1190, y: 345, size: 52, rot: 0.02 },
-  { text: "c", x: 1310, y: 320, size: 52, rot: -0.02 },
-  { text: "ρ", x: 1430, y: 345, size: 50, rot: 0.01 },
-  { text: "σ", x: 1550, y: 325, size: 50, rot: -0.01 },
-  { text: "O₂", x: 1670, y: 345, size: 48, rot: 0.02 },
-  { text: "CH₄", x: 1790, y: 325, size: 46, rot: -0.01 },
-  { text: "DNA", x: 1910, y: 345, size: 44, rot: 0.02 },
+  // Tier 3 (Mid zone, Y: 320 - 355, dispersed ~220px apart)
+  { text: "H₂O", x: 130, y: 340, size: 42, rot: -0.01 },
+  { text: "CO₂", x: 360, y: 345, size: 40, rot: 0.02 },
+  { text: "mol", x: 590, y: 330, size: 38, rot: 0.02 },
+  { text: "Hz", x: 820, y: 335, size: 40, rot: -0.02 },
+  { text: "Δt", x: 1050, y: 330, size: 42, rot: -0.01 },
+  { text: "c", x: 1280, y: 335, size: 44, rot: -0.02 },
+  { text: "ρ", x: 1510, y: 335, size: 42, rot: 0.01 },
+  { text: "O₂", x: 1730, y: 335, size: 40, rot: 0.02 },
+  { text: "DNA", x: 1920, y: 330, size: 38, rot: 0.02 },
 
-  // Tier 4 (Lower-mid zone, Y: 450 - 510)
-  { text: "W", x: 130, y: 470, size: 52, rot: 0.02 },
-  { text: "V", x: 260, y: 490, size: 52, rot: -0.01 },
-  { text: "A", x: 390, y: 465, size: 52, rot: 0.02 },
-  { text: "T", x: 520, y: 490, size: 50, rot: -0.01 },
-  { text: "B", x: 650, y: 465, size: 52, rot: 0.02 },
-  { text: "K", x: 780, y: 485, size: 50, rot: -0.01 },
-  { text: "g", x: 910, y: 460, size: 50, rot: 0.01 },
-  { text: "F", x: 1040, y: 490, size: 52, rot: -0.02 },
-  { text: "m", x: 1170, y: 465, size: 50, rot: 0.02 },
-  { text: "s", x: 1300, y: 490, size: 50, rot: -0.01 },
-  { text: "C", x: 1420, y: 470, size: 52, rot: 0.02 },
-  { text: "Fe", x: 1540, y: 490, size: 48, rot: -0.01 },
-  { text: "Cu", x: 1660, y: 465, size: 48, rot: 0.02 },
-  { text: "Au", x: 1780, y: 490, size: 48, rot: -0.01 },
-  { text: "Ag", x: 1900, y: 470, size: 48, rot: 0.01 },
+  // Tier 4 (Lower-mid zone, Y: 465 - 495, dispersed ~240px apart, staggered)
+  { text: "W", x: 200, y: 475, size: 42, rot: 0.02 },
+  { text: "V", x: 440, y: 485, size: 42, rot: -0.01 },
+  { text: "K", x: 690, y: 475, size: 40, rot: -0.01 },
+  { text: "F", x: 940, y: 480, size: 42, rot: -0.02 },
+  { text: "s", x: 1190, y: 475, size: 40, rot: -0.01 },
+  { text: "Fe", x: 1430, y: 480, size: 40, rot: -0.01 },
+  { text: "Cu", x: 1670, y: 470, size: 40, rot: 0.02 },
+  { text: "Au", x: 1900, y: 475, size: 40, rot: -0.01 },
 
-  // Tier 5 (Lower zone, Y: 580 - 640)
-  { text: "eⁱᵖ+1=0", x: 180, y: 610, size: 40, rot: 0.01 },
-  { text: "H₂SO₄", x: 370, y: 625, size: 44, rot: -0.01 },
-  { text: "m/s²", x: 530, y: 605, size: 44, rot: 0.02 },
-  { text: "ω", x: 680, y: 625, size: 50, rot: -0.01 },
-  { text: "φ", x: 820, y: 605, size: 50, rot: 0.02 },
-  { text: "∏", x: 960, y: 625, size: 54, rot: -0.01 },
-  { text: "ln", x: 1100, y: 605, size: 46, rot: 0.01 },
-  { text: "cot", x: 1240, y: 625, size: 46, rot: -0.01 },
-  { text: "τ", x: 1380, y: 605, size: 50, rot: 0.01 },
-  { text: "mg", x: 1510, y: 625, size: 44, rot: -0.01 },
-  { text: "L", x: 1640, y: 605, size: 48, rot: 0.02 },
-  { text: "arcsin", x: 1790, y: 625, size: 42, rot: -0.01 },
-  { text: "N", x: 1920, y: 605, size: 50, rot: 0.02 },
+  // Tier 5 (Lower zone, Y: 605 - 630, dispersed ~240px apart)
+  { text: "eⁱᵖ+1=0", x: 160, y: 615, size: 36, rot: 0.01 },
+  { text: "H₂SO₄", x: 420, y: 620, size: 38, rot: -0.01 },
+  { text: "m/s²", x: 670, y: 610, size: 36, rot: 0.02 },
+  { text: "φ", x: 930, y: 615, size: 42, rot: 0.02 },
+  { text: "ln x", x: 1180, y: 615, size: 38, rot: 0.01 },
+  { text: "mg", x: 1430, y: 620, size: 36, rot: -0.01 },
+  { text: "arcsin", x: 1680, y: 615, size: 36, rot: -0.01 },
+  { text: "N", x: 1910, y: 610, size: 42, rot: 0.02 },
 ];
 
 const SYMBOL_KINEMATICS: FormulaSymbolSpec[] = BASE_FORMULA_SYMBOLS.map((s, idx) => {
@@ -2203,7 +2108,7 @@ export function renderDynamicCurvedFormulaCanvas(
     ctx.translate(driftX, driftY + slopeY);
     ctx.rotate(-Math.atan(slope) + (s.rot || 0) * 0.1);
     ctx.transform(0.85, 0, 0.04, 1, 0, 0);
-    const scaledSize = Math.round(s.size * 1.45);
+    const scaledSize = Math.round(s.size * 0.75);
     ctx.font = `italic 700 ${scaledSize}px "Cambria Math", "Times New Roman", "Plus Jakarta Sans", serif`;
     ctx.letterSpacing = "0.06em";
 
@@ -3147,9 +3052,9 @@ export function CentralLedWall({
   return (
     <group>
       {/* ── 1. STAGE CENTER-RIGHT: GRAND GROUNDED CONCENTRIC HEXAGONAL PORTAL (3-TIER STEPPED S14 REDESIGN) ── */}
-      {/* Đặt tại [3.48, 0, -8.59], rotation [0, -0.25, 0] đồng trục 100% với Bục MC và CAM 3 */}
+      {/* Đặt tại [2.10, 0, -7.50], rotation [0, -0.22, 0] đồng trục 100% với Bục MC và CAM 3 */}
       {/* 3 VIỀN (Tier 1, Tier 2, Tier 3) lồng giật cấp theo chiều sâu Z để tạo hiệu ứng đường hầm 3D portal chân thực */}
-      <group position={[3.48, 0, -8.59]} rotation={[0, -0.25, 0]}>
+      <group position={[2.10, 0, -7.50]} rotation={[0, -0.22, 0]}>
         {/* Tier 1 (Viền ngoài cùng): 6.40m x 5.00m tại Z = 0 */}
         <CutBottomHexagonArch
           outerPts={HEX_TIER1_OUTER}

@@ -3049,7 +3049,7 @@ export function CenterMcDesk({
   }, []);
 
   return (
-    <group ref={mcDeskRef} position={[3.00, 0.08, -6.70]} rotation={[0, -0.25, 0]}>
+    <group ref={mcDeskRef} position={[2.00, 0.08, -5.85]} rotation={[0, -0.22, 0]}>
       {/* 1. Sleek Tapered Ground Plinth Base */}
       <mesh position={[0, 0.04, 0]} castShadow={true}>
         <boxGeometry args={[1.36, 0.08, 0.62]} />
@@ -3207,28 +3207,28 @@ export function CenterMcDesk({
   );
 }
 
-// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([3.00, 0.08, -6.70], rotY = -0.25 rad)
-export const KV_DESK_POS: [number, number, number] = [3.35, 0.14, -7.11];
-export const NH_DESK_POS: [number, number, number] = [2.89, 0.14, -7.22];
-export const MC_DESK_ROT_Y = -0.25;
+// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([2.00, 0.08, -5.85], rotY = -0.22 rad)
+export const KV_DESK_POS: [number, number, number] = [2.28, 0.14, -6.25];
+export const NH_DESK_POS: [number, number, number] = [1.84, 0.14, -6.35];
+export const MC_DESK_ROT_Y = -0.22;
 export const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
 export const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
 
 // MC Concealed Positions (Strictly behind Hexagonal Portal Tier 3 solid slabs: |xLoc| = 2.40m, zLoc = -0.85m)
-export const KV_CONCEAL_POS: [number, number, number] = [6.02, 0.14, -8.82];
-export const NH_CONCEAL_POS: [number, number, number] = [1.36, 0.14, -10.01];
+export const KV_CONCEAL_POS: [number, number, number] = [4.45, 0.14, -8.02];
+export const NH_CONCEAL_POS: [number, number, number] = [-0.25, 0.14, -9.05];
 
-// Lateral Step-Out Waypoints around OUTER Left/Right Edges of Hexagon Tier 1 (|xLoc| = 3.28m > 3.20m widest knuckle)
-export const KV_SIDE_CTRL_POS: [number, number, number] = [6.87, 0.14, -8.60];
-export const NH_SIDE_CTRL_POS: [number, number, number] = [0.51, 0.14, -10.22];
-export const KV_OUTER_SIDE_POS: [number, number, number] = [6.72, 0.14, -8.02];
-export const NH_OUTER_SIDE_POS: [number, number, number] = [0.36, 0.14, -9.64];
-export const KV_OUTER_FRONT_POS: [number, number, number] = [6.50, 0.14, -7.15];
-export const NH_OUTER_FRONT_POS: [number, number, number] = [0.14, 0.14, -8.77];
+// Lateral Step-Out Waypoints around OUTER Left/Right Edges of Hexagon Tier 1
+export const KV_SIDE_CTRL_POS: [number, number, number] = [5.30, 0.14, -7.80];
+export const NH_SIDE_CTRL_POS: [number, number, number] = [-1.05, 0.14, -9.25];
+export const KV_OUTER_SIDE_POS: [number, number, number] = [5.15, 0.14, -7.22];
+export const NH_OUTER_SIDE_POS: [number, number, number] = [-1.20, 0.14, -8.65];
+export const KV_OUTER_FRONT_POS: [number, number, number] = [4.95, 0.14, -6.35];
+export const NH_OUTER_FRONT_POS: [number, number, number] = [-1.40, 0.14, -7.80];
 
 // Smooth Forward Arc Control Waypoints curving around front of MC Desk onto Center Circular Dais
-export const KV_WAYPOINT: [number, number, number] = [5.15, 0.15, -3.65];
-export const NH_WAYPOINT: [number, number, number] = [-0.45, 0.15, -4.55];
+export const KV_WAYPOINT: [number, number, number] = [3.95, 0.15, -3.20];
+export const NH_WAYPOINT: [number, number, number] = [-1.15, 0.15, -4.10];
 
 /**
  * Animated 3D MC Presenters (Khánh Vy & Ngọc Huy):
@@ -3783,7 +3783,7 @@ export function McPresenters({
   return (
     <group>
       {/* ── KHÁNH VY (Female Presenter - Stylized Realism VTV) ── */}
-      <group ref={kvRef} position={[3.35, 0.14, -7.11]} rotation={[0, -0.25, 0]}>
+      <group ref={kvRef} position={[2.28, 0.14, -6.25]} rotation={[0, -0.22, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Feminine Vietnamese Proportions: Smooth, graceful) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.445, 0.000]} scale={[0.96, 1.02, 0.98]}>
@@ -4146,7 +4146,7 @@ export function McPresenters({
       </group>
 
       {/* ── NGỌC HUY (Male Presenter - Metallic Bronze Suit #b88a44) ── */}
-      <group ref={nhRef} position={[2.89, 0.14, -7.22]} rotation={[0, -0.25, 0]}>
+      <group ref={nhRef} position={[1.84, 0.14, -6.35]} rotation={[0, -0.22, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Masculine Vietnamese Proportions: Handsome, defined jaw) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.515, 0.000]} scale={[0.96, 1.04, 1.00]}>
@@ -6210,11 +6210,11 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.000, 0]} renderOrder={9.1} receiveShadow={true}>
         <circleGeometry args={[2.45, 128]} />
         <meshStandardMaterial
-          color="#121e36"
-          roughness={0.20}
-          metalness={0.25}
-          emissive="#051024"
-          emissiveIntensity={0.15}
+          color="#060e22"
+          roughness={0.14}
+          metalness={0.42}
+          emissive="#040a18"
+          emissiveIntensity={0.08}
           depthWrite={true}
         />
       </mesh>
@@ -6296,11 +6296,11 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.2} receiveShadow={true}>
         <circleGeometry args={[1.40, 128]} />
         <meshStandardMaterial
-          color={isRed ? "#120206" : "#020510"}
-          emissive={isRed ? "#2b0409" : "#051336"}
-          emissiveIntensity={0.15}
-          roughness={0.06}
-          metalness={0.12}
+          color={isRed ? "#120206" : "#040918"}
+          emissive={isRed ? "#2b0409" : "#030818"}
+          emissiveIntensity={0.08}
+          roughness={0.10}
+          metalness={0.42}
           envMapIntensity={2.5}
           depthWrite={false}
           polygonOffset

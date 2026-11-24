@@ -53,6 +53,7 @@ import {
   resolveTurnHosts,
   buildLobbyGreetingScript,
   buildOpeningDuoScript,
+  buildContestantIntroStepSegment,
   speakDualMcScript,
   setGlobalCustomTtsScripts,
   pauseOlympiaTTS,
@@ -199,6 +200,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   const [audioOn, setAudioOn] = useState(!isExplicitMuteParam);
   const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const openingGreetingSpokenRef = useRef<boolean>(false);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -277,17 +279,6 @@ export default function DisplayScreen({ code }: { code: string }) {
     preloadOlympiaIntroVideos();
   }, []);
 
-  const handleUserUnlock = useCallback(() => {
-    setAudioUnlocked(true);
-    if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
-      (window as any).__OLYMPIA_UNLOCK_AUDIO__();
-    }
-    unlockOlympiaTTS();
-    if (!audioOn && !isExplicitMuteParam) {
-      setAudioOn(true);
-    }
-  }, [audioOn, isExplicitMuteParam]);
-
   const urlRuleset =
     typeof window !== "undefined"
       ? (new URLSearchParams(window.location.search).get("ruleset") as RulesetId | null)
@@ -303,6 +294,26 @@ export default function DisplayScreen({ code }: { code: string }) {
     join?.audioSeason ||
     urlSeason ||
     "O26";
+
+  const handleUserUnlock = useCallback(() => {
+    setAudioUnlocked(true);
+    if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
+      (window as any).__OLYMPIA_UNLOCK_AUDIO__();
+    }
+    unlockOlympiaTTS();
+    if (!audioOn && !isExplicitMuteParam) {
+      setAudioOn(true);
+    }
+    // If audio was unlocked during match opening, recover and trigger dual-MC greeting immediately
+    if (state?.stage === "playing" && ttsActive && !openingGreetingSpokenRef.current) {
+      openingGreetingSpokenRef.current = true;
+      const script = buildOpeningDuoScript({ roomName: state.name });
+      speakDualMcScript(script, {
+        season: effectiveAudioSeason,
+        preferServer: true,
+      });
+    }
+  }, [audioOn, isExplicitMuteParam, state?.stage, state?.name, ttsActive, effectiveAudioSeason]);
 
   useOlympiaAudio(state, effectiveAudioSeason, audioOn);
 
@@ -909,7 +920,6 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   // Vocalize Opening Duo Greeting ONLY when match actually starts (stage === "playing")
   // In stage === "lobby", system remains 100% SILENT as required.
-  const openingGreetingSpokenRef = useRef<boolean>(false);
   useEffect(() => {
     if (!state || !ttsActive || state.stage !== "playing" || openingGreetingSpokenRef.current) return;
     openingGreetingSpokenRef.current = true;
@@ -919,6 +929,28 @@ export default function DisplayScreen({ code }: { code: string }) {
       preferServer: true,
     });
   }, [state?.stage, state?.name, ttsActive, effectiveAudioSeason]);
+
+  // Vocalize Contestant Intro as each contestant steps down during entrance
+  const lastSpokenEntranceSeatRef = useRef<number>(-1);
+  useEffect(() => {
+    if (!state || !ttsActive || !state.entranceState?.active) {
+      if (!state?.entranceState?.active) {
+        lastSpokenEntranceSeatRef.current = -1;
+      }
+      return;
+    }
+    const currentSeatIdx = state.entranceState.currentSeatIdx ?? 0;
+    if (currentSeatIdx !== lastSpokenEntranceSeatRef.current) {
+      lastSpokenEntranceSeatRef.current = currentSeatIdx;
+      const segment = buildContestantIntroStepSegment(state.seats, currentSeatIdx);
+      if (segment) {
+        speakDualMcScript([segment], {
+          season: effectiveAudioSeason,
+          preferServer: true,
+        });
+      }
+    }
+  }, [state?.entranceState?.active, state?.entranceState?.currentSeatIdx, state?.seats, ttsActive, effectiveAudioSeason]);
 
   // Vocalize round intro greeting ONLY after the round intro video/banner has finished 100%
   const prevSpokenRoundRef = useRef<string | null>(null);
@@ -1220,13 +1252,13 @@ export default function DisplayScreen({ code }: { code: string }) {
       })()}
 
       {/* ── 5. GAME STAGE LAYERS (Z-20) ── */}
-      <div className="flex-1 min-h-0 relative z-20 flex flex-col justify-end overflow-hidden">
+      <div className="flex-1 min-h-0 relative z-20 flex flex-col justify-end overflow-hidden pointer-events-none">
         {/* ── 1. 3D BROADCAST STUDIO (FULLSCREEN OR VCNV BOTTOM-RIGHT QUADRANT WINDOW) ── */}
         <div
           className={
             isVcnvQuadView
-              ? "absolute z-[35] rounded-2xl border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] overflow-hidden pointer-events-none top-[calc(50%+0.375rem)] left-[calc(50%+0.375rem)] right-3 bottom-3 sm:top-[calc(50%+0.5rem)] sm:left-[calc(50%+0.5rem)] sm:right-5 sm:bottom-5 md:top-[calc(50%+0.625rem)] md:left-[calc(50%+0.625rem)] md:right-6 md:bottom-6"
-              : "fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none"
+              ? "absolute z-[35] rounded-2xl border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] overflow-hidden pointer-events-auto top-[calc(50%+0.375rem)] left-[calc(50%+0.375rem)] right-3 bottom-3 sm:top-[calc(50%+0.5rem)] sm:left-[calc(50%+0.5rem)] sm:right-5 sm:bottom-5 md:top-[calc(50%+0.625rem)] md:left-[calc(50%+0.625rem)] md:right-6 md:bottom-6"
+              : "fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-auto"
           }
         >
           <OlympiaStudio3DScene

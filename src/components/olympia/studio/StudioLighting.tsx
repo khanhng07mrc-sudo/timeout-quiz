@@ -784,11 +784,11 @@ export function StudioFloor({
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
-          color="#15233e"
-          roughness={0.22}
-          metalness={0.30}
-          emissive="#051024"
-          emissiveIntensity={0.16}
+          color="#060e22"
+          roughness={0.14}
+          metalness={0.42}
+          emissive="#040a18"
+          emissiveIntensity={0.08}
         />
       </mesh>
 
@@ -811,11 +811,11 @@ export function StudioFloor({
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]} receiveShadow={true}>
           <primitive object={intermediateTierDeckGeom} attach="geometry" />
           <meshStandardMaterial
-            color="#182c50"
-            roughness={0.24}
-            metalness={0.25}
-            emissive="#061228"
-            emissiveIntensity={0.14}
+            color="#091428"
+            roughness={0.15}
+            metalness={0.40}
+            emissive="#040d1e"
+            emissiveIntensity={0.08}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -870,60 +870,7 @@ export function StudioFloor({
         </mesh>
       </group>
 
-      {/* ── 3. COVE FLOOR WASH RIBBONS ("ĐÈN PHÁT RA BÊN NGOÀI BỤC TRẮNG") ── */}
-      {/* 3A. Central Dais Cove Wash (R = 2.45m -> 2.85m outward onto intermediate tier deck) */}
-      <mesh geometry={coveCenterFloorGlowGeom}>
-        <meshBasicMaterial
-          color={ringColor}
-          vertexColors
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          polygonOffset
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
-        />
-      </mesh>
-
-      {/* 3B. Intermediate Circular Tier Cove Wash (R = 3.50m -> 4.15m outward onto glossy floor) */}
-      <mesh geometry={coveIntermediateFloorGlowGeom}>
-        <meshBasicMaterial
-          color={ringColor}
-          vertexColors
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* 3C. Contestant Dais Cove Wash (R = 5.20m -> 4.20m projecting inward onto floor) */}
-      <mesh geometry={coveLeftFloorGlowGeom}>
-        <meshBasicMaterial
-          color={ringColor}
-          vertexColors
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* 3D. Stage-Right Platform Cove Wash (R = 5.20m -> 4.20m projecting inward onto floor) */}
-      <mesh geometry={coveRightFloorGlowGeom}>
-        <meshBasicMaterial
-          color={ringColor}
-          vertexColors
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Note: Center stage graphics, white dais riser skirt, segmented racetrack dashes, and concentric neon rings
-          are managed cleanly and exclusively by CenterFloorStage in Podiums.tsx to prevent z-fighting and depth-clipping. */}
+      {/* Note: Floor lighting is strictly concentrated inside cove recesses to eliminate messy wash, exactly matching VTV3 Broadcast (Images 3 & 4). */}
 
       {/* ── 2B. LAUREL WREATH VITRINE PROTRUSION LIGHTING ── */}
       {/* Upward Floor Light illuminating Laurel Wreath Cloche from base plinth (soft warm glow, no harsh floor cone) */}

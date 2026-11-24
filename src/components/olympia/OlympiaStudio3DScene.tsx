@@ -253,6 +253,42 @@ export function OlympiaStudio3DScene({
     [allowPTZ]
   );
 
+  useEffect(() => {
+    if (!allowPTZ) return;
+    const handleGlobalPointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current) return;
+      const dx = e.clientX - lastMousePosRef.current.x;
+      const dy = e.clientY - lastMousePosRef.current.y;
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+
+      if (dragModeRef.current === "pan") {
+        const panFactor = 0.005 * (1.0 / ptzZoom);
+        updateCurrentPTZ((prev) => ({
+          ...prev,
+          panX: prev.panX - dx * panFactor,
+          panY: prev.panY + dy * panFactor,
+        }));
+      } else {
+        updateCurrentPTZ((prev) => ({
+          ...prev,
+          yaw: prev.yaw - dx * 0.0035,
+          pitch: Math.max(-0.65, Math.min(0.65, prev.pitch - dy * 0.0035)),
+        }));
+      }
+    };
+
+    const handleGlobalPointerUp = () => {
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener("pointermove", handleGlobalPointerMove, { passive: true });
+    window.addEventListener("pointerup", handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handleGlobalPointerMove);
+      window.removeEventListener("pointerup", handleGlobalPointerUp);
+    };
+  }, [allowPTZ, ptzZoom, updateCurrentPTZ]);
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!allowPTZ || !isDraggingRef.current) return;
@@ -376,6 +412,7 @@ export function OlympiaStudio3DScene({
   return (
     <div
       className={`relative w-full h-full overflow-hidden select-none bg-[#020510] pointer-events-auto ${className}`}
+      style={{ touchAction: "none" }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

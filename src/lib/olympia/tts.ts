@@ -2981,13 +2981,44 @@ export function buildLobbyGreetingScript(options?: {
 }
 
 /**
+ * Normalizes competition/room name for natural Vietnamese broadcast TTS pronunciation.
+ * E.g. "Cuộc thi Tuần 3 - Tháng 1 - Quý 1" -> "Tuần 3, Tháng 1, Quý 1"
+ * Strips awkward redundant prefixes, expands Roman numerals, and replaces dashes with natural pauses.
+ */
+export function formatCompetitionNameForTTS(name?: string | null): string {
+  if (!name) return "";
+  let s = name.trim();
+  // Strip redundant leading words that cause awkward phrasing
+  s = s.replace(/^(cuộc\s+thi|trận\s+đấu|trận|phòng)\s+/i, "");
+  // Normalize Roman numerals commonly used in Olympia match naming
+  s = s.replace(/\bQuý\s+IV\b/gi, "Quý 4")
+       .replace(/\bQuý\s+III\b/gi, "Quý 3")
+       .replace(/\bQuý\s+II\b/gi, "Quý 2")
+       .replace(/\bQuý\s+I\b/gi, "Quý 1")
+       .replace(/\bTháng\s+IV\b/gi, "Tháng 4")
+       .replace(/\bTháng\s+III\b/gi, "Tháng 3")
+       .replace(/\bTháng\s+II\b/gi, "Tháng 2")
+       .replace(/\bTháng\s+I\b/gi, "Tháng 1")
+       .replace(/\bTuần\s+IV\b/gi, "Tuần 4")
+       .replace(/\bTuần\s+III\b/gi, "Tuần 3")
+       .replace(/\bTuần\s+II\b/gi, "Tuần 2")
+       .replace(/\bTuần\s+I\b/gi, "Tuần 1");
+  // Replace dashes with natural pauses
+  s = s.replace(/[-–—]/g, ", ");
+  s = s.replace(/\s*,\s*/g, ", ").replace(/\s+/g, " ").trim();
+  // Remove trailing commas
+  s = s.replace(/,\s*$/, "");
+  return s;
+}
+
+/**
  * Script 2: Official dual-MC opening ceremony with roomName (or natural fallback).
  */
 export function buildOpeningDuoScript(options?: {
   roomName?: string;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const trimmed = (options?.roomName || "").trim();
+  const trimmed = formatCompetitionNameForTTS(options?.roomName);
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
 
   if (activeCustomTtsScripts?.openingDuo) {
@@ -3455,7 +3486,7 @@ export function buildPostMatchMcOpeningSegment(options?: {
   seatCount?: number;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const trimmed = (options?.roomName || "").trim();
+  const trimmed = formatCompetitionNameForTTS(options?.roomName);
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
 
   if (variant === 1) {
@@ -3730,7 +3761,7 @@ export function buildClosingFarewellScript(options?: {
   roomName?: string;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const trimmed = (options?.roomName || "").trim();
+  const trimmed = formatCompetitionNameForTTS(options?.roomName);
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
 
   if (variant === 1) {

@@ -3921,8 +3921,8 @@ test("M3: Ve Dich timer expiration stops cleanly at 0 without auto-steal or auto
   act(g, "vd:startQuestion", {}, 200);
   const seqBefore = g.state.ttsSeq ?? 0;
   act(g, "vd:timer", {}, 1000);
-  // 10pt question thinkMs is 15000ms -> expire at 16000ms
-  assert.equal(g.tick(16000), true);
+  const totalMs = g.state.veDich?.timer.totalMs ?? 15000;
+  assert.equal(g.tick(1000 + totalMs), true);
   assert.equal(g.state.veDich?.timer.remainingMs, 0);
   assert.equal(g.state.veDich?.timer.startedAt, null);
   assert.equal(g.state.veDich?.steal, null, "No auto-open steal on timer expiry");

@@ -134,20 +134,20 @@ async function main() {
   console.log("\n[5/8] Triggering match start & contestant introduction...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const startBtn = btns.find((b) => (b.innerText || "").toUpperCase().includes("BẮT ĐẦU"));
+    const startBtn = btns.find((b) => (b.innerText || "").includes("BẮT ĐẦU TRẬN ĐẤU"));
     if (startBtn) startBtn.click();
   });
   await sleep(1500);
-  // Confirm if warning modal opens
+  // Confirm if warning modal opens (Step 1: "Có, tiếp tục", Step 2: "XÁC NHẬN BẮT ĐẦU")
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const contBtn = btns.find((b) => (b.innerText || "").includes("tiếp tục") || (b.innerText || "").toUpperCase().includes("XÁC NHẬN"));
+    const contBtn = btns.find((b) => (b.innerText || "").includes("Có, tiếp tục"));
     if (contBtn) contBtn.click();
   });
   await sleep(1500);
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const confBtn = btns.find((b) => (b.innerText || "").toUpperCase().includes("XÁC NHẬN"));
+    const confBtn = btns.find((b) => (b.innerText || "").includes("XÁC NHẬN BẮT ĐẦU"));
     if (confBtn) confBtn.click();
   });
   await sleep(3500);
@@ -181,10 +181,22 @@ async function main() {
   });
   await sleep(3500);
 
-  // Capture Screenshot 3 on Display Page (Ceiling rig & beams)
+  // Capture Screenshot 3 on Display Page (Ceiling rig & beams, floor downlights, curved math wall, right screen)
   const p3 = path.join(EVIDENCE_DIR, "03_studio_ceiling_rig_and_volumetric_beams.png");
   await displayPage.screenshot({ path: p3, fullPage: false });
   console.log(`  -> Captured: ${p3}`);
+
+  // Switch to CAM 2 for Stage Right LED Screen Close-up
+  console.log("\n  -> Switching to CAM 2 for Stage Right LED Screen closeup (Bilateral Gradient, Scanlines, UTM Neutra)...");
+  await displayPage.keyboard.press("2").catch(() => {});
+  await sleep(3000);
+  const p10 = path.join(EVIDENCE_DIR, "10_cam2_stage_right_led_screen_closeup.png");
+  await displayPage.screenshot({ path: p10, fullPage: false });
+  console.log(`  -> Captured: ${p10}`);
+
+  // Switch back to CAM 1 (Main Wide Angle)
+  await displayPage.keyboard.press("1").catch(() => {});
+  await sleep(2000);
 
   // Start Khởi Động turn and reveal Question 1 for Graphics Lower-Third verification
   console.log("\n[7/10] Starting Khởi Động turn & revealing question for Lower-Third typography...");
@@ -221,6 +233,13 @@ async function main() {
     }
   });
   await sleep(1500);
+
+  // Verify all 4 contestants are displayed in Lower-Third shelf
+  const activeContestants = await displayPage.evaluate(() => {
+    const boxes = Array.from(document.querySelectorAll(".font-black.truncate.uppercase")).map((el) => el.innerText);
+    return boxes;
+  });
+  console.log(`  -> Active Contestant Names on Lower-Third (${activeContestants.length}/4): ${JSON.stringify(activeContestants)}`);
 
   // Capture Screenshot 8: Classic Theme Lower-Third & Fixed Font Size
   const p8 = path.join(EVIDENCE_DIR, "08_classic_theme_lower_third_and_fixed_font.png");

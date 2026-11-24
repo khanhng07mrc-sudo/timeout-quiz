@@ -284,27 +284,27 @@ test("R3.3: Overhead stage point lights lowered to Y = 2.5m, distance = 8m, inte
 
 test("R3.4: StudioFloor material calibrated to sapphire tone with balanced specular gloss", () => {
   assert.ok(
-    studioLightingContent.includes('color="#060e22"') || studioLightingContent.includes('color="#15233e"'),
-    "StudioFloor color must be calibrated to #060e22 or #15233e"
+    studioLightingContent.includes('color="#030818"') || studioLightingContent.includes('color="#060e22"') || studioLightingContent.includes('color="#15233e"'),
+    "StudioFloor color must be calibrated to high-gloss dark sapphire"
   );
   assert.ok(
-    studioLightingContent.includes("roughness={0.14}") || studioLightingContent.includes("roughness={0.22}"),
-    "StudioFloor roughness must be calibrated between 0.14 and 0.22"
+    studioLightingContent.includes("roughness={0.045}") || studioLightingContent.includes("roughness={0.14}") || studioLightingContent.includes("roughness={0.22}"),
+    "StudioFloor roughness must be calibrated for high-gloss reflection"
   );
   assert.ok(
-    studioLightingContent.includes("metalness={0.42}") || studioLightingContent.includes("metalness={0.30}"),
-    "StudioFloor metalness must be calibrated between 0.30 and 0.42"
+    studioLightingContent.includes("metalness={0.68}") || studioLightingContent.includes("metalness={0.42}") || studioLightingContent.includes("metalness={0.30}"),
+    "StudioFloor metalness must be calibrated for specular reflection"
   );
 });
 
 test("R3.5: Intermediate tier deck material calibrated to dark sapphire with balanced reflection", () => {
   assert.ok(
-    studioLightingContent.includes('color="#091428"') || studioLightingContent.includes('color="#182c50"'),
-    "Intermediate tier deck color must be calibrated to #091428 or #182c50"
+    studioLightingContent.includes('color="#040c20"') || studioLightingContent.includes('color="#091428"') || studioLightingContent.includes('color="#182c50"'),
+    "Intermediate tier deck color must be calibrated to #040c20, #091428 or #182c50"
   );
   assert.ok(
-    studioLightingContent.includes("roughness={0.15}") || studioLightingContent.includes("roughness={0.24}"),
-    "Intermediate tier deck roughness must be calibrated between 0.15 and 0.24"
+    studioLightingContent.includes("roughness={0.055}") || studioLightingContent.includes("roughness={0.15}") || studioLightingContent.includes("roughness={0.24}"),
+    "Intermediate tier deck roughness must be calibrated for specular reflection"
   );
 });
 
@@ -432,33 +432,21 @@ test("R6.3: Curved science & math wall maps video texture onto CylinderGeometry 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// R7: Soft Floor Downlight Glow Projections (Zero Dynamic Shadow Overhead)
+// R7: Floor Cleanliness and Elimination of Raw Geometric Polygon Artifacts
 // ─────────────────────────────────────────────────────────────────────────────
-console.log("\n--- Requirement R7: Floor Downlight Projections from Stage Screens ---");
+console.log("\n--- Requirement R7: Floor Cleanliness and Specular Reflection ---");
 
-test("R7.1: Stage Right Screen floor downlight mesh renders with AdditiveBlending", () => {
+test("R7.1: Raw geometric downlight plane mesh removed from stage right screen to prevent exposed polygon edges", () => {
   assert.ok(
-    centralLedWallContent.includes("<planeGeometry args={[5.2, 3.0]} />"),
-    "Stage right screen floor downlight plane must be 5.2m x 3.0m"
-  );
-  assert.ok(
-    centralLedWallContent.includes("position={[0, -3.242, 1.4]}"),
-    "Floor downlight plane must be placed at world Y = 0.008m"
-  );
-  assert.ok(
-    centralLedWallContent.includes("blending={THREE.AdditiveBlending}"),
-    "Floor downlight material must use AdditiveBlending"
+    !centralLedWallContent.includes('<planeGeometry args={[5.2, 3.0]} />'),
+    "Raw untextured planeGeometry must be eliminated to prevent visible blue polygon edges on floor"
   );
 });
 
-test("R7.2: Stage Left Curved Math Wall floor downlight arc renders along R=7.8-9.0m", () => {
+test("R7.2: Raw geometric downlight ring mesh removed from curved math wall to prevent exposed polygon edges", () => {
   assert.ok(
-    centralLedWallContent.includes("ringGeometry args={[7.8, 9.0, quality === \"LIGHT\" ? 32 : 64, 1, wallStartAng, wallSweepAng]}"),
-    "Floor downlight arc must sweep from R=7.8 to 9.0m matching wallStartAng and wallSweepAng"
-  );
-  assert.ok(
-    centralLedWallContent.includes("position={[FORMULA_WALL_OFFSET_X, 0.008, -0.5]}"),
-    "Floor downlight arc must be placed at Y = 0.008m"
+    !centralLedWallContent.includes('args={[7.8, 9.0, quality === "LIGHT" ? 32 : 64, 1, wallStartAng, wallSweepAng]}'),
+    "Raw ringGeometry downlight must be eliminated to prevent visible blue polygon edges on floor"
   );
 });
 

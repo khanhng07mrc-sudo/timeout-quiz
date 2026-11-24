@@ -784,11 +784,12 @@ export function StudioFloor({
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
-          color="#060e22"
-          roughness={0.14}
-          metalness={0.42}
-          emissive="#040a18"
-          emissiveIntensity={0.08}
+          color="#030818"
+          roughness={0.045}
+          metalness={0.68}
+          emissive="#061430"
+          emissiveIntensity={0.22}
+          envMapIntensity={2.2}
         />
       </mesh>
 
@@ -811,11 +812,12 @@ export function StudioFloor({
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]} receiveShadow={true}>
           <primitive object={intermediateTierDeckGeom} attach="geometry" />
           <meshStandardMaterial
-            color="#091428"
-            roughness={0.15}
-            metalness={0.40}
-            emissive="#040d1e"
-            emissiveIntensity={0.08}
+            color="#040c20"
+            roughness={0.055}
+            metalness={0.65}
+            emissive="#061634"
+            emissiveIntensity={0.20}
+            envMapIntensity={2.0}
             side={THREE.DoubleSide}
           />
         </mesh>

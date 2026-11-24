@@ -3359,18 +3359,6 @@ export function CentralLedWall({
             <meshStandardMaterial color="#020817" roughness={0.2} metalness={0.9} />
           )}
         </mesh>
-
-        {/* Soft Floor Downlight Glow Projection under Screen (Alleviates flat black floor with zero dynamic shadow overhead) */}
-        <mesh position={[0, -3.242, 1.4]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[5.2, 3.0]} />
-          <meshBasicMaterial
-            color={screenFadeProgress > 0.5 ? "#991b1b" : "#1248b8"}
-            transparent={true}
-            opacity={0.32}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </mesh>
       </group>
 
       {/* ── 3. STAGE FAR-RIGHT: VERTICAL TOTEM ARCHITECTURAL SLAT PILLAR (HƯỚNG VỀ PHÍA KHÁN GIẢ) ── */}
@@ -3461,18 +3449,6 @@ export function CentralLedWall({
           )}
         </mesh>
       </group>
-
-      {/* Soft Floor Downlight Glow Projection under Curved Science & Math Wall */}
-      <mesh position={[FORMULA_WALL_OFFSET_X, 0.008, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[7.8, 9.0, quality === "LIGHT" ? 32 : 64, 1, wallStartAng, wallSweepAng]} />
-        <meshBasicMaterial
-          color={screenFadeProgress > 0.5 ? "#991b1b" : "#0e3ca8"}
-          transparent={true}
-          opacity={0.24}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
 
       {/* Underneath Dark Base Wall (Y = 0 to 1.35m at R = 8.62m) on Stage Left */}
       <mesh position={[FORMULA_WALL_OFFSET_X, 0.675, -0.5]}>

@@ -1074,13 +1074,14 @@ export function StudioWalls({
 
       {/* 8 Horizontal Glowing Neon Bands along Cyc Wall (Wrapping 360 degrees seamlessly, synchronized Deep Royal Navy / Deep Crimson) */}
       {horizontalBandHeights.map((h, idx) => (
-        <mesh key={`band-${idx}`} position={[0, h, -1.0]}>
+        <mesh key={`band-${idx}`} position={[0, h, -1.0]} renderOrder={-1}>
           <cylinderGeometry args={[20.42, 20.42, 0.032, 64, 1, true, 0, Math.PI * 2]} />
           <meshBasicMaterial
             color={wallLightColor}
             side={THREE.DoubleSide}
             transparent
             opacity={0.70}
+            depthWrite={false}
           />
         </mesh>
       ))}

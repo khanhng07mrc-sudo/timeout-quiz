@@ -188,14 +188,22 @@ async function main() {
 
   // Switch to CAM 2 for Stage Right LED Screen Close-up
   console.log("\n  -> Switching to CAM 2 for Stage Right LED Screen closeup (Bilateral Gradient, Scanlines, UTM Neutra)...");
-  await displayPage.keyboard.press("2").catch(() => {});
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const cam2Btn = btns.find((b) => (b.innerText || "").includes("Màn LED") || (b.innerText || "").includes("CAM 2"));
+    if (cam2Btn) cam2Btn.click();
+  });
   await sleep(3000);
   const p10 = path.join(EVIDENCE_DIR, "10_cam2_stage_right_led_screen_closeup.png");
   await displayPage.screenshot({ path: p10, fullPage: false });
   console.log(`  -> Captured: ${p10}`);
 
   // Switch back to CAM 1 (Main Wide Angle)
-  await displayPage.keyboard.press("1").catch(() => {});
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const cam1Btn = btns.find((b) => (b.innerText || "").includes("Toàn Cảnh") || (b.innerText || "").includes("CAM 1"));
+    if (cam1Btn) cam1Btn.click();
+  });
   await sleep(2000);
 
   // Start Khởi Động turn and reveal Question 1 for Graphics Lower-Third verification

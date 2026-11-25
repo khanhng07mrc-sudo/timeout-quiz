@@ -431,6 +431,25 @@ test("R6.3: Curved science & math wall maps video texture onto CylinderGeometry 
   );
 });
 
+test("R6.4: Curved math wall uses transparent WebM alpha material without duplicate 2D QUIZORRA badge", () => {
+  const videoGenContent = fs.readFileSync(
+    path.join(rootDir, "scripts/generate-math-science-video.mjs"),
+    "utf-8"
+  );
+  assert.ok(
+    centralLedWallContent.includes("transparent={true}"),
+    "Curved math wall meshBasicMaterial must set transparent={true} for VP9 alpha WebM"
+  );
+  assert.ok(
+    videoGenContent.includes("yuva420p") && videoGenContent.includes("omitBackground: true"),
+    "Video generator must render RGBA PNGs with omitBackground: true and encode yuva420p"
+  );
+  assert.ok(
+    !videoGenContent.includes('fillText("QUIZORRA"'),
+    "Video generator must NOT draw duplicate 2D QUIZORRA text inside the video texture"
+  );
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // R7: Floor Cleanliness and Elimination of Raw Geometric Polygon Artifacts
 // ─────────────────────────────────────────────────────────────────────────────

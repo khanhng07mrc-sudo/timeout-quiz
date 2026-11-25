@@ -2400,23 +2400,6 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.stroke();
   ctx.restore();
 
-  // Quizorra Sponsor Logo Badge on Top Left
-  ctx.save();
-  ctx.translate(80, 55);
-  ctx.scale(0.42, 1.0);
-  ctx.fillStyle = "#003b87";
-  ctx.fillRect(0, 0, 200, 65);
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(0, 0, 200, 65);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
-  ctx.shadowColor = "#1d4ed8";
-  ctx.shadowBlur = Math.round(8 * blurFactor);
-  ctx.fillText("QUIZORRA", 100, 33);
-  ctx.restore();
-
   ctx.restore(); // Restore clip
 
   // 6. MULTI-LAYER CONCENTRIC NEON BORDERS ("background kết hợp nhiều viền")
@@ -3442,6 +3425,8 @@ export function CentralLedWall({
               map={mathWallVideoTexture || formulaWallTexture}
               side={THREE.BackSide}
               toneMapped={false}
+              transparent={true}
+              depthWrite={false}
               color={screenFadeProgress > 0.5 ? "#ffa0b5" : "#ffffff"}
             />
           ) : (

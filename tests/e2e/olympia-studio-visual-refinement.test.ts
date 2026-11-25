@@ -262,8 +262,8 @@ test("R3.2: Cove floor glow ribbon narrowed to 0.40m span (5.20 -> 4.80)", () =>
     "Left cove glow must span 5.20 to 4.80"
   );
   assert.ok(
-    studioLightingContent.includes("createAnnularGlowGeometry(5.20, 4.80, -0.08 * Math.PI, 0.48 * Math.PI"),
-    "Right cove glow must span 5.20 to 4.80"
+    studioLightingContent.includes("createAnnularGlowGeometry(5.20, 4.80, -0.08 * Math.PI, 0.50 * Math.PI"),
+    "Right cove glow must span 5.20 to 4.80 up to 0.50 * Math.PI"
   );
 });
 
@@ -578,9 +578,9 @@ test("R9.2: Camera controller and auto-director support CAM 3 coaxial, standby o
     "useOlympiaCamera must CUT directly instead of CAM 29->1 morph"
   );
   assert.ok(
-    cameraControllerContent.includes("pos: [1.40, 1.44, -3.17]") &&
-    cameraControllerContent.includes("target: [2.02, 1.28, -5.95]"),
-    "CameraController CAM 3 must be calibrated to coaxial straight frontal [1.40, 1.44, -3.17] -> [2.02, 1.28, -5.95]"
+    cameraControllerContent.includes("pos: [1.40, 1.52, -3.17]") &&
+    cameraControllerContent.includes("target: [2.02, 1.36, -5.95]"),
+    "CameraController CAM 3 must be calibrated to coaxial straight frontal [1.40, 1.52, -3.17] -> [2.02, 1.36, -5.95]"
   );
   assert.ok(
     cameraControllerContent.includes("THREE.MathUtils.lerp(0.49, 0.0, smoothT)"),
@@ -675,6 +675,49 @@ test("R9.6: Right LED Screen supports all 7 modes, uniform 0.2s FIFO delay, and 
     centralLedWallContent.includes("disposeCameraRing") &&
     centralLedWallContent.includes('{ w: 256, h: 144, intervalMs: 70, slots: 4 }'),
     "CentralLedWall camera mode must use lazy WebGLRenderTarget ring buffer with recursion guard, LIGHT throttling, and disposal"
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// R10: M1 Outermost Stage Arcs, MC Portal Elevation & Wall Alignment
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n--- Requirement R10: M1 Outermost Stage Arcs & MC Portal Alignment ---");
+
+test("R10.1: StudioLighting unifies daisGeometry across [-0.08π, 1.28π] with integral rear portal bay and zero 0.48π gap", () => {
+  assert.ok(
+    studioLightingContent.includes("getOuterDaisRadius") &&
+    studioLightingContent.includes("createAnnularSectorShape(5.2, getOuterDaisRadius, -0.08 * Math.PI, 1.28 * Math.PI, 256)"),
+    "StudioLighting must unify daisGeometry with smoothstep R=9.00m portal bay across [-0.08π, 1.28π]"
+  );
+  assert.ok(
+    !studioLightingContent.includes("0.48 * Math.PI"),
+    "StudioLighting must not contain legacy 0.48 * Math.PI gap"
+  );
+});
+
+test("R10.2: CentralLedWall mounts MC Portal at Y=0.22m and aligns Left Formula Wall lower sweep", () => {
+  assert.ok(
+    centralLedWallContent.includes('<group position={[2.10, 0.22, -7.50]} rotation={[0, -0.22, 0]}>'),
+    "MC Hexagonal Portal must be mounted at [2.10, 0.22, -7.50]"
+  );
+  assert.ok(
+    centralLedWallContent.includes("const wallStartAng = 0.995 * Math.PI;") &&
+    centralLedWallContent.includes("const lowerWallStartAng = 0.995 * Math.PI;") &&
+    centralLedWallContent.includes("const lowerWallSweepAng = wallSweepAng;") &&
+    !centralLedWallContent.includes("wallSweepAng - 0.01 * Math.PI"),
+    "Left Formula Wall must align upstage edge to 0.995π and match lowerWallSweepAng === wallSweepAng"
+  );
+});
+
+test("R10.3: Podiums mounts CenterMcDesk and MC presenters at synchronized Y=0.22m dais elevation", () => {
+  assert.ok(
+    podiumsContent.includes('<group ref={mcDeskRef} position={[2.00, 0.22, -5.85]} rotation={[0, -0.22, 0]}>'),
+    "CenterMcDesk must mount at [2.00, 0.22, -5.85]"
+  );
+  assert.ok(
+    podiumsContent.includes("KV_DESK_POS: [number, number, number] = [2.28, 0.22, -6.25]") &&
+    podiumsContent.includes("NH_DESK_POS: [number, number, number] = [1.84, 0.22, -6.35]"),
+    "KV_DESK_POS and NH_DESK_POS must sit at Y = 0.22"
   );
 });
 

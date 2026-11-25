@@ -479,6 +479,16 @@ export class OlympiaGame {
     this.state.ttsSeq = (this.state.ttsSeq ?? 0) + 1;
     return this.state.ttsSeq;
   }
+  private emitTtsStop(now: number, reason: string, immediate = true) {
+    const st = this.state;
+    st.ttsCommand = {
+      seq: this.nextTtsSeq(),
+      action: "stop",
+      issuedAt: now,
+      round: st.currentRound ?? undefined,
+      meta: { immediate, reason },
+    };
+  }
   private focusPostMatchSeat(sm: OlympiaSummaryState, idx: number, now: number) {
     const st = this.state;
     const seatId = sm.orderedSeats[idx];
@@ -2254,6 +2264,10 @@ export class OlympiaGame {
       }
     }
 
+    if (type === "kd:start" && st.banner) {
+      return fail("Đang phát video giới thiệu phần thi, vui lòng chờ kết thúc hoặc bấm Bỏ qua Intro trước khi bắt đầu!");
+    }
+
     if (st.introTimer) st.introTimer = null;
     if (
       type.startsWith("kd:") ||
@@ -2411,6 +2425,7 @@ export class OlympiaGame {
 
         // When in segmentDone: advance to next segment / finish round
         if (kd.phase === "segmentDone") {
+          this.emitTtsStop(now, "kd:nextSegment", true);
           if (isLastSeg) {
             this.finishRound(now);
             return OK;
@@ -2440,6 +2455,7 @@ export class OlympiaGame {
         const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
         const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
         if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
+          this.emitTtsStop(now, "kd:turnDone", true);
           kd.phase = "segmentDone";
           kd.started = false;
           kd.questionRevealed = false;
@@ -2522,6 +2538,7 @@ export class OlympiaGame {
         }
 
         kd.qIdx += 1;
+        this.emitTtsStop(now, kd.qIdx >= seg.questions ? "kd:turnDone" : "kd:nextQuestion", true);
         if (kd.qIdx >= seg.questions) {
           kd.phase = "segmentDone";
           kd.started = false;
@@ -2659,6 +2676,9 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:start": {
+        if (st.banner) {
+          return fail("Đang phát video giới thiệu phần thi, vui lòng chờ kết thúc hoặc bấm Bỏ qua Intro trước khi bắt đầu!");
+        }
         // Nút Bắt đầu chỉ được nhấn khi bắt đầu lượt mới (chưa bắt đầu hoặc lượt trước đã kết thúc/hết câu).
         // Không cho phép nhấn trong khi đội/thí sinh vẫn đang còn câu hỏi đang thi.
         if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
@@ -2738,6 +2758,7 @@ export class OlympiaGame {
       }
       case "kd:selectSegment": {
         const applySegment = (idx: number) => {
+          this.emitTtsStop(now, "kd:selectSegment", true);
           kd.segIdx = idx;
           kd.qIdx = -1;
           kd.phase = "intro";
@@ -2799,6 +2820,7 @@ export class OlympiaGame {
       }
       case "kd:finishTurn": {
         if (!kd.started && kd.phase === "segmentDone") return OK;
+        this.emitTtsStop(now, "kd:finishTurn", true);
         if (kd.globalTimer) {
           finishTimer(kd.globalTimer);
         }
@@ -3000,6 +3022,7 @@ export class OlympiaGame {
       }
       case "kd:skip": {
         if (kd.phase !== "question") return fail("Chưa mở câu hỏi");
+        this.emitTtsStop(now, "kd:skip", true);
         pauseTimer(kd.timer, now);
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;

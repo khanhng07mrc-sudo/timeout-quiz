@@ -41,12 +41,15 @@ import {
   speakCnvBells,
   speakOlympiaTTS,
   speakOlympiaTTSAsync,
+  speakSmartQuestion,
   speakDualMcScriptAsync,
   speakRoundIntroTTS,
   smoothStopOlympiaTTS,
+  skipOlympiaTTS,
   cancelTTS,
   cancelQuestionTTS,
   getActivePlaybackSegment,
+  hasPendingIntroOrBridgeSpeech,
   cancelBuzzerInterrupt,
   handleBuzzerInterrupt,
   resetOlympiaTtsSession,
@@ -2083,4 +2086,195 @@ test("TTS R4.4: detectSpellingError exempts abbreviations, chemical formulas, do
   assert.equal(detectSpellingError("Ha.Noi", "Hà Nội").isError, true);
   assert.equal(detectSpellingError("KKK", "Quang hợp").isError, true);
   assert.equal(detectSpellingError("quann").isError, true);
+});
+
+test("TTS R2: speakRoundIntroTTS -> kd-seg-0 -> speakSmartQuestion Q1 strict FIFO chaining, microtask/pause gaps & Q2 cancel", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken, autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    let synthCancelCount = 0;
+    const synth = (globalThis as any).window.speechSynthesis;
+    const origCancel = synth.cancel;
+    synth.cancel = () => {
+      synthCancelCount++;
+      return origCancel();
+    };
+
+    // 1. Start round_intro + queue kd-seg-0 + call speakSmartQuestion Q1 while round_intro is still active
+    const pIntro = speakRoundIntroTTS("khoiDong", { engine: "webspeech" });
+    assert.equal(hasPendingIntroOrBridgeSpeech(), true);
+    const kd0 = buildKhoiDongTurnBridgeSegment({
+      segKind: "solo",
+      segIdx: 0,
+      seatId: 0,
+      name: "Minh Quân",
+    });
+    const pKd0 = speakDualMcScriptAsync([kd0], {
+      engine: "webspeech",
+      queueAfterActive: true,
+    });
+    assert.equal(hasPendingIntroOrBridgeSpeech(), true);
+
+    speakSmartQuestion("Câu hỏi 1: Thủ đô của Việt Nam là gì?", {
+      engine: "webspeech",
+      round: "khoiDong",
+      seatId: 0,
+      segIdx: 0,
+    });
+
+    // Q1 must NOT cancel round_intro or kd-seg-0
+    assert.equal(spoken.length, 1);
+    assert.equal(synthCancelCount, 1);
+
+    // Finish round_intro -> check microtask handoff where activePlaybackSegment is transiently null
+    controls.lastUtterance().onend();
+    assert.equal(getActivePlaybackSegment(), null);
+    assert.equal(hasPendingIntroOrBridgeSpeech(), true, "Microtask handoff between round_intro and kd-seg-0 must keep pendingIntroBridge true");
+    assert.equal(await pIntro, true);
+
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(spoken.length, 2);
+    assert.ok(spoken[1].text.includes("Minh Quân"));
+
+    // Finish kd-seg-0 -> Q1 speaks
+    controls.lastUtterance().onend();
+    assert.equal(await pKd0, true);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(spoken.length, 3);
+    assert.ok(spoken[2].text.includes("Thủ đô của Việt Nam"));
+    assert.equal(hasPendingIntroOrBridgeSpeech(), false, "Once Q1 is speaking and intro/bridge finished, pendingIntroBridge is false");
+
+    // 2. Q2 must immediately cancel Q1 (no intro/bridge pending)
+    speakSmartQuestion("Câu hỏi 2: Sông nào dài nhất Việt Nam?", {
+      engine: "webspeech",
+      round: "khoiDong",
+      seatId: 0,
+      segIdx: 0,
+    });
+    assert.equal(synthCancelCount, 2, "Q2 must cancel Q1 immediately");
+    assert.equal(spoken.length, 4);
+    assert.ok(spoken[3].text.includes("Sông nào dài nhất"));
+    controls.lastUtterance().onend();
+    await new Promise((r) => setTimeout(r, 5));
+
+    // 3. pauseAfterMs gap between two intro/bridge segments preserves hasPendingIntroOrBridgeSpeech()
+    const twoSegBridge = [
+      { role: "khanh_vy" as const, kind: "greeting" as const, text: "Chào mừng", pauseAfterMs: 120 },
+      { role: "ngoc_huy" as const, kind: "round_transition" as const, text: "Bước vào Khởi Động", pauseAfterMs: 0 },
+    ];
+    const pBridge = speakDualMcScriptAsync(twoSegBridge, { engine: "webspeech" });
+    controls.lastUtterance().onend();
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(getActivePlaybackSegment(), null);
+    assert.equal(hasPendingIntroOrBridgeSpeech(), true, "pauseAfterMs gap must keep pendingIntroBridge true");
+    speakSmartQuestion("Câu hỏi mở trong lúc nghỉ nhịp", {
+      engine: "webspeech",
+      round: "khoiDong",
+    });
+    assert.equal(spoken.filter((s) => s.text.includes("Câu hỏi mở trong lúc nghỉ nhịp")).length, 0);
+    await new Promise((r) => setTimeout(r, 130));
+    assert.equal(spoken.filter((s) => s.text.includes("Bước vào Khởi Động")).length, 1);
+    controls.lastUtterance().onend();
+    assert.equal(await pBridge, true);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(spoken.filter((s) => s.text.includes("Câu hỏi mở trong lúc nghỉ nhịp")).length, 1);
+    controls.lastUtterance().onend();
+
+    // 4. skipOlympiaTTS() / cancelTTS() clears full chained queue & hasPendingIntroOrBridgeSpeech()
+    const pAbortIntro = speakRoundIntroTTS("khoiDong", { engine: "webspeech" });
+    const pAbortKd0 = speakDualMcScriptAsync([kd0], { engine: "webspeech", queueAfterActive: true });
+    skipOlympiaTTS();
+    assert.equal(hasPendingIntroOrBridgeSpeech(), false);
+    assert.equal(await pAbortIntro, false);
+    assert.equal(await pAbortKd0, false);
+  });
+});
+
+test("TTS R2: smoothStopOlympiaTTS followed immediately by speakDualMcScriptAsync is not killed by stale boundaryCleanupTimer", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken, autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    const pOld = speakOlympiaTTSAsync("Câu hỏi cũ đang đọc dở rất dài...", {
+      engine: "webspeech",
+      segment: "question",
+    });
+    assert.equal(spoken.length, 1);
+
+    // Trigger smoothStopOlympiaTTS (arms 30ms boundaryCleanupTimer) and immediately start new segment
+    smoothStopOlympiaTTS(30, 80);
+    const kd1 = buildKhoiDongTurnBridgeSegment({
+      segKind: "solo",
+      segIdx: 1,
+      seatId: 1,
+      name: "Lan Anh",
+    });
+    const pNew = speakDualMcScriptAsync([kd1], {
+      engine: "webspeech",
+      queueAfterActive: true,
+    });
+
+    assert.equal(spoken.length, 2);
+    assert.ok(spoken[1].text.includes("Lan Anh"));
+
+    // Wait past 30-80ms smoothStop window: old boundaryCleanupTimer must NOT cancel pNew
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal((globalThis as any).window.speechSynthesis.speaking, true, "New speech must remain active past old smoothStop delay");
+
+    controls.lastUtterance().onend();
+    assert.equal(await pOld, false);
+    assert.equal(await pNew, true);
+  });
+});
+
+test("TTS R2: NotAllowedError + suspended AudioContext does not trigger 15s serverCooldownUntil and clears cleanly on unlockOlympiaTTS", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv(
+    {
+      spoken,
+      withAudioContext: true,
+      withHtmlAudio: true,
+      origin: "http://localhost:3000",
+    },
+    async () => {
+      resetOlympiaTtsSession();
+      (globalThis as any).window.AudioContext = class SuspendedAudioContext {
+        state = "suspended";
+        async resume() {}
+        async decodeAudioData() {
+          throw new Error("should not decode suspended context");
+        }
+      };
+      const OrigAudio = (globalThis as any).window.Audio;
+      (globalThis as any).window.Audio = class BlockedHtmlAudio extends OrigAudio {
+        play() {
+          return Promise.reject(Object.assign(new Error("play() failed because the user didn't interact"), { name: "NotAllowedError" }));
+        }
+      };
+      (globalThis as any).Audio = (globalThis as any).window.Audio;
+
+      // Simulate browser blocking speechSynthesis pre-unlock with not-allowed onerror
+      const synth = (globalThis as any).window.speechSynthesis;
+      synth.speak = (u: any) => {
+        queueMicrotask(() => u.onerror?.({ error: "not-allowed" }));
+      };
+
+      configureTtsTransport({
+        fetchImpl: (async () =>
+          ({
+            ok: true,
+            status: 200,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          }) as unknown as Response) as unknown as typeof fetch,
+      });
+
+      const ok = await speakRoundIntroTTS("khoiDong");
+      assert.equal(ok, false);
+      assert.equal(getTtsEngineStatus().serverCooldownUntil, 0, "Autoplay NotAllowedError must NOT set 15s serverCooldownUntil");
+      assert.equal(getTtsEngineMode(), "server", "Engine mode must remain 'server' after autoplay block");
+
+      unlockOlympiaTTS();
+      assert.equal(getTtsEngineStatus().lastFallbackReason, null, "unlockOlympiaTTS clears autoplay fallback reason");
+      assert.equal(getTtsEngineStatus().serverCooldownUntil, 0);
+    }
+  );
 });

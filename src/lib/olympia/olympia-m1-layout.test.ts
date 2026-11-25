@@ -12,12 +12,28 @@
  */
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import * as THREE from "three";
 import {
   getContestantArcParams,
   getContestantPodiumWorldPos,
   getContestantCameraPreset,
   getWidePodiumsCameraPreset,
+  getWideStageCameraPreset,
+  OLYMPIA_CAM_PRESETS,
 } from "../../components/olympia/studio/CameraController";
+import {
+  KV_DESK_POS,
+  NH_DESK_POS,
+  KV_CONCEAL_POS,
+  NH_CONCEAL_POS,
+} from "../../components/olympia/studio/Podiums";
+import { getOuterDaisRadius } from "../../components/olympia/studio/StudioLighting";
+import {
+  computeGroundedHexagonVertices,
+  offsetGroundedContour,
+} from "../../components/olympia/studio/CentralLedWall";
 
 export interface M1SuiteResults {
   tier1Count: number;
@@ -33,11 +49,19 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
   let tier2Count = 0;
   let tier3Count = 0;
   let tier4Count = 0;
+  let tier1Total = 0;
+  let tier2Total = 0;
+  let tier3Total = 0;
+  let tier4Total = 0;
   let totalPassed = 0;
   let totalExecuted = 0;
 
   function runTest(tier: 1 | 2 | 3 | 4, name: string, fn: () => void) {
     totalExecuted++;
+    if (tier === 1) tier1Total++;
+    else if (tier === 2) tier2Total++;
+    else if (tier === 3) tier3Total++;
+    else if (tier === 4) tier4Total++;
     try {
       fn();
       totalPassed++;
@@ -650,13 +674,336 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
     }
   });
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // R1: UNIFIED STAGE DAIS, MC PORTAL ELEVATION & FLANKING WALL ALIGNMENT
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log("\n--- R1: UNIFIED DAIS, MC PORTAL ELEVATION & WALL ALIGNMENT ---");
+
+  const rootDir = process.cwd();
+  const studioLightingSrc = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/studio/StudioLighting.tsx"),
+    "utf-8"
+  );
+  const centralLedWallSrc = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/studio/CentralLedWall.tsx"),
+    "utf-8"
+  );
+  const podiumsSrc = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/studio/Podiums.tsx"),
+    "utf-8"
+  );
+
+  runTest(1, "R1.1: 1-seat, 4-seat, and 8-seat podium corners stay inside [5.20m, 7.60m] x [0.50π, 1.28π] and CAM 1/CAM 10 frame cleanly", () => {
+    const halfW = 1.20 / 2;
+    const halfD = 0.88 / 2;
+    const corners2D: [number, number][] = [
+      [-halfW, -halfD],
+      [+halfW, -halfD],
+      [-halfW, +halfD],
+      [+halfW, +halfD],
+    ];
+
+    for (const N of [1, 4, 8]) {
+      const arc = getContestantArcParams(N);
+      const cam1 = getWideStageCameraPreset(N);
+      const cam10 = getWidePodiumsCameraPreset(N);
+
+      for (let s = 0; s < N; s++) {
+        const frac = N === 1 ? 0.5 : s / (N - 1);
+        const phi = arc.startPhi + frac * (arc.endPhi - arc.startPhi);
+        const cx = -arc.radius * Math.cos(phi);
+        const cz = -0.5 - arc.radius * Math.sin(phi);
+        const rotY = Math.PI / 2 - phi;
+        const cosR = Math.cos(rotY);
+        const sinR = Math.sin(rotY);
+
+        for (let c = 0; c < 4; c++) {
+          const [lx, lz] = corners2D[c];
+          const wx = cx + (lx * cosR + lz * sinR);
+          const wz = cz + (-lx * sinR + lz * cosR);
+          const rCorner = Math.hypot(wx, wz + 0.5);
+          assert.ok(rCorner >= 5.45 && rCorner <= 7.35, `N=${N} seat=${s} corner=${c}: r=${rCorner.toFixed(3)}m out of [5.45, 7.35]`);
+          let a = Math.atan2(-(wz + 0.5), wx);
+          if (a < 0) a += 2 * Math.PI;
+          assert.ok(
+            a >= 0.50 * Math.PI + 0.038 && a <= 1.28 * Math.PI - 0.038,
+            `N=${N} seat=${s} corner=${c}: a=${(a / Math.PI).toFixed(4)}π out of bounds`
+          );
+        }
+
+        const podiumCenter = getContestantPodiumWorldPos(s, N, 1.25);
+        const ndc1 = projectToNDC(podiumCenter, cam1.pos, cam1.target, cam1.fov);
+        assert.ok(ndc1.zDist > 0, `CAM 1 N=${N} seat=${s} must be in front of camera`);
+        assert.ok(Math.abs(ndc1.x) <= 0.85 && Math.abs(ndc1.y) <= 0.85, `CAM 1 N=${N} seat=${s} NDC (${ndc1.x.toFixed(3)}, ${ndc1.y.toFixed(3)}) out of safe zone`);
+
+        const ndc10 = projectToNDC(podiumCenter, cam10.pos, cam10.target, cam10.fov);
+        assert.ok(ndc10.zDist > 0, `CAM 10 N=${N} seat=${s} must be in front of camera`);
+        if (N <= 4 || s > 0) {
+          assert.ok(Math.abs(ndc10.x) <= 0.85 && Math.abs(ndc10.y) <= 0.85, `CAM 10 N=${N} seat=${s} NDC (${ndc10.x.toFixed(3)}, ${ndc10.y.toFixed(3)}) out of safe zone`);
+        }
+      }
+    }
+  });
+
+  runTest(2, "R1.2: Unified daisGeometry spans [-0.08π, 1.28π] with integral R=9.00m portal bay and unbroken cove strips", () => {
+    assert.ok(
+      studioLightingSrc.includes("createAnnularSectorShape(5.2, getOuterDaisRadius, -0.08 * Math.PI, 1.28 * Math.PI, 256)"),
+      "StudioLighting must use single unified daisGeometry spanning [-0.08π, 1.28π] with getOuterDaisRadius (256 segments)"
+    );
+    assert.ok(
+      !studioLightingSrc.includes("rightDaisGeometry"),
+      "Separate rightDaisGeometry must be removed to avoid 0.50π bevel V-groove and Z-fighting"
+    );
+    assert.ok(
+      studioLightingSrc.includes("const startAng = -0.08 * Math.PI;") &&
+      studioLightingSrc.includes("const endAng = 1.28 * Math.PI;") &&
+      studioLightingSrc.includes("createCurvedCoveFasciaGeometry(5.21, -0.08 * Math.PI, 1.28 * Math.PI, 0.015, 0.215, 112)"),
+      "stepLightPoints and coveLeftFasciaGeom must span [-0.08π, 1.28π] seamlessly across 0.50π"
+    );
+    assert.ok(
+      studioLightingSrc.includes("createAnnularGlowGeometry(5.20, 4.80, -0.08 * Math.PI, 0.50 * Math.PI"),
+      "coveRightFloorGlowGeom must extend cleanly to 0.50 * Math.PI"
+    );
+    assert.ok(!studioLightingSrc.includes("0.48 * Math.PI"), "No stale 0.48 * Math.PI trench angle may remain");
+    assert.equal(getOuterDaisRadius(0.40 * Math.PI), 9.00, "Rear portal bay center must reach R=9.00m");
+    assert.equal(getOuterDaisRadius(0.50 * Math.PI), 7.60, "Contestant dais boundary at 0.50π must stay R=7.60m");
+    // Verify smoothstep ramp monotonicity & boundary continuity on exported getOuterDaisRadius
+    assert.equal(getOuterDaisRadius(0.29 * Math.PI), 7.60);
+    assert.equal(getOuterDaisRadius(0.31 * Math.PI), 9.00);
+    assert.equal(getOuterDaisRadius(0.475 * Math.PI), 9.00);
+    assert.equal(getOuterDaisRadius(0.498 * Math.PI), 7.60);
+    assert.ok(getOuterDaisRadius(0.30 * Math.PI) > 7.60 && getOuterDaisRadius(0.30 * Math.PI) < 9.00);
+    assert.ok(getOuterDaisRadius(0.486 * Math.PI) > 7.60 && getOuterDaisRadius(0.486 * Math.PI) < 9.00);
+  });
+
+  runTest(2, "R1.3: MC Hexagonal Portal, CenterMcDesk, and MC Presenters share synchronized Y=0.22m elevation and rear deck containment", () => {
+    assert.equal(KV_DESK_POS[1], 0.22, "KV_DESK_POS Y must be 0.22");
+    assert.equal(NH_DESK_POS[1], 0.22, "NH_DESK_POS Y must be 0.22");
+    assert.equal(KV_CONCEAL_POS[1], 0.22, "KV_CONCEAL_POS Y must be 0.22");
+    assert.equal(NH_CONCEAL_POS[1], 0.22, "NH_CONCEAL_POS Y must be 0.22");
+    assert.ok(
+      podiumsSrc.includes('<group ref={mcDeskRef} position={[2.00, 0.22, -5.85]} rotation={[0, -0.22, 0]}>'),
+      "CenterMcDesk must mount at [2.00, 0.22, -5.85]"
+    );
+    assert.ok(
+      podiumsSrc.includes('<group ref={kvRef} position={[2.28, 0.22, -6.25]} rotation={[0, -0.22, 0]}>') &&
+      podiumsSrc.includes('<group ref={nhRef} position={[1.84, 0.22, -6.35]} rotation={[0, -0.22, 0]}>'),
+      "kvRef and nhRef initial positions must match Y = 0.22"
+    );
+    assert.ok(
+      centralLedWallSrc.includes('<group position={[2.10, 0.22, -7.50]} rotation={[0, -0.22, 0]}>'),
+      "MC Hexagonal Portal must mount at [2.10, 0.22, -7.50]"
+    );
+
+    const rotY = -0.22;
+    const cosR = Math.cos(rotY);
+    const sinR = Math.sin(rotY);
+    const portalFootprintPts: Array<{ label: string; lx: number; lz: number }> = [
+      { label: "Tier1-FL", lx: -1.90, lz: 0.18 },
+      { label: "Tier1-FR", lx: 1.90, lz: 0.18 },
+      { label: "Tier1-BL", lx: -1.90, lz: 0.0 },
+      { label: "Tier1-BR", lx: 1.90, lz: 0.0 },
+      { label: "Tier3-BL", lx: -1.90, lz: -0.50 },
+      { label: "Tier3-BR", lx: 1.90, lz: -0.50 },
+      { label: "Catwalk-BL", lx: -1.25, lz: -1.30 },
+      { label: "Catwalk-BR", lx: 1.25, lz: -1.30 },
+    ];
+    for (const pt of portalFootprintPts) {
+      const wx = 2.10 + pt.lx * cosR + pt.lz * sinR;
+      const wz = -7.50 - pt.lx * sinR + pt.lz * cosR;
+      const r = Math.hypot(wx, wz + 0.5);
+      let a = Math.atan2(-(wz + 0.5), wx);
+      if (a < 0) a += 2 * Math.PI;
+      const maxR = getOuterDaisRadius(a);
+      assert.ok(r >= 5.20, `${pt.label} r=${r.toFixed(3)}m must be >= 5.20m`);
+      assert.ok(
+        maxR - r >= 0.15,
+        `${pt.label} at (r=${r.toFixed(3)}m, a=${(a / Math.PI).toFixed(4)}π) must fit inside unified dais R_out=${maxR.toFixed(3)}m`
+      );
+    }
+
+    // Verify BOTH KV_CONCEAL_POS and NH_CONCEAL_POS stand cleanly inside R=9.00m rear bay
+    for (const [label, pos] of [
+      ["KV_CONCEAL_POS", KV_CONCEAL_POS],
+      ["NH_CONCEAL_POS", NH_CONCEAL_POS],
+    ] as Array<[string, [number, number, number]]>) {
+      const r = Math.hypot(pos[0], pos[2] + 0.5);
+      let a = Math.atan2(-(pos[2] + 0.5), pos[0]);
+      if (a < 0) a += 2 * Math.PI;
+      assert.ok(
+        a >= 0.31 * Math.PI && a <= 0.475 * Math.PI,
+        `${label} a=${(a / Math.PI).toFixed(4)}π must sit inside rear portal bay [0.31π, 0.475π]`
+      );
+      const clrOut = getOuterDaisRadius(a) - r;
+      assert.ok(
+        clrOut >= 0.25,
+        `${label} r=${r.toFixed(3)}m must clear R_out=${getOuterDaisRadius(a).toFixed(3)}m by >= 0.25m (got ${clrOut.toFixed(3)}m)`
+      );
+    }
+    const mcSep = Math.hypot(KV_CONCEAL_POS[0] - NH_CONCEAL_POS[0], KV_CONCEAL_POS[2] - NH_CONCEAL_POS[2]);
+    assert.ok(mcSep >= 0.45, `Concealed MC pair separation ${mcSep.toFixed(3)}m must be >= 0.45m`);
+
+    // Build exact Three.js MC Portal solid occluder silhouette (Tier 1..3 arches + Starry backdrop)
+    // and raycast from CAM 1 (N=1,4,8), CAM 10 (N=1,4,8), and CAM 3 across full MC body+feet envelope
+    const tier1Outer = computeGroundedHexagonVertices(6.40, 5.00, 3.80);
+    const tier1Inner = offsetGroundedContour(tier1Outer, 0.36);
+    const tier2Inner = offsetGroundedContour(tier1Inner, 0.32);
+    const tier3Inner = offsetGroundedContour(tier2Inner, 0.28);
+    const buildArchMesh = (oPts: [number, number][], iPts: [number, number][], zPos: number) => {
+      const s = new THREE.Shape();
+      s.moveTo(oPts[0][0], oPts[0][1]);
+      for (let i = 1; i < oPts.length; i++) s.lineTo(oPts[i][0], oPts[i][1]);
+      s.closePath();
+      const hole = new THREE.Path();
+      hole.moveTo(iPts[0][0], iPts[0][1]);
+      for (const idx of [5, 4, 3, 2, 1]) hole.lineTo(iPts[idx][0], iPts[idx][1]);
+      hole.closePath();
+      s.holes.push(hole);
+      const geom = new THREE.ExtrudeGeometry(s, {
+        depth: 0.18,
+        bevelEnabled: true,
+        bevelSegments: 1,
+        steps: 1,
+        bevelSize: 0.015,
+        bevelThickness: 0.015,
+      });
+      const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+      mesh.position.set(0, 0, zPos);
+      return mesh;
+    };
+    const portalGroup = new THREE.Group();
+    portalGroup.position.set(2.10, 0.22, -7.50);
+    portalGroup.rotation.set(0, -0.22, 0);
+    const tier1Mesh = buildArchMesh(tier1Outer, tier1Inner, 0);
+    const tier2Mesh = buildArchMesh(tier1Inner, tier2Inner, -0.25);
+    const tier3Mesh = buildArchMesh(tier2Inner, tier3Inner, -0.50);
+    const starryShape = new THREE.Shape();
+    starryShape.moveTo(tier3Inner[0][0], tier3Inner[0][1]);
+    for (let i = 1; i < tier3Inner.length; i++) starryShape.lineTo(tier3Inner[i][0], tier3Inner[i][1]);
+    starryShape.closePath();
+    const starryMesh = new THREE.Mesh(
+      new THREE.ShapeGeometry(starryShape),
+      new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })
+    );
+    starryMesh.position.set(0, 0, -1.25);
+    portalGroup.add(tier1Mesh, tier2Mesh, tier3Mesh, starryMesh);
+    portalGroup.updateMatrixWorld(true);
+
+    const occluders = [tier1Mesh, tier2Mesh, tier3Mesh, starryMesh];
+    const checkCams: Array<{ label: string; pos: [number, number, number] }> = [
+      { label: "CAM 1 (N=1)", pos: getWideStageCameraPreset(1).pos },
+      { label: "CAM 1 (N=4)", pos: getWideStageCameraPreset(4).pos },
+      { label: "CAM 1 (N=8)", pos: getWideStageCameraPreset(8).pos },
+      { label: "CAM 10 (N=1)", pos: getWidePodiumsCameraPreset(1).pos },
+      { label: "CAM 10 (N=4)", pos: getWidePodiumsCameraPreset(4).pos },
+      { label: "CAM 10 (N=8)", pos: getWidePodiumsCameraPreset(8).pos },
+      { label: "CAM 3", pos: OLYMPIA_CAM_PRESETS[3].pos },
+    ];
+    const raycaster = new THREE.Raycaster();
+    for (const [mcLabel, mcPos] of [
+      ["KV_CONCEAL_POS", KV_CONCEAL_POS],
+      ["NH_CONCEAL_POS", NH_CONCEAL_POS],
+    ] as Array<[string, [number, number, number]]>) {
+      for (const cam of checkCams) {
+        const camVec = new THREE.Vector3(...cam.pos);
+        for (let ang = 0; ang < Math.PI * 2; ang += Math.PI / 2) {
+          for (const rr of [0, 0.15]) {
+            for (const dy of [0.005, 0.45, 0.90, 1.35, 1.65]) {
+              const targetVec = new THREE.Vector3(
+                mcPos[0] + rr * Math.cos(ang),
+                mcPos[1] + dy,
+                mcPos[2] + rr * Math.sin(ang)
+              );
+              const dir = targetVec.clone().sub(camVec);
+              const dist = dir.length();
+              dir.normalize();
+              raycaster.set(camVec, dir);
+              const hits = raycaster.intersectObjects(occluders, false);
+              const occluded = hits.some((h) => h.distance < dist - 0.01);
+              assert.ok(
+                occluded,
+                `${mcLabel} envelope (r=${rr}, dy=${dy}) must be occluded behind MC Portal from ${cam.label}`
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
+  runTest(3, "R1.4: Left Formula Wall and Stage Right LED Wing align seamlessly with unified dais", () => {
+    const startMatch = centralLedWallSrc.match(/const wallStartAng = ([^;]+);/);
+    const sweepMatch = centralLedWallSrc.match(/const wallSweepAng = ([^;]+);/);
+    const lowerStartMatch = centralLedWallSrc.match(/const lowerWallStartAng = ([^;]+);/);
+    const lowerSweepMatch = centralLedWallSrc.match(/const lowerWallSweepAng = ([^;]+);/);
+    assert.ok(startMatch && sweepMatch && lowerStartMatch && lowerSweepMatch, "Wall angle declarations must exist");
+
+    const evalMath = (expr: string, env: Record<string, number> = {}) => {
+      const keys = ["Math", ...Object.keys(env)];
+      const vals = [Math, ...Object.values(env)];
+      return new Function(...keys, `return (${expr});`)(...vals) as number;
+    };
+    const wallStart = evalMath(startMatch[1]);
+    const wallSweep = evalMath(sweepMatch[1]);
+    const lowerStart = evalMath(lowerStartMatch[1]);
+    const lowerSweep = evalMath(lowerSweepMatch[1], { wallSweepAng: wallSweep });
+
+    assert.ok(Math.abs(lowerStart - wallStart) < 1e-6, "lowerWallStartAng must equal wallStartAng");
+    assert.ok(Math.abs(lowerSweep - wallSweep) < 1e-6, "lowerWallSweepAng must equal wallSweepAng");
+    assert.ok(
+      wallStart >= 0.9935 * Math.PI && wallStart <= 1.00 * Math.PI,
+      `wallStartAng ${(wallStart / Math.PI).toFixed(4)}π must stay in [0.9935π, 1.00π] to seal portal flank without poke-through`
+    );
+    assert.ok(
+      Math.abs(wallStart + wallSweep - 1.81 * Math.PI) < 0.005,
+      `Front-left wall end ${((wallStart + wallSweep) / Math.PI).toFixed(4)}π must remain ~1.81π`
+    );
+
+    const upstageWx = -0.15 + 8.6 * Math.sin(wallStart);
+    const upstageWz = -0.5 + 8.6 * Math.cos(wallStart);
+    const upstageStageA = Math.atan2(-(upstageWz + 0.5), upstageWx);
+    assert.ok(upstageStageA <= 0.545 * Math.PI, `Upstage wall edge polar a=${(upstageStageA / Math.PI).toFixed(4)}π must meet portal flank`);
+
+    // Stage Right LED Wing ([6.65, 3.25, -2.10], rotY=-1.134, backing half-width 2.75m at lz=-0.36)
+    assert.ok(centralLedWallSrc.includes('<group position={[6.65, 3.25, -2.10]} rotation={[0, -1.134, 0]}>'));
+    const wingCos = Math.cos(-1.134);
+    const wingSin = Math.sin(-1.134);
+    for (const lx of [-2.75, 2.75]) {
+      const wx = 6.65 + lx * wingCos + (-0.36) * wingSin;
+      const wz = -2.10 - lx * wingSin + (-0.36) * wingCos;
+      const a = Math.atan2(-(wz + 0.5), wx);
+      assert.ok(a >= -0.08 * Math.PI && a <= 0.48 * Math.PI, `Right LED Wing corner a=${(a / Math.PI).toFixed(4)}π must sit within right dais sector`);
+    }
+  });
+
+  runTest(3, "R1.5: CAM 3 frames synchronized MC Desk, presenters & portal cleanly within NDC safe bounds", () => {
+    const cam3 = OLYMPIA_CAM_PRESETS[3];
+    assert.ok(cam3.pos[1] >= 1.50 && cam3.target[1] >= 1.34, "CAM 3 Y must reflect +0.08m headroom sync");
+    const cam3Fov = cam3.fov ?? 40;
+    const mcPoints: Array<[string, [number, number, number]]> = [
+      ["CenterMcDesk shroud", [2.00, 1.36, -5.85]],
+      ["CenterMcDesk screen", [2.00, 0.76, -5.85]],
+      ["KV crown", [2.28, 1.75, -6.25]],
+      ["NH crown", [1.84, 1.84, -6.35]],
+      ["Portal center", [2.10, 2.20, -7.50]],
+    ];
+    for (const [label, pt] of mcPoints) {
+      const ndc = projectToNDC(pt, cam3.pos, cam3.target, cam3Fov);
+      assert.ok(ndc.zDist > 0, `${label} must be in front of CAM 3`);
+      assert.ok(
+        Math.abs(ndc.x) <= 0.85 && Math.abs(ndc.y) <= 0.85,
+        `${label} NDC (${ndc.x.toFixed(3)}, ${ndc.y.toFixed(3)}) must sit inside [-0.85, 0.85]`
+      );
+    }
+  });
+
   console.log("\n================================================================================");
   console.log("MILESTONE 1 TEST SUMMARY");
   console.log("================================================================================");
-  console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 7 passed`);
-  console.log(`  Tier 2 (Boundary & Clearances):   ${tier2Count} / 11 passed`);
-  console.log(`  Tier 3 (Camera Framing):          ${tier3Count} / 6 passed`);
-  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 2 passed`);
+  console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / ${tier1Total} passed`);
+  console.log(`  Tier 2 (Boundary & Clearances):   ${tier2Count} / ${tier2Total} passed`);
+  console.log(`  Tier 3 (Camera Framing):          ${tier3Count} / ${tier3Total} passed`);
+  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / ${tier4Total} passed`);
   console.log("--------------------------------------------------------------------------------");
   console.log(`  TOTAL M1 TESTS EXECUTED:          ${totalPassed} / ${totalExecuted} passed (100% Pass Rate)`);
   console.log("================================================================================\n");

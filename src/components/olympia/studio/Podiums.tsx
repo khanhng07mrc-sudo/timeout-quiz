@@ -3052,7 +3052,7 @@ export function CenterMcDesk({
   }, []);
 
   return (
-    <group ref={mcDeskRef} position={[2.00, 0.08, -5.85]} rotation={[0, -0.22, 0]}>
+    <group ref={mcDeskRef} position={[2.00, 0.22, -5.85]} rotation={[0, -0.22, 0]}>
       {/* 1. Sleek Tapered Ground Plinth Base */}
       <mesh position={[0, 0.04, 0]} castShadow={true}>
         <boxGeometry args={[1.36, 0.08, 0.62]} />
@@ -3210,28 +3210,28 @@ export function CenterMcDesk({
   );
 }
 
-// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([2.00, 0.08, -5.85], rotY = -0.22 rad)
-export const KV_DESK_POS: [number, number, number] = [2.28, 0.14, -6.25];
-export const NH_DESK_POS: [number, number, number] = [1.84, 0.14, -6.35];
+// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([2.00, 0.22, -5.85], rotY = -0.22 rad)
+export const KV_DESK_POS: [number, number, number] = [2.28, 0.22, -6.25];
+export const NH_DESK_POS: [number, number, number] = [1.84, 0.22, -6.35];
 export const MC_DESK_ROT_Y = -0.22;
 export const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
 export const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
 
-// MC Concealed Positions (Strictly behind Hexagonal Portal Tier 3 solid slabs: |xLoc| = 2.40m, zLoc = -0.85m)
-export const KV_CONCEAL_POS: [number, number, number] = [4.45, 0.14, -8.02];
-export const NH_CONCEAL_POS: [number, number, number] = [-0.25, 0.14, -9.05];
+// MC Concealed Positions (Inside R=9.00m rear bay on Y=0.22m dais, behind Portal Starry Backdrop zLoc=-1.25m)
+export const KV_CONCEAL_POS: [number, number, number] = [2.55, 0.22, -8.86];
+export const NH_CONCEAL_POS: [number, number, number] = [2.02, 0.22, -8.97];
 
 // Lateral Step-Out Waypoints around OUTER Left/Right Edges of Hexagon Tier 1
-export const KV_SIDE_CTRL_POS: [number, number, number] = [5.30, 0.14, -7.80];
-export const NH_SIDE_CTRL_POS: [number, number, number] = [-1.05, 0.14, -9.25];
-export const KV_OUTER_SIDE_POS: [number, number, number] = [5.15, 0.14, -7.22];
-export const NH_OUTER_SIDE_POS: [number, number, number] = [-1.20, 0.14, -8.65];
-export const KV_OUTER_FRONT_POS: [number, number, number] = [4.95, 0.14, -6.35];
-export const NH_OUTER_FRONT_POS: [number, number, number] = [-1.40, 0.14, -7.80];
+export const KV_SIDE_CTRL_POS: [number, number, number] = [5.30, 0.22, -7.80];
+export const NH_SIDE_CTRL_POS: [number, number, number] = [-1.05, 0.22, -9.25];
+export const KV_OUTER_SIDE_POS: [number, number, number] = [5.15, 0.22, -7.22];
+export const NH_OUTER_SIDE_POS: [number, number, number] = [-1.20, 0.22, -8.65];
+export const KV_OUTER_FRONT_POS: [number, number, number] = [4.95, 0.22, -6.35];
+export const NH_OUTER_FRONT_POS: [number, number, number] = [-1.40, 0.22, -7.80];
 
 // Smooth Forward Arc Control Waypoints curving around front of MC Desk onto Center Circular Dais
-export const KV_WAYPOINT: [number, number, number] = [3.95, 0.15, -3.20];
-export const NH_WAYPOINT: [number, number, number] = [-1.15, 0.15, -4.10];
+export const KV_WAYPOINT: [number, number, number] = [3.95, 0.22, -3.20];
+export const NH_WAYPOINT: [number, number, number] = [-1.15, 0.22, -4.10];
 
 /**
  * Animated 3D MC Presenters (Khánh Vy & Ngọc Huy):
@@ -3435,10 +3435,10 @@ export function McPresenters({
         walkPhase = u * Math.PI * 14;
 
         const kvMidX = (KV_CENTER_POS[0] + KV_DESK_POS[0]) / 2 + 0.20;
-        const kvMidY = 0.16;
+        const kvMidY = 0.20;
         const kvMidZ = (KV_CENTER_POS[2] + KV_DESK_POS[2]) / 2;
         const nhMidX = (NH_CENTER_POS[0] + NH_DESK_POS[0]) / 2 + 0.15;
-        const nhMidY = 0.16;
+        const nhMidY = 0.20;
         const nhMidZ = (NH_CENTER_POS[2] + NH_DESK_POS[2]) / 2;
 
         const w0 = (1 - u) * (1 - u);
@@ -3558,8 +3558,8 @@ export function McPresenters({
       nhX = NH_CONCEAL_POS[0];
       nhY = NH_CONCEAL_POS[1];
       nhZ = NH_CONCEAL_POS[2];
-      kvRotY = 0.85;
-      nhRotY = -1.25;
+      kvRotY = Math.PI - 0.22;
+      nhRotY = Math.PI - 0.22;
       isWalking = false;
     } else {
       // Regular match rounds / post-intro: MCs coaxial behind desk
@@ -3786,7 +3786,7 @@ export function McPresenters({
   return (
     <group>
       {/* ── KHÁNH VY (Female Presenter - Stylized Realism VTV) ── */}
-      <group ref={kvRef} position={[2.28, 0.14, -6.25]} rotation={[0, -0.22, 0]}>
+      <group ref={kvRef} position={[2.28, 0.22, -6.25]} rotation={[0, -0.22, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Feminine Vietnamese Proportions: Smooth, graceful) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.445, 0.000]} scale={[0.96, 1.02, 0.98]}>
@@ -4149,7 +4149,7 @@ export function McPresenters({
       </group>
 
       {/* ── NGỌC HUY (Male Presenter - Metallic Bronze Suit #b88a44) ── */}
-      <group ref={nhRef} position={[1.84, 0.14, -6.35]} rotation={[0, -0.22, 0]}>
+      <group ref={nhRef} position={[1.84, 0.22, -6.35]} rotation={[0, -0.22, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Masculine Vietnamese Proportions: Handsome, defined jaw) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.515, 0.000]} scale={[0.96, 1.04, 1.00]}>

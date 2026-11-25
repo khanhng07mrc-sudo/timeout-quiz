@@ -3669,13 +3669,13 @@ export function CentralLedWall({
     return geom;
   }, []);
 
-  // Expanded formula wall sweep angle (0.76 * Math.PI) frames all 1..8 contestant podiums
-  // and reaches right up to the MC entrance portal / door
-  const wallSweepAng = 0.76 * Math.PI;
-  const wallStartAng = 1.05 * Math.PI;
+  // Expanded formula wall sweep angle (0.815 * Math.PI) frames all 1..8 contestant podiums
+  // and reaches seamlessly behind the MC entrance portal left wing
+  const wallSweepAng = 0.815 * Math.PI;
+  const wallStartAng = 0.995 * Math.PI;
   // Sweep lower base wall and horizontal neon tubes under the entire screen
-  const lowerWallStartAng = 1.05 * Math.PI;
-  const lowerWallSweepAng = wallSweepAng - 0.01 * Math.PI;
+  const lowerWallStartAng = 0.995 * Math.PI;
+  const lowerWallSweepAng = wallSweepAng;
   const FORMULA_WALL_OFFSET_X = -0.15;
 
   // High-Priority Visual Refinement:
@@ -3831,9 +3831,9 @@ export function CentralLedWall({
   return (
     <group>
       {/* ── 1. STAGE CENTER-RIGHT: GRAND GROUNDED CONCENTRIC HEXAGONAL PORTAL (3-TIER STEPPED S14 REDESIGN) ── */}
-      {/* Đặt tại [2.10, 0, -7.50], rotation [0, -0.22, 0] đồng trục 100% với Bục MC và CAM 3 */}
+      {/* Đặt tại [2.10, 0.22, -7.50], rotation [0, -0.22, 0] đồng trục 100% với Bục MC và CAM 3 trên mặt bục nâng */}
       {/* 3 VIỀN (Tier 1, Tier 2, Tier 3) lồng giật cấp theo chiều sâu Z để tạo hiệu ứng đường hầm 3D portal chân thực */}
-      <group position={[2.10, 0, -7.50]} rotation={[0, -0.22, 0]}>
+      <group position={[2.10, 0.22, -7.50]} rotation={[0, -0.22, 0]}>
         {/* Tier 1 (Viền ngoài cùng): 6.40m x 5.00m tại Z = 0 */}
         <CutBottomHexagonArch
           outerPts={HEX_TIER1_OUTER}

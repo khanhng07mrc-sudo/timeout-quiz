@@ -1499,6 +1499,57 @@ let activePlaybackSegment: TTSSegment | null = null;
 let speakerSessionSeq = 0;
 let activeSpeakerSessionId = 0;
 
+const INTRO_BRIDGE_SEGMENTS = new Set<TTSSegment>([
+  "round_intro",
+  "round_transition",
+  "opening_duo",
+  "contestant_intro",
+  "breather",
+  "ready_check",
+  "intro_greeting",
+]);
+
+function isIntroOrBridgeSegment(segment?: TTSSegment | null): boolean {
+  return Boolean(segment && INTRO_BRIDGE_SEGMENTS.has(segment));
+}
+
+function mapDualMcKindToSegment(kind: TtsSegmentKind): TTSSegment {
+  return kind === "greeting"
+    ? "intro_greeting"
+    : kind === "contestant_intro"
+    ? "contestant_intro"
+    : kind === "breather"
+    ? "breather"
+    : kind === "ready_check"
+    ? "ready_check"
+    : kind === "round_transition"
+    ? "round_transition"
+    : kind === "summary_item" || kind === "summary_commentary"
+    ? "score_summary"
+    : kind === "post_match_opening" || kind === "post_match_item"
+    ? "post_match_summary"
+    : kind === "award_item" || kind === "tie_notice"
+    ? "final_awards"
+    : kind === "farewell"
+    ? "closing_farewell"
+    : kind === "hype"
+    ? "hype_filler"
+    : "round_intro";
+}
+
+function isAutoplayBlockedError(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    const msg = typeof err === "string" ? err : "";
+    return /webaudio_context_suspended|notallowederror|user didn't interact|autoplay/i.test(msg);
+  }
+  const name = String((err as any).name || "");
+  const message = String((err as any).message || "");
+  return (
+    name === "NotAllowedError" ||
+    /webaudio_context_suspended|notallowederror|user didn't interact|autoplay/i.test(message)
+  );
+}
+
 export function getActivePlaybackSegment(): TTSSegment | null {
   return activePlaybackSegment;
 }
@@ -1662,6 +1713,12 @@ function getOrCreateAudioContext(): AudioContext | null {
 
 export function unlockOlympiaTTS(): void {
   if (typeof window === "undefined") return;
+  if (
+    engineStatus.lastFallbackReason &&
+    isAutoplayBlockedError(engineStatus.lastFallbackReason)
+  ) {
+    resetTtsServerFallback();
+  }
   try {
     const ctx = getOrCreateAudioContext();
     if (ctx && ctx.state === "suspended" && typeof ctx.resume === "function") {
@@ -1693,6 +1750,14 @@ export function unlockOlympiaTTS(): void {
 // Playback coordination state
 let playbackEpoch = 0;
 let activePlaybackPromise: Promise<boolean> | null = null;
+let pendingIntroBridgeCount = 0;
+
+export function hasPendingIntroOrBridgeSpeech(): boolean {
+  return (
+    activePlaybackPromise !== null &&
+    (pendingIntroBridgeCount > 0 || isIntroOrBridgeSegment(activePlaybackSegment))
+  );
+}
 let unlockedSpeechSynthesisRef: SpeechSynthesis | null = null;
 let activeAbortController: AbortController | null = null;
 let activeAudioCleanup: (() => void) | null = null;
@@ -1779,6 +1844,7 @@ export function computeBoundaryStopDelayMs(
 export function smoothStopOlympiaTTS(fadeMs: number = 45, maxWaitMs: number = 160): number {
   playbackEpoch++;
   activePlaybackPromise = null;
+  pendingIntroBridgeCount = 0;
 
   if (boundaryCleanupTimer) {
     clearTimeout(boundaryCleanupTimer);
@@ -1856,6 +1922,7 @@ export function cancelQuestionTTS(): void {
 export function cancelTTS(): void {
   playbackEpoch++;
   activePlaybackPromise = null;
+  pendingIntroBridgeCount = 0;
   stopRequested = false;
   activePlaybackSegment = null;
 
@@ -2025,6 +2092,7 @@ export function speakTimerExpiredTTS(round?: string, options?: SpeakTTSOptions):
 function cancelPlaybackOnly(): void {
   playbackEpoch++;
   activePlaybackPromise = null;
+  pendingIntroBridgeCount = 0;
   stopRequested = false;
   activePlaybackSegment = null;
 
@@ -2767,6 +2835,7 @@ async function runServerTtsPipeline(
   for (let i = 0; i < segments.length; i++) {
     if (epoch !== playbackEpoch) return false;
     const seg = segments[i];
+    let webAudioErr: unknown = null;
 
     try {
       const buf = prefetchPromise
@@ -2797,7 +2866,8 @@ async function runServerTtsPipeline(
       let played = false;
       try {
         played = await playAudioBufferWithWebAudio(buf, seg.text, role, epoch);
-      } catch {
+      } catch (waErr) {
+        webAudioErr = waErr;
         if (epoch !== playbackEpoch) return false;
         played = await playAudioBufferWithHtmlAudio(buf, seg.text, role, epoch);
       }
@@ -2810,12 +2880,24 @@ async function runServerTtsPipeline(
       }
       // Server failed or audio decode unavailable -> record fallback and hand remaining segments to Web Speech
       const reason = err instanceof Error ? err.message : String(err || "server_tts_failed");
-      const cooldownMs = transportConfig.cooldownMs ?? DEFAULT_COOLDOWN_MS;
-      updateEngineStatus({
-        mode: "webspeech",
-        lastFallbackReason: reason,
-        serverCooldownUntil: Date.now() + cooldownMs,
-      });
+      const autoplayBlocked =
+        isAutoplayBlockedError(err) ||
+        (isAutoplayBlockedError(webAudioErr) &&
+          String((err as any)?.message || "") === "html_audio_unavailable");
+      if (autoplayBlocked) {
+        updateEngineStatus({
+          mode: "server",
+          lastFallbackReason: reason,
+          serverCooldownUntil: 0,
+        });
+      } else {
+        const cooldownMs = transportConfig.cooldownMs ?? DEFAULT_COOLDOWN_MS;
+        updateEngineStatus({
+          mode: "webspeech",
+          lastFallbackReason: reason,
+          serverCooldownUntil: Date.now() + cooldownMs,
+        });
+      }
       options?.onError?.(err);
 
       const remaining = segments.slice(i);
@@ -2852,6 +2934,24 @@ function speakOlympiaTTSNow(
     return Promise.resolve(false);
   }
 
+  if (boundaryCleanupTimer) {
+    clearTimeout(boundaryCleanupTimer);
+    boundaryCleanupTimer = null;
+    if (activeAudioCleanup) {
+      const staleCleanup = activeAudioCleanup;
+      activeAudioCleanup = null;
+      try {
+        staleCleanup();
+      } catch {}
+    }
+    if ("speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+  }
+  stopRequested = false;
+
   const role = resolveMCRole(options);
   const totalWordCount = segments
     .map((s) => s.text)
@@ -2885,9 +2985,14 @@ function speakOlympiaTTSInternal(
     return Promise.resolve(false);
   }
 
+  const trackIntroBridge = trackTopLevel && isIntroOrBridgeSegment(options?.segment);
+
   if (options?.queueAfterActive) {
     const prev = activePlaybackPromise;
     const queuedEpoch = playbackEpoch;
+    if (trackIntroBridge) {
+      pendingIntroBridgeCount++;
+    }
     const queuedPromise = (async () => {
       if (prev) {
         try {
@@ -2904,6 +3009,9 @@ function speakOlympiaTTSInternal(
     if (trackTopLevel) {
       activePlaybackPromise = queuedPromise;
       void queuedPromise.finally(() => {
+        if (trackIntroBridge && queuedEpoch === playbackEpoch) {
+          pendingIntroBridgeCount = Math.max(0, pendingIntroBridgeCount - 1);
+        }
         if (activePlaybackPromise === queuedPromise) {
           activePlaybackPromise = null;
         }
@@ -2917,6 +3025,9 @@ function speakOlympiaTTSInternal(
   }
 
   const epoch = playbackEpoch;
+  if (trackIntroBridge) {
+    pendingIntroBridgeCount++;
+  }
   const p = speakOlympiaTTSNow(text, options, epoch);
   if (trackTopLevel) {
     if (options?.noCancel && activePlaybackPromise) {
@@ -2929,6 +3040,11 @@ function speakOlympiaTTSInternal(
         }
       });
       activePlaybackPromise = combined;
+      void p.finally(() => {
+        if (trackIntroBridge && epoch === playbackEpoch) {
+          pendingIntroBridgeCount = Math.max(0, pendingIntroBridgeCount - 1);
+        }
+      });
       void combined.finally(() => {
         if (activePlaybackPromise === combined) {
           activePlaybackPromise = null;
@@ -2937,6 +3053,9 @@ function speakOlympiaTTSInternal(
     } else {
       activePlaybackPromise = p;
       void p.finally(() => {
+        if (trackIntroBridge && epoch === playbackEpoch) {
+          pendingIntroBridgeCount = Math.max(0, pendingIntroBridgeCount - 1);
+        }
         if (activePlaybackPromise === p) {
           activePlaybackPromise = null;
         }
@@ -2971,7 +3090,12 @@ export const speakSmartQuestion = (
   questionText: string,
   options?: SpeakTTSOptions
 ) => {
-  speakOlympiaTTS(questionText, { ...options, segment: "question" });
+  const shouldQueue = options?.queueAfterActive ?? hasPendingIntroOrBridgeSpeech();
+  speakOlympiaTTS(questionText, {
+    ...options,
+    segment: "question",
+    queueAfterActive: shouldQueue,
+  });
 };
 
 /**
@@ -2988,12 +3112,18 @@ export function speakDualMcScriptAsync(
   const queueAfter = Boolean(options?.queueAfterActive);
   const noCancel = Boolean(options?.noCancel) || queueAfter;
   const prevPlayback = queueAfter ? activePlaybackPromise : null;
+  const hasIntroBridgeSeg = segments.some((s) =>
+    isIntroOrBridgeSegment(mapDualMcKindToSegment(s.kind))
+  );
 
   if (!noCancel) {
     cancelPlaybackOnly();
   }
 
   const epoch = playbackEpoch;
+  if (hasIntroBridgeSeg) {
+    pendingIntroBridgeCount++;
+  }
 
   const scriptPromise = (async () => {
     if (prevPlayback) {
@@ -3008,28 +3138,7 @@ export function speakDualMcScriptAsync(
       const seg = segments[i];
       options?.onSegmentStart?.(seg, i);
 
-      const ttsSegment: TTSSegment =
-        seg.kind === "greeting"
-          ? "intro_greeting"
-          : seg.kind === "contestant_intro"
-          ? "contestant_intro"
-          : seg.kind === "breather"
-          ? "breather"
-          : seg.kind === "ready_check"
-          ? "ready_check"
-          : seg.kind === "round_transition"
-          ? "round_transition"
-          : seg.kind === "summary_item" || seg.kind === "summary_commentary"
-          ? "score_summary"
-          : seg.kind === "post_match_opening" || seg.kind === "post_match_item"
-          ? "post_match_summary"
-          : seg.kind === "award_item" || seg.kind === "tie_notice"
-          ? "final_awards"
-          : seg.kind === "farewell"
-          ? "closing_farewell"
-          : seg.kind === "hype"
-          ? "hype_filler"
-          : "round_intro";
+      const ttsSegment = mapDualMcKindToSegment(seg.kind);
 
       const completed = await speakOlympiaTTSInternal(
         seg.text,
@@ -3080,6 +3189,11 @@ export function speakDualMcScriptAsync(
       }
     });
     activePlaybackPromise = combined;
+    void scriptPromise.finally(() => {
+      if (hasIntroBridgeSeg && epoch === playbackEpoch) {
+        pendingIntroBridgeCount = Math.max(0, pendingIntroBridgeCount - 1);
+      }
+    });
     void combined.finally(() => {
       if (activePlaybackPromise === combined) {
         activePlaybackPromise = null;
@@ -3088,6 +3202,9 @@ export function speakDualMcScriptAsync(
   } else {
     activePlaybackPromise = scriptPromise;
     void scriptPromise.finally(() => {
+      if (hasIntroBridgeSeg && epoch === playbackEpoch) {
+        pendingIntroBridgeCount = Math.max(0, pendingIntroBridgeCount - 1);
+      }
       if (activePlaybackPromise === scriptPromise) {
         activePlaybackPromise = null;
       }

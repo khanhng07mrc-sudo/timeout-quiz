@@ -106232,6 +106232,16 @@ var OlympiaGame = class _OlympiaGame {
     this.state.ttsSeq = (this.state.ttsSeq ?? 0) + 1;
     return this.state.ttsSeq;
   }
+  emitTtsStop(now, reason, immediate = true) {
+    const st = this.state;
+    st.ttsCommand = {
+      seq: this.nextTtsSeq(),
+      action: "stop",
+      issuedAt: now,
+      round: st.currentRound ?? void 0,
+      meta: { immediate, reason }
+    };
+  }
   focusPostMatchSeat(sm, idx, now) {
     const st = this.state;
     const seatId = sm.orderedSeats[idx];
@@ -107171,7 +107181,20 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "rightScreen:setMode": {
-        st.rightScreenMode = a.mode || "auto";
+        const VALID_RIGHT_SCREEN_MODES = /* @__PURE__ */ new Set([
+          "auto",
+          "roundTitle",
+          "logo",
+          "question",
+          "scoreboard",
+          "roundGraphics",
+          "camera"
+        ]);
+        const modeRaw = a.mode == null || a.mode === "" ? "auto" : String(a.mode);
+        if (!VALID_RIGHT_SCREEN_MODES.has(modeRaw)) {
+          return fail("Ch\u1EBF \u0111\u1ED9 m\xE0n h\xECnh ph\u1EA3i kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        st.rightScreenMode = modeRaw;
         return OK;
       }
       case "score:set": {
@@ -107858,6 +107881,9 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
     }
+    if (type === "kd:start" && st.banner) {
+      return fail("\u0110ang ph\xE1t video gi\u1EDBi thi\u1EC7u ph\u1EA7n thi, vui l\xF2ng ch\u1EDD k\u1EBFt th\xFAc ho\u1EB7c b\u1EA5m B\u1ECF qua Intro tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u!");
+    }
     if (st.introTimer) st.introTimer = null;
     if (type.startsWith("kd:") || type.startsWith("vcnv:") || type.startsWith("tt:") || type.startsWith("vd:") || type.startsWith("chp:")) {
       if (st.banner) {
@@ -107988,6 +108014,7 @@ var OlympiaGame = class _OlympiaGame {
         }
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
         if (kd.phase === "segmentDone") {
+          this.emitTtsStop(now, "kd:nextSegment", true);
           if (isLastSeg) {
             this.finishRound(now);
             return OK;
@@ -108014,6 +108041,7 @@ var OlympiaGame = class _OlympiaGame {
         const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
         const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
         if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
+          this.emitTtsStop(now, "kd:turnDone", true);
           kd.phase = "segmentDone";
           kd.started = false;
           kd.questionRevealed = false;
@@ -108093,6 +108121,7 @@ var OlympiaGame = class _OlympiaGame {
           return OK;
         }
         kd.qIdx += 1;
+        this.emitTtsStop(now, kd.qIdx >= seg.questions ? "kd:turnDone" : "kd:nextQuestion", true);
         if (kd.qIdx >= seg.questions) {
           kd.phase = "segmentDone";
           kd.started = false;
@@ -108218,6 +108247,9 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "kd:start": {
+        if (st.banner) {
+          return fail("\u0110ang ph\xE1t video gi\u1EDBi thi\u1EC7u ph\u1EA7n thi, vui l\xF2ng ch\u1EDD k\u1EBFt th\xFAc ho\u1EB7c b\u1EA5m B\u1ECF qua Intro tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u!");
+        }
         if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
           return fail("L\u01B0\u1EE3t thi \u0111ang di\u1EC5n ra, kh\xF4ng th\u1EC3 nh\u1EA5n B\u1EAFt \u0111\u1EA7u l\u1EA1i!");
         }
@@ -108288,6 +108320,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "kd:selectSegment": {
         const applySegment = (idx) => {
+          this.emitTtsStop(now, "kd:selectSegment", true);
           kd.segIdx = idx;
           kd.qIdx = -1;
           kd.phase = "intro";
@@ -108346,6 +108379,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "kd:finishTurn": {
         if (!kd.started && kd.phase === "segmentDone") return OK;
+        this.emitTtsStop(now, "kd:finishTurn", true);
         if (kd.globalTimer) {
           finishTimer(kd.globalTimer);
         }
@@ -108546,6 +108580,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "kd:skip": {
         if (kd.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+        this.emitTtsStop(now, "kd:skip", true);
         pauseTimer(kd.timer, now);
         kd.buzzOpen = false;
         kd.buzzUnlockAt = void 0;

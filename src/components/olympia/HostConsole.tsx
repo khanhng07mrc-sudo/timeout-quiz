@@ -3173,7 +3173,9 @@ function KhoiDongDeck({
             {/* ▶ BẮT ĐẦU */}
             {(() => {
               const seg = kd.segments[kd.segIdx];
-              const isLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro";
+              const isBannerActive = Boolean(state.banner);
+              const isTurnLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro";
+              const isLocked = isBannerActive || isTurnLocked;
               return (
                 <button
                   type="button"
@@ -3184,7 +3186,13 @@ function KhoiDongDeck({
                       ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 opacity-60"
                       : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white cursor-pointer shadow-cyan-600/20"
                   }`}
-                  title={isLocked ? "Lượt thi đang diễn ra, còn câu hỏi chưa thi xong" : "Bắt đầu lượt thi"}
+                  title={
+                    isBannerActive
+                      ? "Đang phát video giới thiệu phần thi, vui lòng chờ kết thúc hoặc bấm Bỏ qua Intro trước khi bắt đầu"
+                      : isTurnLocked
+                      ? "Lượt thi đang diễn ra, còn câu hỏi chưa thi xong"
+                      : "Bắt đầu lượt thi"
+                  }
                 >
                   <span>▶</span>
                   <span>BẮT ĐẦU</span>

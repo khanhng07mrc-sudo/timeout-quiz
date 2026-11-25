@@ -1496,7 +1496,8 @@ test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () 
   g.joinSeat("TS1", "k1");
   g.joinSeat("TS2", "k2");
   g.hostAction({ type: "game:start" }, 1000);
-  g.hostAction({ type: "intro:skip" }, 2000); // vào khoiDong TS1
+  g.hostAction({ type: "intro:skip" }, 2000); // vào khoiDong TS1 (sets st.banner)
+  g.hostAction({ type: "banner:skip" }, 2500);
   
   // TS1 lượt thi chạy và kết thúc lượt
   g.hostAction({ type: "kd:start" }, 3000);
@@ -2366,6 +2367,7 @@ test("Score Summary (R7): strictly blocked mid-round, allowed at end-of-round, m
   act(g, "game:start", {}, 1000);
   assert.equal(canStartScoreSummary(g.state), false, "Blocked during opening introTimer");
   act(g, "intro:skip", {}, 1500);
+  act(g, "banner:skip", {}, 1800);
   assert.equal(canStartScoreSummary(g.state), false, "Blocked at start of Khởi Động before round finishes");
 
   act(g, "kd:start", {}, 2000);
@@ -4175,6 +4177,111 @@ test("Right LED Screen (R5): engine validates all 7 modes, rejects invalid modes
   const badRes = g.hostAction({ type: "rightScreen:setMode", mode: "invalid_mode_xyz" as any }, 100);
   assert.equal(badRes.ok, false);
   assert.equal(g.state.rightScreenMode, "auto");
+});
+
+test("R2: kd:start banner guard across O26/O15/O23/O22 preserves banner & succeeds after banner dismissal", () => {
+  for (const rulesetId of ["O26", "O15", "O23", "O22"] as const) {
+    // 1. intro:skip sets banner -> kd:start rejected -> banner:skip allows kd:start
+    const g1 = game(rulesetId, ["khoiDong"], 4);
+    act(g1, "game:start", {}, 1000);
+    act(g1, "intro:skip", {}, 2000);
+    assert.equal(g1.state.banner, "Khởi Động");
+
+    const blockedRes = g1.hostAction({ type: "kd:start" }, 2500);
+    assert.equal(blockedRes.ok, false, `${rulesetId}: kd:start must fail while banner is active`);
+    assert.equal(g1.state.banner, "Khởi Động", `${rulesetId}: failed kd:start must not clear banner`);
+    assert.equal(Boolean(g1.state.khoiDong!.started), false);
+    assert.notEqual(g1.state.cue?.sound, "1_KhoiDong/ready");
+
+    act(g1, "banner:skip", {}, 3000);
+    assert.equal(g1.state.banner, null);
+    assert.ok(g1.state.roundIntroDoneAt != null);
+
+    const okRes = g1.hostAction({ type: "kd:start" }, 3500);
+    assert.equal(okRes.ok, true, `${rulesetId}: kd:start succeeds after banner:skip`);
+    assert.equal(g1.state.khoiDong!.started, true);
+    assert.equal(g1.state.khoiDong!.startCooldownUntil, 7000);
+    assert.ok(g1.state.kdIntroTimer != null);
+    assert.equal(g1.state.cue?.sound, "1_KhoiDong/ready");
+
+    // 2. round:force sets banner -> blocked until banner:hide (>= 6.5s)
+    const g2 = game(rulesetId, ["khoiDong"], 4);
+    act(g2, "round:force", { round: "khoiDong" }, 1000);
+    assert.equal(g2.state.banner, "Khởi Động");
+    assert.equal(g2.hostAction({ type: "kd:start" }, 2000).ok, false);
+    act(g2, "banner:hide", { seq: g2.state.bannerSeq }, 8000);
+    assert.equal(g2.state.banner, null);
+    assert.equal(g2.hostAction({ type: "kd:start" }, 8100).ok, true);
+
+    // 3. 10.5s tick() fallback clears banner -> kd:start succeeds
+    const g3 = game(rulesetId, ["khoiDong"], 4);
+    act(g3, "round:force", { round: "khoiDong" }, 1000);
+    assert.equal(g3.hostAction({ type: "kd:start" }, 5000).ok, false);
+    g3.tick(11600);
+    assert.equal(g3.state.banner, null);
+    assert.equal(g3.hostAction({ type: "kd:start" }, 11700).ok, true);
+  }
+});
+
+test("R2: emitTtsStop fires on explicit interrupts (kd:skip/finishTurn/selectSegment/nextSegment/Q2+), never on kd:start or Q1 open", () => {
+  const g = game("O26", ["khoiDong"], 4);
+  act(g, "round:force", { round: "khoiDong" }, 1000);
+  act(g, "banner:skip", {}, 1500);
+  assert.equal(g.state.ttsCommand ?? null, null);
+
+  // kd:start must NOT emit ttsCommand
+  act(g, "kd:start", {}, 2000);
+  assert.equal(g.state.ttsCommand ?? null, null, "kd:start must not stop round_intro / kd-seg-0");
+
+  // kd:next opening Q1 (qIdx: -1 -> 0) must NOT emit ttsCommand
+  act(g, "kd:next", {}, 6000);
+  assert.equal(g.state.khoiDong!.qIdx, 0);
+  assert.equal(g.state.ttsCommand ?? null, null, "Opening Q1 must not emit ttsCommand stop");
+
+  // kd:skip emits immediate stop
+  act(g, "kd:skip", {}, 7000);
+  assert.equal(g.state.khoiDong!.phase, "result");
+  assert.equal(g.state.khoiDong!.lastVerdict, null);
+  assert.equal(g.state.ttsCommand?.action, "stop");
+  assert.equal(g.state.ttsCommand?.meta?.immediate, true);
+  assert.equal(g.state.ttsCommand?.meta?.reason, "kd:skip");
+  const seqAfterSkip = g.state.ttsCommand!.seq;
+
+  // kd:next advancing Q1 -> Q2 emits immediate stop with incrementing seq
+  act(g, "kd:next", {}, 7500);
+  assert.equal(g.state.khoiDong!.qIdx, 1);
+  assert.equal(g.state.ttsCommand?.action, "stop");
+  assert.equal(g.state.ttsCommand?.meta?.immediate, true);
+  assert.equal(g.state.ttsCommand?.meta?.reason, "kd:nextQuestion");
+  assert.ok(g.state.ttsCommand!.seq > seqAfterSkip);
+  const seqAfterQ2 = g.state.ttsCommand!.seq;
+
+  // kd:finishTurn emits immediate stop
+  act(g, "kd:finishTurn", {}, 8000);
+  assert.equal(g.state.khoiDong!.phase, "segmentDone");
+  assert.equal(g.state.ttsCommand?.action, "stop");
+  assert.equal(g.state.ttsCommand?.meta?.immediate, true);
+  assert.equal(g.state.ttsCommand?.meta?.reason, "kd:finishTurn");
+  assert.ok(g.state.ttsCommand!.seq > seqAfterQ2);
+  const seqAfterFinish = g.state.ttsCommand!.seq;
+
+  // kd:next advancing from segmentDone -> next segment emits immediate stop
+  act(g, "kd:next", {}, 8500);
+  assert.equal(g.state.khoiDong!.segIdx, 1);
+  assert.equal(g.state.khoiDong!.phase, "intro");
+  assert.equal(g.state.ttsCommand?.action, "stop");
+  assert.equal(g.state.ttsCommand?.meta?.immediate, true);
+  assert.equal(g.state.ttsCommand?.meta?.reason, "kd:nextSegment");
+  assert.ok(g.state.ttsCommand!.seq > seqAfterFinish);
+  const seqAfterNextSeg = g.state.ttsCommand!.seq;
+
+  // kd:selectSegment emits immediate stop
+  act(g, "kd:selectSegment", { kind: "shared" }, 9000);
+  assert.equal(g.state.khoiDong!.segIdx, 4);
+  assert.equal(g.state.ttsCommand?.action, "stop");
+  assert.equal(g.state.ttsCommand?.meta?.immediate, true);
+  assert.equal(g.state.ttsCommand?.meta?.reason, "kd:selectSegment");
+  assert.ok(g.state.ttsCommand!.seq > seqAfterNextSeg);
 });
 
 // Import Smart TTS test suite

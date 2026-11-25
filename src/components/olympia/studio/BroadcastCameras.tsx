@@ -800,7 +800,7 @@ export function BroadcastCameras({
   // Active when covering Cam 2 (LED Wall), Cam 3 (MC Desk), or Cam 11 (Audience/Stairs)
   const leftCamSpec: CameraTargetSpec = useMemo(() => {
     if (camAngle === 3) {
-      return { target: [2.05, 1.28, -6.10], isLive: true }; // Coaxial straight-on MC Desk & Grounded Hexagon Portal
+      return { target: [2.05, 1.36, -6.10], isLive: true }; // Coaxial straight-on MC Desk & Grounded Hexagon Portal
     }
     if (camAngle === 2) {
       return { target: [6.65, 3.25, -2.10], isLive: true }; // Main LED Wall

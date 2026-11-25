@@ -313,11 +313,29 @@ export function createFloorLaurelWreathCanvas(): HTMLCanvasElement {
 }
 
 /**
+ * Smoothstep outer radius profile for the unified raised dais platform.
+ * Standard contestant & stage-right arc uses R = 7.60m, while the rear MC portal bay
+ * across [0.29π, 0.498π] extends smoothly to R = 9.00m at Y = 0.22m.
+ */
+export function getOuterDaisRadius(a: number): number {
+  if (a <= 0.29 * Math.PI || a >= 0.498 * Math.PI) return 7.60;
+  if (a < 0.31 * Math.PI) {
+    const t = (a - 0.29 * Math.PI) / (0.02 * Math.PI);
+    const s = t * t * (3 - 2 * t);
+    return 7.60 + (9.00 - 7.60) * s;
+  }
+  if (a <= 0.475 * Math.PI) return 9.00;
+  const t = (a - 0.475 * Math.PI) / (0.023 * Math.PI);
+  const s = t * t * (3 - 2 * t);
+  return 9.00 + (7.60 - 9.00) * s;
+}
+
+/**
  * Creates 2D Annular Sector Shape for the Raised Contestant Dais
  */
 function createAnnularSectorShape(
   rIn: number,
-  rOut: number,
+  rOut: number | ((ang: number) => number),
   startAng: number,
   endAng: number,
   segments: number = 36
@@ -326,8 +344,9 @@ function createAnnularSectorShape(
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     const a = startAng + t * (endAng - startAng);
-    const x = Math.cos(a) * rOut;
-    const y = Math.sin(a) * rOut;
+    const radiusOut = typeof rOut === "function" ? rOut(a) : rOut;
+    const x = Math.cos(a) * radiusOut;
+    const y = Math.sin(a) * radiusOut;
     if (i === 0) shape.moveTo(x, y);
     else shape.lineTo(x, y);
   }
@@ -638,9 +657,9 @@ export function StudioFloor({
     []
   );
 
-  // Raised Contestant Dais Extruded Geometry (Y = 0.22m for 4 to 8 contestants)
+  // Raised Unified Stage Dais Extruded Geometry (Y = 0.22m, spanning [-0.08π, 1.28π] with integral R=9.00m MC Portal bay)
   const daisGeometry = useMemo(() => {
-    const shape = createAnnularSectorShape(5.2, 7.6, 0.50 * Math.PI, 1.28 * Math.PI, 64);
+    const shape = createAnnularSectorShape(5.2, getOuterDaisRadius, -0.08 * Math.PI, 1.28 * Math.PI, 256);
     return new THREE.ExtrudeGeometry(shape, {
       depth: 0.22,
       bevelEnabled: true,
@@ -651,11 +670,11 @@ export function StudioFloor({
     });
   }, []);
 
-  // Step-light points along the front edge of the contestant platform (r = 5.2m)
+  // Step-light points along the continuous front edge of the unified dais platform (r = 5.2m)
   const stepLightPoints = useMemo(() => {
     const pts: THREE.Vector3[] = [];
-    const count = 64;
-    const startAng = 0.50 * Math.PI;
+    const count = 112;
+    const startAng = -0.08 * Math.PI;
     const endAng = 1.28 * Math.PI;
     for (let i = 0; i <= count; i++) {
       const t = i / count;
@@ -667,17 +686,17 @@ export function StudioFloor({
     return pts;
   }, []);
 
-  // 3D Volumetric Glowing Neon Tube along the curved front step lip of the contestant platform (R = 5.20m, Y = 0.215m)
+  // 3D Volumetric Glowing Neon Tube along the curved front step lip of the unified platform (R = 5.20m, Y = 0.215m)
   const daisCoveTubeGeom = useMemo(() => {
     const curve = new THREE.CatmullRomCurve3(stepLightPoints, false);
-    return new THREE.TubeGeometry(curve, 64, 0.022, 12, false);
+    return new THREE.TubeGeometry(curve, 112, 0.022, 12, false);
   }, [stepLightPoints]);
 
   // Recessed Metallic Trim / Casing along the upper lip of the cove (R = 5.23m, Y = 0.224m)
   const daisCoveTrimGeom = useMemo(() => {
     const trimPoints = stepLightPoints.map((p) => new THREE.Vector3(p.x * 1.002, 0.224, (p.z + 0.5) * 1.002 - 0.5));
     const curve = new THREE.CatmullRomCurve3(trimPoints, false);
-    return new THREE.TubeGeometry(curve, 64, 0.015, 8, false);
+    return new THREE.TubeGeometry(curve, 112, 0.015, 8, false);
   }, [stepLightPoints]);
 
   // Continuous Global Floor Cove Light Glow Ribbons (Unbroken luminous cyan sheets)
@@ -686,60 +705,14 @@ export function StudioFloor({
     []
   );
 
-  // Continuous Curved Cove Vertical Fascia Backplate inside the left slot
+  // Continuous Curved Cove Vertical Fascia Backplate inside the unified slot [-0.08π, 1.28π]
   const coveLeftFasciaGeom = useMemo(
-    () => createCurvedCoveFasciaGeometry(5.21, 0.50 * Math.PI, 1.28 * Math.PI, 0.015, 0.215, 64),
+    () => createCurvedCoveFasciaGeometry(5.21, -0.08 * Math.PI, 1.28 * Math.PI, 0.015, 0.215, 112),
     []
   );
-
-  // Raised Stage-Right Platform Extruded Geometry (Y = 0.22m, balancing studio right side)
-  const rightDaisGeometry = useMemo(() => {
-    const shape = createAnnularSectorShape(5.2, 7.6, -0.08 * Math.PI, 0.48 * Math.PI, 48);
-    return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.22,
-      bevelEnabled: true,
-      bevelSegments: 2,
-      steps: 1,
-      bevelSize: 0.03,
-      bevelThickness: 0.02,
-    });
-  }, []);
-
-  // Step-light points along the front edge of the stage-right platform (r = 5.2m)
-  const rightStepLightPoints = useMemo(() => {
-    const pts: THREE.Vector3[] = [];
-    const count = 48;
-    const startAng = -0.08 * Math.PI;
-    const endAng = 0.48 * Math.PI;
-    for (let i = 0; i <= count; i++) {
-      const t = i / count;
-      const a = startAng + t * (endAng - startAng);
-      const x = Math.cos(a) * 5.22;
-      const z = -Math.sin(a) * 5.22;
-      pts.push(new THREE.Vector3(x, 0.215, z - 0.5));
-    }
-    return pts;
-  }, []);
-
-  const rightDaisCoveTubeGeom = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3(rightStepLightPoints, false);
-    return new THREE.TubeGeometry(curve, 64, 0.022, 12, false);
-  }, [rightStepLightPoints]);
-
-  const rightDaisCoveTrimGeom = useMemo(() => {
-    const trimPoints = rightStepLightPoints.map((p) => new THREE.Vector3(p.x * 1.002, 0.224, (p.z + 0.5) * 1.002 - 0.5));
-    const curve = new THREE.CatmullRomCurve3(trimPoints, false);
-    return new THREE.TubeGeometry(curve, 64, 0.015, 8, false);
-  }, [rightStepLightPoints]);
 
   const coveRightFloorGlowGeom = useMemo(
-    () => createAnnularGlowGeometry(5.20, 4.80, -0.08 * Math.PI, 0.48 * Math.PI, 64, 0.005),
-    []
-  );
-
-  // Continuous Curved Cove Vertical Fascia Backplate inside the right slot
-  const coveRightFasciaGeom = useMemo(
-    () => createCurvedCoveFasciaGeometry(5.21, -0.08 * Math.PI, 0.48 * Math.PI, 0.015, 0.215, 64),
+    () => createAnnularGlowGeometry(5.20, 4.80, -0.08 * Math.PI, 0.50 * Math.PI, 64, 0.005),
     []
   );
 
@@ -861,8 +834,8 @@ export function StudioFloor({
 
       {/* Redundant lower floor laurel decal removed to prevent z-fighting and bleed-through. Official floor decal is managed exclusively by CenterFloorStage with full transition control. */}
 
-      {/* ── 4. RAISED CONTESTANT DAIS PLATFORM (+8cm step, Y = 0.22m, White Riser Skirt) ── */}
-      {/* Curved dais elevating contestant stations proudly above central stage */}
+      {/* ── 4. RAISED UNIFIED DAIS PLATFORM (+8cm step, Y = 0.22m, Dark Satin Riser Skirt) ── */}
+      {/* Continuous dais spanning [-0.08π, 1.28π] with integral R=9.00m rear MC Portal bay */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
         <mesh geometry={daisGeometry} receiveShadow={true}>
           {/* Top & bottom surfaces */}
@@ -885,8 +858,8 @@ export function StudioFloor({
         </mesh>
       </group>
 
-      {/* ── 4B. CONTESTANT DAIS COVE LIGHTING (ĐÈN RỌI SÁNG Ở KHE BỤC THÍ SINH) ── */}
-      {/* 1. Volumetric 3D Glowing Neon Tube inside the step cove slot */}
+      {/* ── 4B. UNIFIED DAIS COVE LIGHTING (ĐÈN RỌI SÁNG LIỀN MẠCH [-0.08π, 1.28π]) ── */}
+      {/* 1. Volumetric 3D Glowing Neon Tube inside the continuous step cove slot */}
       <mesh geometry={daisCoveTubeGeom}>
         <meshBasicMaterial color={ringColor} />
       </mesh>
@@ -896,7 +869,7 @@ export function StudioFloor({
         <meshStandardMaterial color="#0b1220" metalness={0.20} roughness={0.25} />
       </mesh>
 
-      {/* 3. Continuous Glowing Cove Fascia Backplate inside the left slot (100% parametric fit) */}
+      {/* 3. Continuous Glowing Cove Fascia Backplate inside the unified slot (100% parametric fit) */}
       <mesh geometry={coveLeftFasciaGeom}>
         <meshStandardMaterial
           color={ringColor}
@@ -910,49 +883,6 @@ export function StudioFloor({
 
       {/* 5. Global Diffuse Overhead Fill Light for Left Contestant Cluster (Synchronized with stage lighting color) */}
       <pointLight position={[-4.2, 2.5, -2.8]} color={ringColor} intensity={2.0 * liveFactor} distance={8} decay={1.6} />
-
-      {/* ── 4C. STAGE-RIGHT RAISED PLATFORM & COVE LIGHTING (ĐÈN KHE TOÀN CỤC BÊN PHẢI) ── */}
-      <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <mesh geometry={rightDaisGeometry} receiveShadow={true}>
-          {/* Top & bottom surfaces */}
-          <meshStandardMaterial
-            attach="material-0"
-            color="#030718"
-            metalness={0.05}
-            roughness={0.09}
-            envMapIntensity={1.8}
-          />
-          {/* Vertical dark satin riser skirt (Lit by dynamic blue/red global cove lighting, restrained broadcast look) */}
-          <meshStandardMaterial
-            attach="material-1"
-            color="#0f172a"
-            emissive={ringColor}
-            emissiveIntensity={0.15}
-            roughness={0.55}
-            metalness={0.20}
-          />
-        </mesh>
-      </group>
-
-      <mesh geometry={rightDaisCoveTubeGeom}>
-        <meshBasicMaterial color={ringColor} />
-      </mesh>
-
-      {/* Continuous Glowing Cove Fascia Backplate inside the right slot (100% parametric fit) */}
-      <mesh geometry={coveRightFasciaGeom}>
-        <meshStandardMaterial
-          color={ringColor}
-          emissive={ringColor}
-          emissiveIntensity={0.75}
-          roughness={0.45}
-          metalness={0.10}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      <mesh geometry={rightDaisCoveTrimGeom}>
-        <meshStandardMaterial color="#0b1220" metalness={0.20} roughness={0.25} />
-      </mesh>
 
       {/* Global Diffuse Overhead Fill Light for Right Stage Cluster (Synchronized with stage lighting color) */}
       <pointLight position={[4.2, 2.5, -2.8]} color={ringColor} intensity={2.0 * liveFactor} distance={8} decay={1.6} />

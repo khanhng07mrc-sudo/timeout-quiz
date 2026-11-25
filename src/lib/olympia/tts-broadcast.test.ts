@@ -95,6 +95,7 @@ import {
   getTtsSpeedCategory,
   groupContestantAnswers,
   handleBuzzerInterrupt,
+  hasPendingIntroOrBridgeSpeech,
   interpolateTemplate,
   isTtsEnabled,
   normalizeAnswerForGrouping,
@@ -114,6 +115,7 @@ import {
   setTtsBaseRate,
   setTtsEnabled,
   shouldTriggerAutoHypeFiller,
+  skipOlympiaTTS,
   smoothStopOlympiaTTS,
   speakAwardTierAsync,
   speakCnvBells,
@@ -2242,4 +2244,129 @@ test("T4.6: Multi-run FIFO broadcast chaining (OpeningDuo -> Entrance -> RoundIn
     });
     assert.ok(vdPre0.text.includes("N.V.A") && vdPre0.text.includes("120 điểm"));
   });
+});
+
+test("T4.7 (R2): Solo-first (O13/O23/O26) & Shared-first (O22) Khởi Động round_intro -> kd-seg-0 -> Q1 FIFO chaining + DisplayScreen/HostConsole contracts", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken, withAudioContext: true, autoFireEnd: false }, async (controls) => {
+    for (const cfg of [
+      { rulesetId: "O13" as const, expectedKind: "solo" as const, expectedTextRe: /thí sinh đầu tiên.*An/i },
+      { rulesetId: "O23" as const, expectedKind: "solo" as const, expectedTextRe: /thí sinh đầu tiên.*An/i },
+      { rulesetId: "O26" as const, expectedKind: "solo" as const, expectedTextRe: /thí sinh đầu tiên.*An/i },
+      { rulesetId: "O22" as const, expectedKind: "turn" as const, expectedTextRe: /Khởi Động đầu tiên.*4 nhà leo núi/i },
+    ]) {
+      resetOlympiaTtsSession();
+      spoken.length = 0;
+
+      const g = new OlympiaGame(
+        `R2_${cfg.rulesetId}`,
+        {
+          rulesetId: cfg.rulesetId,
+          rounds: ["khoiDong"],
+          seatCount: 4,
+          questionSet: {
+            name: "R2 Set",
+            khoiDong: {
+              shared: [{ q: "Thủ đô của Việt Nam là thành phố nào?", a: "Hà Nội" }],
+              solo: {
+                "1": [{ q: "Thủ đô của Việt Nam là thành phố nào?", a: "Hà Nội" }],
+              },
+            },
+            vcnv: { answer: "OLYMPIA", rows: [], centerQuestion: { q: "Q", a: "A" } },
+            tangToc: [],
+            veDich: {},
+            cauHoiPhu: [],
+          },
+        },
+        0
+      );
+      g.joinSeat("An", "k1");
+      g.joinSeat("Bình", "k2");
+      g.joinSeat("Chi", "k3");
+      g.joinSeat("Dũng", "k4");
+      g.hostAction({ type: "round:force", round: "khoiDong" }, 1000);
+      g.hostAction({ type: "banner:skip" }, 1500);
+
+      const kd = g.state.khoiDong!;
+      const seg0 = kd.segments[0];
+      assert.equal(seg0.kind, cfg.expectedKind);
+
+      // 1. round_intro starts -> kd-seg-0 queues -> kd:start & Q1 opens early -> Q1 queues FIFO behind kd-seg-0
+      const pIntro = speakRoundIntroTTS("khoiDong", { engine: "webspeech" });
+      const kd0Seg = buildKhoiDongTurnBridgeSegment({
+        segKind: seg0.kind,
+        segIdx: 0,
+        seatId: seg0.kind === "solo" ? seg0.seat : undefined,
+        name: seg0.kind === "solo" ? g.state.seats[seg0.seat!]?.name : undefined,
+        seatCount: g.state.seats.length,
+      });
+      assert.match(kd0Seg.text, cfg.expectedTextRe);
+      const pKd0 = speakDualMcScriptAsync([kd0Seg], { engine: "webspeech", queueAfterActive: true });
+
+      g.hostAction({ type: "kd:start" }, 2000);
+      g.hostAction({ type: "kd:next" }, 6000);
+      assert.equal(g.state.ttsCommand ?? null, null);
+      assert.equal(hasPendingIntroOrBridgeSpeech(), true);
+
+      speakSmartQuestion(g.state.khoiDong!.current!.q, {
+        engine: "webspeech",
+        round: "khoiDong",
+        segIdx: 0,
+        queueAfterActive: true,
+      });
+
+      assert.equal(spoken.length, 1, `${cfg.rulesetId}: only round_intro speaks initially`);
+      controls.lastUtterance().onend();
+      assert.equal(await pIntro, true);
+      await new Promise((r) => setTimeout(r, 10));
+
+      assert.equal(spoken.length, 2, `${cfg.rulesetId}: kd-seg-0 speaks second`);
+      assert.match(spoken[1].text, cfg.expectedTextRe);
+      controls.lastUtterance().onend();
+      assert.equal(await pKd0, true);
+      await new Promise((r) => setTimeout(r, 10));
+
+      assert.equal(spoken.length, 3, `${cfg.rulesetId}: Q1 speaks third after kd-seg-0`);
+      assert.ok(spoken[2].text.includes("Thủ đô của Việt Nam"));
+      controls.lastUtterance().onend();
+      skipOlympiaTTS();
+    }
+  });
+
+  // Contract checks on DisplayScreen.tsx & HostConsole.tsx
+  const displaySrc = fs.readFileSync("src/components/olympia/DisplayScreen.tsx", "utf8");
+  const hostSrc = fs.readFileSync("src/components/olympia/HostConsole.tsx", "utf8");
+
+  assert.ok(
+    displaySrc.includes("state.banner ||") &&
+      displaySrc.includes("state.roundIntroDoneAt ||") &&
+      displaySrc.includes("state.entranceCompleted ||"),
+    "DisplayScreen must guard triggerOpeningDuo against banner / roundIntroDoneAt / entranceCompleted"
+  );
+  assert.ok(
+    displaySrc.includes('k.startsWith("kd-seg-")') &&
+      displaySrc.includes('k.startsWith("kd-finish-seg-")'),
+    "DisplayScreen bannerSeq reset must clear kd-seg-* and kd-finish-seg-*"
+  );
+  assert.ok(
+    displaySrc.includes("!kd.started || (kd.qIdx < 0 && !kd.questionRevealed)"),
+    "DisplayScreen must still queue kd-seg-0 on early kd:start before Q1 reveals"
+  );
+  assert.ok(
+    displaySrc.includes("recoverBlockedRoundSpeech"),
+    "DisplayScreen must recover blocked round_intro / kd-seg-0 on UNLOCK_AUDIO & user gesture"
+  );
+  assert.ok(
+    displaySrc.includes('state.khoiDong.phase !== "result"'),
+    "DisplayScreen question effect must exclude kd.phase === 'result' (kd:skip)"
+  );
+  assert.ok(
+    displaySrc.includes("cmd.meta?.immediate") && displaySrc.includes("cancelTTS()"),
+    "DisplayScreen ttsCommand handler must call cancelTTS() when meta.immediate is set"
+  );
+  assert.ok(
+    hostSrc.includes("const isBannerActive = Boolean(state.banner);") &&
+      hostSrc.includes("const isLocked = isBannerActive || isTurnLocked;"),
+    "HostConsole KhoiDongDeck must disable ▶ BẮT ĐẦU while state.banner is active"
+  );
 });

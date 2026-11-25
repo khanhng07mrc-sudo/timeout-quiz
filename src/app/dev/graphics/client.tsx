@@ -35,19 +35,6 @@ const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaS
 export function DevGraphicsClient() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("r6");
-
-  useEffect(() => {
-    setMounted(true);
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      const p = sp.get("tab");
-      if (p) setActiveTab(p);
-      const r = sp.get("ruleset");
-      if (r && (r === "O26" || r === "O20" || r === "O15" || r === "O13" || r === "O14")) {
-        setRulesetId(r as any);
-      }
-    }
-  }, []);
   const [isBuzzed, setIsBuzzed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return new URLSearchParams(window.location.search).get("buzzed") === "1";
@@ -73,9 +60,19 @@ export function DevGraphicsClient() {
   const [seatsCount, setSeatsCount] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const n = Number(new URLSearchParams(window.location.search).get("seats"));
-      if (n >= 2 && n <= 8) return Math.floor(n);
+      if (n >= 1 && n <= 8) return Math.floor(n);
     }
     return 4;
+  });
+  const [devCam, setDevCam] = useState<number | null>(() => {
+    if (typeof window !== "undefined") {
+      const raw = new URLSearchParams(window.location.search).get("cam");
+      if (raw !== null) {
+        const c = Number(raw);
+        if (Number.isFinite(c) && c >= 1 && c <= 31) return Math.floor(c);
+      }
+    }
+    return null;
   });
   const [summaryIndex, setSummaryIndex] = useState(3);
   const [forceAnim, setForceAnim] = useState<boolean>(() => {
@@ -85,10 +82,32 @@ export function DevGraphicsClient() {
     return false;
   });
 
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const p = sp.get("tab");
+      if (p) setActiveTab(p);
+      const r = sp.get("ruleset");
+      if (r && (r === "O26" || r === "O20" || r === "O15" || r === "O13" || r === "O14")) {
+        setRulesetId(r);
+      }
+      const sParam = Number(sp.get("seats"));
+      if (sParam >= 1 && sParam <= 8) setSeatsCount(Math.floor(sParam));
+      const cRaw = sp.get("cam");
+      if (cRaw !== null) {
+        const cNum = Number(cRaw);
+        if (Number.isFinite(cNum) && cNum >= 1 && cNum <= 31) setDevCam(Math.floor(cNum));
+      }
+    }
+  }, []);
+
   const mockSeats2 = [
     { id: 0, name: "Quang Minh", school: "THPT Chuyên Hà Nội - Amsterdam", score: 285, online: true },
     { id: 1, name: "Anh Đức", school: "THPT Chuyên Lê Hồng Phong", score: 210, online: true },
   ];
+
+  const mockSeats1 = [mockSeats2[0]];
 
   const mockSeats4 = [
     ...mockSeats2,
@@ -113,7 +132,9 @@ export function DevGraphicsClient() {
   ];
 
   const activeMockSeats =
-    seatsCount === 2
+    seatsCount === 1
+      ? mockSeats1
+      : seatsCount === 2
       ? mockSeats2
       : seatsCount === 6
       ? mockSeats6
@@ -421,6 +442,7 @@ export function DevGraphicsClient() {
               onChange={(e) => setSeatsCount(Number(e.target.value))}
               className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-white"
             >
+              <option value={1}>1 thí sinh</option>
               <option value={2}>2 thí sinh</option>
               <option value={4}>4 thí sinh</option>
               <option value={6}>6 thí sinh</option>
@@ -546,7 +568,7 @@ export function DevGraphicsClient() {
                 <OlympiaStudio3DScene
                   state={mockState}
                   serverNow={serverNow}
-                  activeCamera={5}
+                  activeCamera={devCam ?? 5}
                   transitionMode="CUT"
                   showDirectorBar={false}
                   allowPTZ={false}

@@ -533,6 +533,100 @@ test("R7.2: Raw geometric downlight ring mesh removed from curved math wall to p
   );
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// R9: Camera Framing & CUT Parity, Cyclorama Span, Audio O22-O26, & TTS Bridging
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n--- Requirement R9: Cyclorama Span, Camera CUT Parity, Audio O22-O26, and TTS Bridging ---");
+
+const useOlympiaCameraContent = fs.readFileSync(
+  path.join(rootDir, "src/components/olympia/studio/useOlympiaCamera.ts"),
+  "utf-8"
+);
+const studioSceneContent = fs.readFileSync(
+  path.join(rootDir, "src/components/olympia/OlympiaStudio3DScene.tsx"),
+  "utf-8"
+);
+const hooksContent = fs.readFileSync(
+  path.join(rootDir, "src/components/olympia/hooks.ts"),
+  "utf-8"
+);
+const displayScreenContent = fs.readFileSync(
+  path.join(rootDir, "src/components/olympia/DisplayScreen.tsx"),
+  "utf-8"
+);
+
+test("R9.1: AudienceAmphitheater cyclorama arc narrowed to 48 deg (0.83775804 rad) to avoid contestant cam leak", () => {
+  assert.ok(
+    studioLightingContent.includes("createCylindricalCycloramaGeometry(22.5, 8.5, 0.83775804, 96, 16)") &&
+    studioLightingContent.includes("new CylindricalTrimCurve(22.5, 0.83775804)"),
+    "Cyclorama and trim curve must use narrowed 0.83775804 rad span"
+  );
+});
+
+test("R9.2: Camera controller and auto-director default to CUT without forced CAM 14 sweep, standby lock, or CAM 29 glide", () => {
+  assert.ok(
+    studioSceneContent.includes('useState<"CUT" | "MORPH">("CUT")'),
+    "OlympiaStudio3DScene must default transitionMode to CUT"
+  );
+  assert.ok(
+    !cameraControllerContent.includes("standbyExitedAtRef") &&
+    !cameraControllerContent.includes("glideStartRef") &&
+    !cameraControllerContent.includes("OLYMPIA_CAM_PRESETS[14]"),
+    "CameraController must not keep standbyExitedAtRef, glideStartRef, or CAM 14 forced sweep"
+  );
+  assert.ok(
+    !useOlympiaCameraContent.includes("camAngle: 14") &&
+    !useOlympiaCameraContent.includes("segDoneElapsed < 2.5 ? 29 : 1"),
+    "useOlympiaCamera must CUT directly instead of CAM 14 sweep or CAM 29->1 morph"
+  );
+});
+
+test("R9.3: O22-O26 1_KhoiDong/open_question matches fandom O9 balanced track while O13-21 stays untouched", () => {
+  const { createHash } = require("crypto");
+  const md5 = (rel: string) =>
+    createHash("md5").update(fs.readFileSync(path.join(rootDir, rel))).digest("hex");
+
+  assert.equal(
+    md5("public/olympia-audio/O13-21/1_KhoiDong/open_question.mp3"),
+    "7286d058ebd129664adaea00416b6535",
+    "O13-21 open_question.mp3 must remain byte-identical"
+  );
+  const o22Hash = md5("public/olympia-audio/O22/1_KhoiDong/open_question.mp3");
+  for (const s of ["O23", "O24-25", "O26"]) {
+    assert.equal(
+      md5(`public/olympia-audio/${s}/1_KhoiDong/open_question.mp3`),
+      o22Hash,
+      `${s} open_question.mp3 must match O22 open_question.mp3`
+    );
+  }
+  assert.notEqual(
+    o22Hash,
+    "7286d058ebd129664adaea00416b6535",
+    "O22-O26 open_question.mp3 must be replaced and distinct from O13-21"
+  );
+});
+
+test("R9.4: Audio panner routes Left/Right strictly to target ear with 0.5 unity summing in hooks.ts", () => {
+  assert.ok(
+    hooksContent.includes("graph.gainL_to_L.gain.setTargetAtTime(0.5") &&
+    hooksContent.includes("splitter.connect(mixGain, 0)") &&
+    hooksContent.includes("mixGain.connect(merger, 0, 0)"),
+    "hooks.ts must keep unity 0.5 gain summing and isolate Left/Right channels cleanly in RAM SFX path"
+  );
+});
+
+test("R9.5: DisplayScreen wires post-intro breather, in-round bridging lines, and cancelQuestionTTS guard", () => {
+  assert.ok(
+    displayScreenContent.includes("buildPostIntroBreatherScript") &&
+    displayScreenContent.includes("buildKhoiDongTurnBridgeSegment") &&
+    displayScreenContent.includes("buildVcnvRowBridgeSegment") &&
+    displayScreenContent.includes("buildTangTocBridgeSegment") &&
+    displayScreenContent.includes("buildVeDichBridgeSegment") &&
+    displayScreenContent.includes("cancelQuestionTTS()"),
+    "DisplayScreen must wire all bridging TTS scripts and guard question cancellation"
+  );
+});
+
 console.log("\n================================================================================");
 console.log(`TOTAL REFINEMENT TESTS: ${passCount + failCount}`);
 console.log(`PASSED: ${passCount}`);

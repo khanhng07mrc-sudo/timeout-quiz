@@ -2140,13 +2140,13 @@ function createCircularArcCurve(
 
 /**
  * Procedural Cylindrical Cyclorama Geometry Builder (R1)
- * Radius = 22.5m, Height = 8.5m, Span = 84 degrees (1.466 rad)
- * Concave cylinder wrapping inward toward the audience.
+ * Radius = 22.5m, Height = 8.5m, Span = 48 degrees (0.837758 rad)
+ * Concave cylinder wrapping inward toward the audience without peeking behind contestant cams.
  */
 function createCylindricalCycloramaGeometry(
   radius: number = 22.5,
   height: number = 8.5,
-  spanRad: number = 1.46607657,
+  spanRad: number = 0.83775804,
   radialSegments: number = 96,
   heightSegments: number = 16
 ): THREE.BufferGeometry {
@@ -2201,7 +2201,7 @@ class CylindricalTrimCurve extends THREE.Curve<THREE.Vector3> {
   radius: number;
   spanRad: number;
 
-  constructor(radius = 22.5, spanRad = 1.46607657) {
+  constructor(radius = 22.5, spanRad = 0.83775804) {
     super();
     this.radius = radius;
     this.spanRad = spanRad;
@@ -2912,8 +2912,8 @@ export function AudienceAmphitheater({
 
   const activeBackdropTex = aiBackdropTex || fallbackTexture;
 
-  const cycloramaGeometry = useMemo(() => createCylindricalCycloramaGeometry(22.5, 8.5, 1.46607657, 96, 16), []);
-  const cycloramaTrimCurve = useMemo(() => new CylindricalTrimCurve(22.5, 1.46607657), []);
+  const cycloramaGeometry = useMemo(() => createCylindricalCycloramaGeometry(22.5, 8.5, 0.83775804, 96, 16), []);
+  const cycloramaTrimCurve = useMemo(() => new CylindricalTrimCurve(22.5, 0.83775804), []);
 
   // ── AUTHENTIC VTV3 STUDIO S14 4-LAYER ENTRANCE PORTAL: ( ( [ (   /\   ) ] ) ) ──
   // Standing strictly on the top plinth behind Row 7 (Y >= 1.95m, Z = 3.65m)
@@ -3336,7 +3336,7 @@ export function AudienceAmphitheater({
       })}
 
       {/* ── 5. AUTHENTIC VTV3 S14 CURVED CYLINDRICAL CYCLORAMA ENCLOSING AUDIENCE (R1) ── */}
-      {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 84°, Apex Z = 7.20m (Z_world = 15.70m), Center Z_c = -15.30m, H = 8.50m */}
+      {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 48°, Apex Z = 7.20m (Z_world = 15.70m), Center Z_c = -15.30m, H = 8.50m */}
       <mesh position={[0, 4.05, -15.30]}>
         <primitive object={cycloramaGeometry} attach="geometry" />
         <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.DoubleSide} />

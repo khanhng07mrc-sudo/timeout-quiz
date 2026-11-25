@@ -42,6 +42,8 @@ import {
   speakDualMcScriptAsync,
   smoothStopOlympiaTTS,
   cancelTTS,
+  cancelQuestionTTS,
+  getActivePlaybackSegment,
   cancelBuzzerInterrupt,
   handleBuzzerInterrupt,
   setTtsEnabled,
@@ -69,6 +71,11 @@ import {
   buildContestantIntroStepSegment,
   buildContestantIntroContinuousScript,
   buildPostIntroBreatherScript,
+  buildKhoiDongTurnBridgeSegment,
+  buildVcnvRowBridgeSegment,
+  buildTangTocBridgeSegment,
+  buildVeDichBridgeSegment,
+  buildRoundCompleteBridgeSegment,
   buildScoreSummaryStepSegment,
   buildScoreSummaryCommentary,
   buildScoreSummaryScript,
@@ -1572,4 +1579,53 @@ test("TTS M1 remediation: smoothStopOlympiaTTS during in-flight server fetch hal
       assert.equal((globalThis as any).window.__olympiaTtsSpeaker, null, "Speaker event must be cleared");
     }
   );
+});
+
+test("TTS R5: Turn & round bridging builders produce alternating Vietnamese MC lines and cancelQuestionTTS preserves bridging speech", async () => {
+  const kdSolo = buildKhoiDongTurnBridgeSegment({ segKind: "solo", segIdx: 1, seatId: 1, name: "Minh Anh" });
+  assert.equal(kdSolo.role, "khanh_vy");
+  assert.ok(kdSolo.text.includes("Minh Anh"));
+
+  const kdShared = buildKhoiDongTurnBridgeSegment({ segKind: "shared", segIdx: 4, seatCount: 4 });
+  assert.equal(kdShared.role, "ngoc_huy");
+  assert.ok(kdShared.text.includes("Khởi Động chung") && kdShared.text.includes("4"));
+
+  const vcnvRow = buildVcnvRowBridgeSegment({ mode: "selecting", rowIdx: 0, letterCount: 7 });
+  assert.ok(vcnvRow.text.includes("Hàng ngang số 1") && vcnvRow.text.includes("7 chữ cái"));
+  const vcnvCenter = buildVcnvRowBridgeSegment({ mode: "selecting", rowIdx: 4 });
+  assert.ok(vcnvCenter.text.includes("ô trung tâm"));
+
+  const ttBridge = buildTangTocBridgeSegment({ qIdx: 3, totalQuestions: 4, timeSec: 40 });
+  assert.ok(ttBridge.text.includes("40 giây") && ttBridge.text.includes("cuối cùng"));
+
+  const vdStage = buildVeDichBridgeSegment({ kind: "on_stage", seatId: 0, name: "Gia Khánh", score: 150, turnIdx: 0, totalTurns: 4 });
+  assert.ok(vdStage.text.includes("Gia Khánh") && vdStage.text.includes("150 điểm"));
+  const vdPkg = buildVeDichBridgeSegment({ kind: "package_ready", seatId: 0, name: "Gia Khánh", score: 150, turnIdx: 0, totalTurns: 4, packagePoints: [20, 20, 30] });
+  assert.ok(vdPkg.text.includes("20 - 20 - 30"));
+
+  const roundDone = buildRoundCompleteBridgeSegment("tangToc");
+  assert.ok(roundDone.text.includes("Tăng Tốc"));
+
+  // cancelQuestionTTS() must NOT cancel active breather / bridging playback
+  await withMockBrowserEnv({ spoken: [], speakerEvents: [], origin: "http://localhost:3000" }, async () => {
+    setTtsEnabled(true);
+    let aborted = false;
+    configureTtsTransport({
+      fetchImpl: ((_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            aborted = true;
+            reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+          });
+        })) as unknown as typeof fetch,
+    });
+
+    const p = speakOlympiaTTSAsync("Lời dẫn đệm...", { role: "khanh_vy", segment: "breather" });
+    assert.equal(getActivePlaybackSegment(), "breather");
+    cancelQuestionTTS();
+    assert.equal(aborted, false, "cancelQuestionTTS must NOT abort active breather speech");
+    cancelTTS();
+    assert.equal(aborted, true, "cancelTTS aborts breather speech when explicitly requested");
+    await p;
+  });
 });

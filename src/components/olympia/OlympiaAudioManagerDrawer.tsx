@@ -352,23 +352,23 @@ export default function OlympiaAudioManagerDrawer({
         const now = ctx.currentTime;
         const rampTime = 0.015;
         if (ch === "left") {
-          // Route all audio channels (L + R) exclusively to Left output (100% Left ear, Right silent)
-          graph.gainL_to_L.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(1.0, now, rampTime);
+          // Route all audio channels (L + R) exclusively to Left output (Right silent)
+          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
           graph.gainL_to_R.gain.setTargetAtTime(0.0, now, rampTime);
           graph.gainR_to_R.gain.setTargetAtTime(0.0, now, rampTime);
         } else if (ch === "right") {
-          // Route all audio channels (L + R) exclusively to Right output (100% Right ear, Left silent)
+          // Route all audio channels (L + R) exclusively to Right output (Left silent)
           graph.gainL_to_L.gain.setTargetAtTime(0.0, now, rampTime);
           graph.gainR_to_L.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
         } else {
-          // "both": route equally to both ears so single-channel or stereo rips play in both ears
-          graph.gainL_to_L.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(1.0, now, rampTime);
+          // "both": balance equally across both ears without +6dB digital summing peak
+          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
         }
       } catch (err) {
         console.warn("[AudioManager] WebAudio connectPanner error:", err);

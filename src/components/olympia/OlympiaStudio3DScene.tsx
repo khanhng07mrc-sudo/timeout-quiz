@@ -160,7 +160,7 @@ export function OlympiaStudio3DScene({
         window.location.search.includes("perf=light")));
   const [internalCam, setInternalCam] = useState<number>(activeCamera ?? 1);
   const effectiveCam = activeCamera !== undefined ? activeCamera : internalCam;
-  const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("MORPH");
+  const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("CUT");
   const transitionMode = propTransitionMode || internalTransitionMode;
   const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">(
     defaultQuality || (isSandboxEnv ? "LIGHT" : isIframe ? "MEDIUM" : "HIGH")
@@ -484,7 +484,7 @@ export function OlympiaStudio3DScene({
           lockedSpotlightSeat={lockedSpotlightSeat}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           serverNow={serverNow}
-          camAngle={internalCam}
+          camAngle={effectiveCam}
           ptzZoom={ptzZoom}
           pushInProgress={pushInProgress}
           isEntranceActive={Boolean(state?.entranceState?.active)}

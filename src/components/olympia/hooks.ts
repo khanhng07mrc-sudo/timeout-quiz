@@ -929,23 +929,23 @@ export function useOlympiaAudio(
         const now = ctx.currentTime;
         const rampTime = 0.015;
         if (activePan === "left") {
-          // Route all audio channels (L + R) exclusively to Left output (100% Left ear, Right silent)
-          graph.gainL_to_L.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(1.0, now, rampTime);
+          // Route all audio channels (L + R) exclusively to Left output (Right silent)
+          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
           graph.gainL_to_R.gain.setTargetAtTime(0.0, now, rampTime);
           graph.gainR_to_R.gain.setTargetAtTime(0.0, now, rampTime);
         } else if (activePan === "right") {
-          // Route all audio channels (L + R) exclusively to Right output (100% Right ear, Left silent)
+          // Route all audio channels (L + R) exclusively to Right output (Left silent)
           graph.gainL_to_L.gain.setTargetAtTime(0.0, now, rampTime);
           graph.gainR_to_L.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(1.0, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
         } else {
-          // "both": route equally to both ears so single-channel or stereo rips play in both ears
-          graph.gainL_to_L.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(1.0, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(1.0, now, rampTime);
+          // "both": balance equally across both ears without +6dB digital summing peak
+          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
+          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
         }
       } catch {
         // Fallback: already connected or not supported
@@ -1288,21 +1288,26 @@ export function useOlympiaAudio(
           gainNode.gain.value = 0.85;
           srcNode.connect(gainNode);
 
-          if (activePan === "both") {
-            gainNode.connect(ctx.destination);
+          const splitter = ctx.createChannelSplitter(2);
+          const merger = ctx.createChannelMerger(2);
+          const mixGain = ctx.createGain();
+          mixGain.gain.value = 0.5;
+          gainNode.connect(splitter);
+          if (activePan === "left") {
+            splitter.connect(mixGain, 0);
+            splitter.connect(mixGain, 1);
+            mixGain.connect(merger, 0, 0);
+          } else if (activePan === "right") {
+            splitter.connect(mixGain, 0);
+            splitter.connect(mixGain, 1);
+            mixGain.connect(merger, 0, 1);
           } else {
-            const splitter = ctx.createChannelSplitter(2);
-            const merger = ctx.createChannelMerger(2);
-            gainNode.connect(splitter);
-            if (activePan === "left") {
-              splitter.connect(merger, 0, 0);
-              splitter.connect(merger, 0, 1);
-            } else {
-              splitter.connect(merger, 1, 0);
-              splitter.connect(merger, 1, 1);
-            }
-            merger.connect(ctx.destination);
+            splitter.connect(mixGain, 0);
+            splitter.connect(mixGain, 1);
+            mixGain.connect(merger, 0, 0);
+            mixGain.connect(merger, 0, 1);
           }
+          merger.connect(ctx.destination);
           srcNode.start(0);
           return;
         } catch {}

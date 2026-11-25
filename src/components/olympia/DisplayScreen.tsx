@@ -38,6 +38,7 @@ import {
   speakOlympiaTTS,
   unlockOlympiaTTS,
   cancelTTS,
+  cancelQuestionTTS,
   speakSmartQuestion,
   smoothStopOlympiaTTS,
   speakOlympiaResult,
@@ -54,6 +55,12 @@ import {
   buildLobbyGreetingScript,
   buildOpeningDuoScript,
   buildContestantIntroStepSegment,
+  buildPostIntroBreatherScript,
+  buildKhoiDongTurnBridgeSegment,
+  buildVcnvRowBridgeSegment,
+  buildTangTocBridgeSegment,
+  buildVeDichBridgeSegment,
+  buildRoundCompleteBridgeSegment,
   speakDualMcScript,
   setGlobalCustomTtsScripts,
   pauseOlympiaTTS,
@@ -409,9 +416,9 @@ export default function DisplayScreen({ code }: { code: string }) {
         segIdx: state.currentRound === "khoiDong" ? state.khoiDong?.segIdx : undefined,
         rowIdx: state.currentRound === "vcnv" ? state.vcnv?.currentRow : undefined,
       });
-    } else if (!currentQ) {
+    } else if (!currentQ && lastQuestionRef.current) {
       lastQuestionRef.current = "";
-      cancelTTS();
+      cancelQuestionTTS();
     }
   }, [
     ttsActive,
@@ -932,25 +939,71 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   // Vocalize Contestant Intro as each contestant steps down during entrance
   const lastSpokenEntranceSeatRef = useRef<number>(-1);
+  const wasEntranceActiveRef = useRef<boolean>(false);
+  const postIntroBreatherSpokenRef = useRef<boolean>(false);
   useEffect(() => {
-    if (!state || !ttsActive || !state.entranceState?.active) {
-      if (!state?.entranceState?.active) {
-        lastSpokenEntranceSeatRef.current = -1;
+    if (!state || state.stage === "lobby") {
+      wasEntranceActiveRef.current = false;
+      postIntroBreatherSpokenRef.current = false;
+      lastSpokenEntranceSeatRef.current = -1;
+      return;
+    }
+    if (!ttsActive) {
+      if (!state.entranceState?.active) lastSpokenEntranceSeatRef.current = -1;
+      wasEntranceActiveRef.current = Boolean(state.entranceState?.active);
+      return;
+    }
+    if (state.entranceState?.active) {
+      wasEntranceActiveRef.current = true;
+      const currentSeatIdx = state.entranceState.currentSeatIdx ?? 0;
+      if (currentSeatIdx !== lastSpokenEntranceSeatRef.current) {
+        lastSpokenEntranceSeatRef.current = currentSeatIdx;
+        const segment = buildContestantIntroStepSegment(state.seats, currentSeatIdx);
+        if (segment) {
+          speakDualMcScript([segment], {
+            season: effectiveAudioSeason,
+            preferServer: true,
+          });
+        }
       }
       return;
     }
-    const currentSeatIdx = state.entranceState.currentSeatIdx ?? 0;
-    if (currentSeatIdx !== lastSpokenEntranceSeatRef.current) {
-      lastSpokenEntranceSeatRef.current = currentSeatIdx;
-      const segment = buildContestantIntroStepSegment(state.seats, currentSeatIdx);
-      if (segment) {
-        speakDualMcScript([segment], {
-          season: effectiveAudioSeason,
-          preferServer: true,
-        });
-      }
+
+    lastSpokenEntranceSeatRef.current = -1;
+    // Post-Intro Breather: fire once right after contestant entrance ends while holding in introStandby
+    const justFinishedEntrance = wasEntranceActiveRef.current || Boolean(state.entranceCompleted);
+    wasEntranceActiveRef.current = false;
+    if (
+      justFinishedEntrance &&
+      state.stage === "playing" &&
+      state.introStandby &&
+      !state.banner &&
+      !postIntroBreatherSpokenRef.current
+    ) {
+      postIntroBreatherSpokenRef.current = true;
+      const activeCount = state.seats.length || 4;
+      const breatherScript = buildPostIntroBreatherScript({
+        seatCount: activeCount,
+        firstRound: state.currentRound || "khoiDong",
+        lastContestantRole: (activeCount - 1) % 2 === 0 ? "khanh_vy" : "ngoc_huy",
+      });
+      speakDualMcScript(breatherScript, {
+        season: effectiveAudioSeason,
+        preferServer: true,
+      });
     }
-  }, [state?.entranceState?.active, state?.entranceState?.currentSeatIdx, state?.seats, ttsActive, effectiveAudioSeason]);
+  }, [
+    state?.stage,
+    state?.entranceState?.active,
+    state?.entranceState?.currentSeatIdx,
+    state?.entranceCompleted,
+    state?.introStandby,
+    state?.banner,
+    state?.currentRound,
+    state?.seats,
+    ttsActive,
+    effectiveAudioSeason,
+  ]);
 
   // Vocalize round intro greeting ONLY after the round intro video/banner has finished 100%
   const prevSpokenRoundRef = useRef<string | null>(null);
@@ -971,6 +1024,180 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.currentRound,
     state?.banner,
     state?.roundIntroDoneAt,
+    ttsActive,
+    effectiveAudioSeason,
+  ]);
+
+  // Automated MC Bridging Lines ("lời nói đệm") across Khởi Động, VCNV, Tăng Tốc, Về Đích, and round completions
+  const spokenBridgeKeysRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!state || state.stage === "lobby") {
+      spokenBridgeKeysRef.current.clear();
+      return;
+    }
+    if (!ttsActive || state.stage !== "playing" || !state.currentRound || state.banner || state.introStandby) {
+      return;
+    }
+    if (!state.roundIntroDoneAt) return;
+
+    const round = state.currentRound;
+    const speakBridgeOnce = (key: string, seg: ReturnType<typeof buildTangTocBridgeSegment> | null) => {
+      if (!seg || spokenBridgeKeysRef.current.has(key)) return;
+      spokenBridgeKeysRef.current.add(key);
+      speakDualMcScript([seg], { season: effectiveAudioSeason, preferServer: true });
+    };
+
+    // 1. Round Completion bridge (when not handled by KĐ segmentDone timeout)
+    if (state.roundStatus?.[round] === "done") {
+      const skipForKdDone = round === "khoiDong" && state.khoiDong?.phase === "segmentDone";
+      if (!skipForKdDone) {
+        speakBridgeOnce(`round-done-${round}`, buildRoundCompleteBridgeSegment(round));
+      }
+      return;
+    }
+
+    // 2. Khởi Động turn bridging (entering segment > 0, or shared segment before start)
+    if (round === "khoiDong" && state.khoiDong) {
+      const kd = state.khoiDong;
+      const segIdx = kd.segIdx ?? 0;
+      const curSeg = kd.segments?.[segIdx];
+      if (curSeg && !kd.started && kd.phase !== "segmentDone" && segIdx > 0) {
+        const seatId = curSeg.kind === "solo" ? curSeg.seat : undefined;
+        const name = seatId != null ? state.seats[seatId]?.name : undefined;
+        speakBridgeOnce(
+          `kd-seg-${segIdx}-${curSeg.kind}`,
+          buildKhoiDongTurnBridgeSegment({
+            segKind: curSeg.kind,
+            segIdx,
+            seatId,
+            name,
+            seatCount: state.seats.length || 4,
+          })
+        );
+      }
+    }
+
+    // 3. VCNV row selecting & grid return bridging
+    if (round === "vcnv" && state.vcnv) {
+      const v = state.vcnv;
+      if (v.phase === "selecting" && v.currentRow >= 0) {
+        const rowAns = v.currentRow === 4 ? v.centerQuestion?.a : v.rows?.[v.currentRow]?.answer;
+        const letterCount = rowAns ? parseVcnvAnswer(rowAns).primary.replace(/\s+/g, "").length : 0;
+        speakBridgeOnce(
+          `vcnv-select-${v.currentRow}`,
+          buildVcnvRowBridgeSegment({ mode: "selecting", rowIdx: v.currentRow, letterCount })
+        );
+      } else if (v.phase === "grid" && v.currentRow < 0) {
+        const openedCount = (v.rows || []).filter((r) => r.opened || r.wrong).length;
+        if (openedCount > 0 && openedCount < 4) {
+          speakBridgeOnce(
+            `vcnv-grid-after-${openedCount}`,
+            buildVcnvRowBridgeSegment({ mode: "grid_return" })
+          );
+        }
+      }
+    }
+
+    // 4. Tăng Tốc between questions (tt:next puts phase="idle", qIdx >= 0)
+    if (round === "tangToc" && state.tangToc) {
+      const tt = state.tangToc;
+      if (tt.phase === "idle" && tt.qIdx >= 0) {
+        const timeSec = Math.round((tt.timer?.totalMs || 30000) / 1000);
+        speakBridgeOnce(
+          `tt-idle-${tt.qIdx}`,
+          buildTangTocBridgeSegment({
+            qIdx: tt.qIdx,
+            totalQuestions: tt.questions?.length || 4,
+            timeSec,
+          })
+        );
+      }
+    }
+
+    // 5. Về Đích on-stage, package choosing, package ready, and off-stage finishTurn bridging
+    if (round === "veDich" && state.veDich) {
+      const vd = state.veDich;
+      const ownerSeat = vd.order?.[vd.turnIdx] ?? 0;
+      const seatObj = state.seats[ownerSeat];
+      const name = seatObj?.name;
+      const score = seatObj?.score ?? 0;
+      const totalTurns = vd.order?.length || state.seats.length || 4;
+      const pkg = vd.packages?.[ownerSeat];
+
+      if (vd.phase === "seatDone") {
+        speakBridgeOnce(
+          `vd-done-${vd.turnIdx}-${ownerSeat}`,
+          buildVeDichBridgeSegment({
+            kind: "seat_done",
+            seatId: ownerSeat,
+            name,
+            score,
+            turnIdx: vd.turnIdx,
+            totalTurns,
+          })
+        );
+      } else if (vd.phase === "packageReady" && vd.qIdx < 0) {
+        const pkgPoints = (pkg || []).map((p) => p.points);
+        const pkgKey = pkgPoints.join("-");
+        speakBridgeOnce(
+          `vd-pkg-${vd.turnIdx}-${ownerSeat}-${pkgKey}`,
+          buildVeDichBridgeSegment({
+            kind: "package_ready",
+            seatId: ownerSeat,
+            name,
+            score,
+            turnIdx: vd.turnIdx,
+            totalTurns,
+            packagePoints: pkgPoints,
+          })
+        );
+      } else if (vd.phase === "choosing") {
+        speakBridgeOnce(
+          `vd-choose-${vd.turnIdx}-${ownerSeat}`,
+          buildVeDichBridgeSegment({
+            kind: "choosing",
+            seatId: ownerSeat,
+            name,
+            score,
+            turnIdx: vd.turnIdx,
+            totalTurns,
+          })
+        );
+      } else if (vd.onStage && vd.qIdx < 0) {
+        speakBridgeOnce(
+          `vd-onstage-${vd.turnIdx}-${ownerSeat}`,
+          buildVeDichBridgeSegment({
+            kind: "on_stage",
+            seatId: ownerSeat,
+            name,
+            score,
+            turnIdx: vd.turnIdx,
+            totalTurns,
+          })
+        );
+      }
+    }
+  }, [
+    state?.stage,
+    state?.currentRound,
+    state?.banner,
+    state?.introStandby,
+    state?.roundIntroDoneAt,
+    state?.roundStatus,
+    state?.seats,
+    state?.khoiDong?.segIdx,
+    state?.khoiDong?.started,
+    state?.khoiDong?.phase,
+    state?.vcnv?.phase,
+    state?.vcnv?.currentRow,
+    state?.vcnv?.rows,
+    state?.tangToc?.phase,
+    state?.tangToc?.qIdx,
+    state?.veDich?.phase,
+    state?.veDich?.turnIdx,
+    state?.veDich?.onStage,
+    state?.veDich?.qIdx,
+    state?.veDich?.packages,
     ttsActive,
     effectiveAudioSeason,
   ]);

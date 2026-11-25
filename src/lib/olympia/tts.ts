@@ -1339,8 +1339,13 @@ export function setTtsEnabled(enabled: boolean): void {
 }
 
 let activeTtsSpeaker: ActiveTtsSpeaker = null;
+let activePlaybackSegment: TTSSegment | null = null;
 let speakerSessionSeq = 0;
 let activeSpeakerSessionId = 0;
+
+export function getActivePlaybackSegment(): TTSSegment | null {
+  return activePlaybackSegment;
+}
 
 function beginTtsSpeakerSession(speaker: DualMcRole): number {
   const sessionId = ++speakerSessionSeq;
@@ -1357,6 +1362,9 @@ function endTtsSpeakerSession(sessionId: number): void {
 }
 
 function emitTtsSpeaker(speaker: ActiveTtsSpeaker): void {
+  if (speaker === null) {
+    activePlaybackSegment = null;
+  }
   if (typeof window === "undefined") {
     activeTtsSpeaker = speaker;
     return;
@@ -1658,9 +1666,15 @@ export function cancelDramaticStealCall(): void {
   }
 }
 
+export function cancelQuestionTTS(): void {
+  if (activePlaybackSegment !== "question") return;
+  cancelTTS();
+}
+
 export function cancelTTS(): void {
   playbackEpoch++;
   stopRequested = false;
+  activePlaybackSegment = null;
 
   if (boundaryCleanupTimer) {
     clearTimeout(boundaryCleanupTimer);
@@ -1812,6 +1826,7 @@ export function speakTimerExpiredTTS(round?: string, options?: SpeakTTSOptions):
 function cancelPlaybackOnly(): void {
   playbackEpoch++;
   stopRequested = false;
+  activePlaybackSegment = null;
 
   if (boundaryCleanupTimer) {
     clearTimeout(boundaryCleanupTimer);
@@ -2571,6 +2586,7 @@ export function speakOlympiaTTSAsync(
   });
 
   const epoch = playbackEpoch;
+  activePlaybackSegment = options?.segment ?? null;
 
   if (shouldAttemptServerTts(options)) {
     return runServerTtsPipeline(segments, role, rate, options, epoch);
@@ -3212,6 +3228,182 @@ export function buildPostIntroBreatherScript(options: {
       text: `Ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên: ${roundLabel}!`,
     },
   ];
+}
+
+/**
+ * In-round & inter-round MC bridging lines ("lời nói đệm") for Khởi Động, VCNV, Tăng Tốc, Về Đích.
+ */
+export function buildKhoiDongTurnBridgeSegment(options: {
+  segKind: "solo" | "shared" | "turn";
+  segIdx: number;
+  seatId?: number;
+  name?: string;
+  seatCount?: number;
+}): DualMcScriptSegment {
+  const role: DualMcRole = options.segIdx % 2 === 0 ? "ngoc_huy" : "khanh_vy";
+  if (options.segKind === "solo") {
+    const labelName =
+      getContestantSpokenName(options.name || "") ||
+      `Thí sinh ${(options.seatId ?? options.segIdx) + 1}`;
+    return {
+      role,
+      kind: "round_transition",
+      seatId: options.seatId,
+      pauseAfterMs: 0,
+      text: `Tiếp theo sẽ là lượt thi Khởi Động riêng dành cho bạn ${labelName}. Hãy giữ bình tĩnh và thật tự tin nhé!`,
+    };
+  }
+  const countText = options.seatCount ? `${options.seatCount} ` : "";
+  return {
+    role,
+    kind: "round_transition",
+    pauseAfterMs: 0,
+    text: `Ngay sau đây là phần thi Khởi Động chung dành cho cả ${countText}nhà leo núi! Các bạn hãy tập trung lắng nghe và bấm chuông thật nhanh để giành quyền trả lời.`,
+  };
+}
+
+export function buildVcnvRowBridgeSegment(options: {
+  mode: "selecting" | "grid_return";
+  rowIdx?: number;
+  letterCount?: number;
+}): DualMcScriptSegment {
+  if (options.mode === "grid_return") {
+    return {
+      role: "khanh_vy",
+      kind: "breather",
+      pauseAfterMs: 0,
+      text: "Chúng ta hãy cùng tiếp tục lựa chọn hàng ngang gợi ý tiếp theo để sớm giải mã Chướng Ngại Vật!",
+    };
+  }
+  const rowIdx = options.rowIdx ?? 0;
+  const role: DualMcRole = rowIdx % 2 === 0 ? "khanh_vy" : "ngoc_huy";
+  if (rowIdx === 4) {
+    return {
+      role,
+      kind: "round_transition",
+      pauseAfterMs: 0,
+      text: "Và bây giờ là câu hỏi gợi ý cuối cùng tại ô trung tâm của Vượt Chướng Ngại Vật!",
+    };
+  }
+  const lenText =
+    options.letterCount && options.letterCount > 0
+      ? ` gồm ${options.letterCount} chữ cái`
+      : "";
+  return {
+    role,
+    kind: "round_transition",
+    pauseAfterMs: 0,
+    text: `Hàng ngang số ${rowIdx + 1}${lenText} đã được lựa chọn. Xin mời câu hỏi gợi ý dành cho các thí sinh!`,
+  };
+}
+
+export function buildTangTocBridgeSegment(options: {
+  qIdx: number;
+  totalQuestions: number;
+  timeSec?: number;
+}): DualMcScriptSegment {
+  const role: DualMcRole = options.qIdx % 2 === 0 ? "ngoc_huy" : "khanh_vy";
+  const sec = Math.max(10, Math.round(options.timeSec || 30));
+  if (options.qIdx <= 0) {
+    return {
+      role,
+      kind: "round_transition",
+      pauseAfterMs: 0,
+      text: `Và ngay bây giờ, chúng ta sẽ đến với câu hỏi Tăng Tốc đầu tiên với ${sec} giây suy nghĩ. Chúc các bạn ghi điểm thật cao!`,
+    };
+  }
+  if (options.totalQuestions > 1 && options.qIdx >= options.totalQuestions - 1) {
+    return {
+      role,
+      kind: "hype",
+      pauseAfterMs: 0,
+      text: `Chúng ta chuẩn bị bước vào câu hỏi Tăng Tốc cuối cùng với ${sec} giây suy nghĩ. Hãy bứt phá tốc độ tối đa nhé!`,
+    };
+  }
+  return {
+    role,
+    kind: "round_transition",
+    pauseAfterMs: 0,
+    text: `Tiếp theo là câu hỏi Tăng Tốc số ${options.qIdx + 1} với quỹ thời gian ${sec} giây. Các thí sinh hãy tập trung quan sát màn hình!`,
+  };
+}
+
+export function buildVeDichBridgeSegment(options: {
+  kind: "on_stage" | "choosing" | "package_ready" | "seat_done";
+  seatId: number;
+  name?: string;
+  score: number;
+  turnIdx: number;
+  totalTurns: number;
+  packagePoints?: number[];
+}): DualMcScriptSegment {
+  const role: DualMcRole = options.turnIdx % 2 === 0 ? "ngoc_huy" : "khanh_vy";
+  const labelName = getContestantSpokenName(options.name || "") || `Thí sinh ${options.seatId + 1}`;
+  if (options.kind === "on_stage") {
+    if (options.turnIdx === 0) {
+      return {
+        role,
+        kind: "round_transition",
+        seatId: options.seatId,
+        pauseAfterMs: 0,
+        text: `Xin mời thí sinh đầu tiên bước lên vị trí thi đấu Về Đích: bạn ${labelName}, hiện đang có ${options.score} điểm!`,
+      };
+    }
+    if (options.totalTurns > 1 && options.turnIdx >= options.totalTurns - 1) {
+      return {
+        role,
+        kind: "round_transition",
+        seatId: options.seatId,
+        pauseAfterMs: 0,
+        text: `Và nhà leo núi cuối cùng bước lên sân khấu Về Đích hôm nay là bạn ${labelName} với số điểm hiện có là ${options.score} điểm!`,
+      };
+    }
+    return {
+      role,
+      kind: "round_transition",
+      seatId: options.seatId,
+      pauseAfterMs: 0,
+      text: `Thí sinh tiếp theo bước vào phần thi Về Đích là bạn ${labelName}, hiện đang có ${options.score} điểm!`,
+    };
+  }
+  if (options.kind === "choosing") {
+    return {
+      role: role === "ngoc_huy" ? "khanh_vy" : "ngoc_huy",
+      kind: "breather",
+      seatId: options.seatId,
+      pauseAfterMs: 0,
+      text: `Xin mời bạn ${labelName} hãy lựa chọn gói câu hỏi Về Đích của mình!`,
+    };
+  }
+  if (options.kind === "package_ready") {
+    const pkgText = (options.packagePoints || []).join(" - ");
+    return {
+      role,
+      kind: "round_transition",
+      seatId: options.seatId,
+      pauseAfterMs: 0,
+      text: pkgText
+        ? `Bạn ${labelName} đã lựa chọn gói câu hỏi ${pkgText} điểm. Chúc bạn thi đấu thật tự tin!`
+        : `Gói câu hỏi của bạn ${labelName} đã sẵn sàng. Chúc bạn thi đấu thật tự tin!`,
+    };
+  }
+  return {
+    role: role === "ngoc_huy" ? "khanh_vy" : "ngoc_huy",
+    kind: "breather",
+    seatId: options.seatId,
+    pauseAfterMs: 0,
+    text: `Bạn ${labelName} đã hoàn thành phần thi Về Đích với ${options.score} điểm. Xin mời bạn trở về vị trí!`,
+  };
+}
+
+export function buildRoundCompleteBridgeSegment(round: string): DualMcScriptSegment {
+  const label = ROUND_VI_LABELS[round] || "này";
+  return {
+    role: "khanh_vy",
+    kind: "round_transition",
+    pauseAfterMs: 0,
+    text: `Vậy là phần thi ${label} đã khép lại! Chúng ta hãy cùng điểm lại kết quả và sẵn sàng cho chặng đua tiếp theo!`,
+  };
 }
 
 /**

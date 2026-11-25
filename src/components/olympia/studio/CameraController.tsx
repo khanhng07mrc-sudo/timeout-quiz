@@ -234,46 +234,46 @@ export function getContestantScreenCameraPreset(
 }
 
 export function getWideStageCameraPreset(totalSeats: number = 4): CameraPreset {
-  // Broad studio wide shot dynamically framed for totalSeats (4, 6, 8):
-  // Prevents contestant podium clipping on the far left downstage arc (Z=+2.42m, X=-5.98m).
+  // Broad studio wide shot dynamically framed & balanced for totalSeats (4, 6, 8):
+  // Centers contestant arc, Center Laurel Vitrine, MC Portal, and Right LED cleanly within [-0.85, +0.90] NDC.
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   if (count >= 7) {
     return {
       id: 1,
       label: "Toàn Cảnh (8 Thí Sinh)",
-      pos: [0.00, 3.80, 10.80],
-      target: [-1.80, 1.35, -2.50],
-      fov: 52,
+      pos: [0.30, 3.70, 11.00],
+      target: [-1.10, 1.45, -2.70],
+      fov: 53,
     };
   }
   if (count >= 5) {
     return {
       id: 1,
       label: "Toàn Cảnh (6 Thí Sinh)",
-      pos: [0.00, 3.80, 10.80],
-      target: [-1.40, 1.40, -2.80],
-      fov: 48,
+      pos: [0.20, 3.65, 10.80],
+      target: [-0.80, 1.45, -2.95],
+      fov: 49,
     };
   }
   return {
     id: 1,
     label: "Toàn Cảnh",
-    pos: [0.00, 3.80, 10.80],
-    target: [-0.80, 1.45, -3.20],
-    fov: 44,
+    pos: [0.10, 3.60, 10.60],
+    target: [-0.45, 1.45, -3.20],
+    fov: 45,
   };
 }
 
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
-  // Frontal Direct Arc Shot facing the curved line of contestant podiums
-  // Dynamically pulled back for 6 and 8 contestants so all seats are directly visible without occlusion.
+  // Centered Direct Arc Shot facing all contestant podiums cleanly without left/right edge clipping,
+  // preserving monotonic depth recession across all seats for 4, 6, and 7-8 contestants.
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   if (count >= 7) {
     return {
       id: 10,
       label: "Toàn Cảnh Bục Thí Sinh",
-      pos: [0.15, 2.35, 5.60],
-      target: [-4.60, 1.25, -2.10],
+      pos: [-0.15, 2.35, 6.20],
+      target: [-5.50, 1.25, -2.20],
       fov: 52,
     };
   }
@@ -281,24 +281,22 @@ export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset
     return {
       id: 10,
       label: "Toàn Cảnh Bục Thí Sinh",
-      pos: [-0.10, 2.20, 5.10],
-      target: [-4.65, 1.25, -2.35],
+      pos: [0.00, 2.20, 5.30],
+      target: [-5.15, 1.25, -2.15],
       fov: 46,
     };
   }
   return {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
-    pos: [-0.30, 2.05, 4.60],
-    target: [-4.80, 1.25, -2.60],
+    pos: [-0.20, 2.05, 4.70],
+    target: [-5.40, 1.25, -2.50],
     fov: 40,
   };
 }
 
 export function getWideStageLeftTiltedPreset(totalSeats: number = 4): CameraPreset {
   // Broad studio wide shot angled down towards Stage Left / Contestant Podiums
-  // Used for finish-turn return sequence gliding back to default center over 3.0s.
-  // Placed safely in front of grandstand at Z = 12.00m (safely inside open studio, never penetrates rear wall)
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   return {
     id: 29,
@@ -311,12 +309,7 @@ export function getWideStageLeftTiltedPreset(totalSeats: number = 4): CameraPres
 
 
 export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
-  1: {
-    id: 1,
-    label: "Toàn Cảnh",
-    pos: [0.0, 3.8, 12.0],
-    target: [-0.5, 1.50, -3.2],
-  },
+  1: getWideStageCameraPreset(4),
   2: {
     id: 2,
     label: "Màn LED Chữ Nhật",
@@ -539,19 +532,11 @@ export function CameraController({
   const currentTarget = useRef(new THREE.Vector3(0, 1.8, -2.8));
   const lastZoomRef = useRef(ptzZoom);
   const postIntroStandbyStartRef = useRef<number | null>(null);
-  const wasPostIntroStandbyRef = useRef(false);
-  const standbyExitedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isPostIntroStandby) {
       postIntroStandbyStartRef.current = serverNow ? serverNow() : Date.now();
-      wasPostIntroStandbyRef.current = true;
-      standbyExitedAtRef.current = null;
     } else {
-      if (wasPostIntroStandbyRef.current) {
-        standbyExitedAtRef.current = serverNow ? serverNow() : Date.now();
-        wasPostIntroStandbyRef.current = false;
-      }
       postIntroStandbyStartRef.current = null;
     }
   }, [isPostIntroStandby, serverNow]);
@@ -599,30 +584,26 @@ export function CameraController({
   const prevQIdxRef = useRef<number>(qIdx ?? -1);
   const prevRevealedRef = useRef<boolean>(questionRevealed ?? false);
   const questionZoomStartRef = useRef<number>(0);
-  const glideStartRef = useRef<number | null>(null);
 
-  // Handle instant cut on camera switch when mode is CUT, except when in standby or smoothly transitioning out of standby
+  // Handle instant cut on camera or seat switch when mode is CUT (no forced standby/CAM 14 morph locks)
   useEffect(() => {
     const isCamChanged = prevCamAngleRef.current !== camAngle;
     const isSeatChanged = prevActiveSeatRef.current !== activeSeat;
     const isSummarySeatCut = camAngle === 18 && isSeatChanged;
 
-    if (isCamChanged || isSummarySeatCut) {
+    if (isCamChanged || isSeatChanged) {
       const isMcHandoff = prevCamAngleRef.current === 3 || camAngle === 3;
-      if (prevCamAngleRef.current === 14 && camAngle !== 14) {
-        // CUT immediately to CAM 10 (Toàn cảnh hàng bục thí sinh) as starting point for 2.5s zoom into contestant
-        const cam10 = getWidePodiumsCameraPreset(effectiveTotalSeats);
-        currentPos.current.copy(new THREE.Vector3(...cam10.pos));
-        currentTarget.current.copy(new THREE.Vector3(...cam10.target));
-        camera.position.copy(currentPos.current);
-        camera.lookAt(currentTarget.current);
-      } else if ((transitionMode === "CUT" || isMcHandoff || isSummarySeatCut) && !isPostIntroStandby && standbyExitedAtRef.current == null) {
+      if ((transitionMode === "CUT" || isMcHandoff || isSummarySeatCut) && !isPostIntroStandby) {
         currentPos.current.copy(targetPos);
         currentTarget.current.copy(targetLookAt);
         camera.position.copy(targetPos);
         camera.lookAt(targetLookAt);
+        if (camera instanceof THREE.PerspectiveCamera && targetPreset.fov) {
+          camera.fov = targetPreset.fov;
+          camera.updateProjectionMatrix();
+        }
       }
-      if (transitionMode === "CUT" || prevCamAngleRef.current !== camAngle) {
+      if (transitionMode === "CUT" || isCamChanged) {
         smoothPushRef.current = 0.0;
         questionZoomStartRef.current = 0;
       } else {
@@ -631,7 +612,7 @@ export function CameraController({
       prevCamAngleRef.current = camAngle;
       prevActiveSeatRef.current = activeSeat;
     }
-  }, [camAngle, activeSeat, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress, effectiveTotalSeats, camera]);
+  }, [camAngle, activeSeat, transitionMode, targetPos, targetLookAt, targetPreset.fov, isPostIntroStandby, pushInProgress, camera]);
 
   useFrame((_, delta) => {
     // Smooth push-in zoom:
@@ -663,9 +644,6 @@ export function CameraController({
       camera.position.copy(targetPos);
       camera.lookAt(targetLookAt);
     } else if (isCamChanged) {
-      if (prevCamAngleRef.current === 29 && camAngle === 1 && transitionMode === "MORPH") {
-        glideStartRef.current = serverNow ? serverNow() : Date.now();
-      }
       smoothPushRef.current = 0.0;
       questionZoomStartRef.current = 0;
       prevCamAngleRef.current = camAngle;
@@ -783,31 +761,6 @@ export function CameraController({
       return;
     }
 
-    // 0.1. Khởi Động Turn Start Smooth Sweep Director:
-    // Starts low from floor level bottom-left of Laurel Vitrine, gently elevating & sweeping up towards stage/contestant
-    if (kdStartCooldownUntil) {
-      const now = serverNow ? serverNow() : Date.now();
-      if (now < kdStartCooldownUntil) {
-        _sweepStartPos.set(...OLYMPIA_CAM_PRESETS[14].pos);
-        _sweepStartTarget.set(...OLYMPIA_CAM_PRESETS[14].target);
-
-        const duration = 3500;
-        const elapsed = Math.max(0, duration - (kdStartCooldownUntil - now));
-        const t = Math.min(1.0, elapsed / duration);
-        const smoothT = t * t * (3 - 2 * t);
-
-        _curPos.lerpVectors(_sweepStartPos, _sweepEndPos, smoothT);
-        _curTarget.lerpVectors(_sweepStartTarget, _sweepEndTarget, smoothT);
-
-        currentPos.current.copy(_curPos);
-        currentTarget.current.copy(_curTarget);
-
-        camera.position.copy(_curPos);
-        camera.lookAt(_curTarget);
-        return;
-      }
-    }
-
     // 0.2. Post-Intro Opening Round Camera Director (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
     // Tối giản giai đoạn sau intro: Frame bục MC (CAM 3) đẩy nhẹ trong 3.0s rồi chuyển thẳng về toàn cảnh trường quay
     if (isPostIntroStandby) {
@@ -845,37 +798,14 @@ export function CameraController({
       effectiveLookAt.y = THREE.MathUtils.lerp(1.05, 1.45, activePush);
     }
 
-    const now = serverNow ? serverNow() : Date.now();
-    const isExitingStandby = standbyExitedAtRef.current != null && (now - standbyExitedAtRef.current < 2200);
-    if (isExitingStandby && currentPos.current.distanceToSquared(_effectivePos) < 0.005) {
-      standbyExitedAtRef.current = null;
-    } else if (!isExitingStandby && standbyExitedAtRef.current != null) {
-      standbyExitedAtRef.current = null;
-    }
-
     // 2. Smooth interpolation or instant positioning:
-    // When transitioning from standby to question framing, smoothly glide (lerp) into position without snapping.
-    // When remaining on the same camera angle (e.g. advancing question), snap on new question to eliminate backward jerk.
-    // When finishing a turn (CAM 29 to CAM 1), glide smoothly over 3.0 seconds.
+    // In CUT mode (standard across Khởi Động, VCNV, Về Đích), snap immediately on any camera transition or new question.
     if (isNewQuestion || isSummarySeatCut) {
       // Snap camera directly to baseline preset immediately on new question or score summary seat change,
       // completely eliminating any backward interpolation jerk or cross-stage morph/slide
       currentPos.current.copy(targetPos);
       currentTarget.current.copy(effectiveLookAt);
-    } else if (glideStartRef.current != null) {
-      const elapsedGlide = (now - glideStartRef.current) / 3000;
-      if (elapsedGlide >= 1.0) {
-        glideStartRef.current = null;
-        currentPos.current.copy(_effectivePos);
-        currentTarget.current.copy(effectiveLookAt);
-      } else {
-        const smoothGlide = elapsedGlide * elapsedGlide * (3 - 2 * elapsedGlide);
-        const cam29 = getWideStageLeftTiltedPreset(effectiveTotalSeats);
-        const cam1 = getWideStageCameraPreset(effectiveTotalSeats);
-        currentPos.current.lerpVectors(new THREE.Vector3(...cam29.pos), new THREE.Vector3(...cam1.pos), smoothGlide);
-        currentTarget.current.lerpVectors(new THREE.Vector3(...cam29.target), new THREE.Vector3(...cam1.target), smoothGlide);
-      }
-    } else if ((transitionMode === "CUT" || (prevCamAngleRef.current === 3 || camAngle === 3)) && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
+    } else if (transitionMode === "CUT" || prevCamAngleRef.current === 3 || camAngle === 3) {
       currentPos.current.copy(_effectivePos);
       currentTarget.current.copy(effectiveLookAt);
     } else {

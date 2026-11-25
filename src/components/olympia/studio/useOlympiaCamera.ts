@@ -213,21 +213,21 @@ export function evaluateVeDichCameraState(
       if (onStageElapsed < 3.8) {
         return {
           camAngle: 1,
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
       }
       return {
         camAngle: 15,
-        transitionMode: "MORPH",
+        transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,
       };
     }
     return {
       camAngle: 1,
-      transitionMode: "MORPH",
+      transitionMode: "CUT",
       isOverlayHidden: false,
       pushInProgress: 0,
     };
@@ -238,14 +238,14 @@ export function evaluateVeDichCameraState(
     if (onStageElapsed < 3.8) {
       return {
         camAngle: 1,
-        transitionMode: "MORPH",
+        transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,
       };
     }
     return {
       camAngle: 15,
-      transitionMode: "MORPH",
+      transitionMode: "CUT",
       isOverlayHidden: false,
       pushInProgress: 0,
     };
@@ -254,7 +254,7 @@ export function evaluateVeDichCameraState(
   if (vd.phase === "packageReady") {
     return {
       camAngle: 15,
-      transitionMode: "MORPH",
+      transitionMode: "CUT",
       isOverlayHidden: false,
       pushInProgress: 0,
     };
@@ -305,7 +305,7 @@ export function evaluateVeDichCameraState(
   if (vd.phase === "seatDone") {
     return {
       camAngle: 1,
-      transitionMode: "MORPH",
+      transitionMode: "CUT",
       isOverlayHidden: false,
       pushInProgress: 0,
     };
@@ -564,10 +564,10 @@ export function useOlympiaCameraState(
     // 2. Stage transitions (Lobby / Finished)
     if (state.stage !== "playing") {
       if (state.stage === "finished") {
-        // Match ended: camera moves to Laurel Wreath Vitrine
+        // Match ended: camera cuts cleanly to Laurel Wreath Vitrine
         return {
           camAngle: 4,
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
@@ -585,7 +585,7 @@ export function useOlympiaCameraState(
     if (state.showStageGraphics) {
       return {
         camAngle: 1, // CAM 1 Toàn Cảnh S14
-        transitionMode: "MORPH",
+        transitionMode: "CUT",
         isOverlayHidden: true, // Tạm ẩn overlay để thưởng thức trọn vẹn trường quay 3D
         pushInProgress: 0,
       };
@@ -594,7 +594,7 @@ export function useOlympiaCameraState(
     // 2.8. Post-Intro Opening Round Camera Sequence (applies to all rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ):
     // Giai đoạn sau khi kết thúc intro vòng thi (roundIntroDoneAt):
     // - 0s -> 3.0s: Bục MC (CAM 3), push nhẹ 15% khi MC đọc lời mở đầu
-    // - >= 3.0s: Chuyển mượt (MORPH) sang Toàn Cảnh Trường Quay (CAM 1) bao quát toàn bộ thí sinh và 2 MC cho tới khi Host nhấn [BẮT ĐẦU]
+    // - >= 3.0s: CUT ngay sang Toàn Cảnh Trường Quay (CAM 1) bao quát toàn bộ thí sinh và 2 MC cho tới khi Host nhấn [BẮT ĐẦU]
     if (state.roundIntroDoneAt && !state.banner) {
       const isRoundNotStarted =
         (round === "khoiDong" && !state.khoiDong?.started && (state.khoiDong?.phase === "intro" || state.khoiDong?.phase === "idle" || (state.khoiDong?.qIdx ?? -1) < 0)) ||
@@ -615,8 +615,8 @@ export function useOlympiaCameraState(
           };
         }
         return {
-          camAngle: 1, // Hết 3.0s chuyển mượt thẳng về toàn cảnh trường quay chờ Host bắt đầu
-          transitionMode: "MORPH",
+          camAngle: 1, // Hết 3.0s CUT thẳng về toàn cảnh trường quay chờ Host bắt đầu
+          transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
@@ -658,7 +658,7 @@ export function useOlympiaCameraState(
         : (kd.buzzedSeat != null ? getCameraForSeat(kd.buzzedSeat, activeCount) : 10);
 
       // 3.2. Khi chưa nhấn Bắt đầu (màn chờ Khởi Động):
-      // Giữ zoom in bục MC 2.8s để MC dẫn trọn lời trước khi zoom out toàn cảnh (CAM 1)
+      // Giữ zoom in bục MC 2.8s để MC dẫn trọn lời trước khi CUT sang toàn cảnh (CAM 1)
       if (!kd.started && (kd.phase === "intro" || kd.phase === "idle" || kd.qIdx < 0)) {
         const introElapsed = Math.max(0, (now - (state.roundIntroDoneAt ?? roundEnteredAtRef.current)) / 1000);
         if (introElapsed < 2.8) {
@@ -671,30 +671,20 @@ export function useOlympiaCameraState(
         }
         return {
           camAngle: 1, // Toàn cảnh trường quay bao quát toàn bộ bục thí sinh
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
       }
 
-      // 3.3. Khi nhấn Bắt đầu (trong 3.5s đầu):
-      // Smooth continuous sweep từ góc toàn cảnh CAM 14
+      // 3.3. Khi nhấn Bắt đầu (trong 3.5s đếm lùi mở đồ hoạ):
+      // CUT ngay sang CAM 10 (Toàn cảnh hàng bục thí sinh), sau đó CUT thẳng sang góc thí sinh tương ứng (không morph CAM 14)
       if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
         return {
-          camAngle: 14,
-          transitionMode: "MORPH",
+          camAngle: 10,
+          transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0.15,
-        };
-      }
-
-      // 3.3b. Sau 3.5s đầu: CUT sang CAM 10 rồi lướt zoom (morph) về đúng góc thí sinh tương ứng trong 2.5s
-      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2500) {
-        return {
-          camAngle: targetContestantCam,
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: 0.25,
+          pushInProgress: 0,
         };
       }
 
@@ -759,7 +749,7 @@ export function useOlympiaCameraState(
                 camAngle: 10,
                 transitionMode: "CUT",
                 isOverlayHidden: false,
-                pushInProgress: 0.1,
+                pushInProgress: 0,
               };
             }
             return {
@@ -775,34 +765,24 @@ export function useOlympiaCameraState(
               camAngle: 10,
               transitionMode: "CUT",
               isOverlayHidden: false,
-              pushInProgress: 0.1,
+              pushInProgress: 0,
             };
           }
         }
       }
 
       // 3.6. Khi nhấn Kết thúc lượt (ở lượt riêng, hoặc O13 - O21):
-      // - Giai đoạn 1 (0.0s -> 1.5s): Chuyển sang đúng camera thí sinh đó ở góc rộng (0.75x - 0.8x, hiện đủ cả người lẫn bảng điểm), zoom lên 1.25x trong 1.5s
-      // - Giai đoạn 2 (1.5s): CUT ngay sang toàn cảnh CAM 1 (không morph), bắt đầu ở trạng thái nghiêng về bên trái (khu vực bục thí sinh, CAM 19)
-      // - Giai đoạn 3 (1.5s -> 4.5s): Quay êm ái từ góc nghiêng trái về góc toàn cảnh mặc định trong 3.0s (không giật)
+      // - Giai đoạn 1 (0.0s -> 2.5s): Chuyển sang đúng camera thí sinh đó ở góc rộng (CAM 18: 0.75x -> 1.25x, hiện đủ cả người lẫn bảng điểm)
+      // - Giai đoạn 2 (>= 2.5s): CUT ngay sang toàn cảnh CAM 1 (không morph)
       if (kd.phase === "segmentDone") {
         const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-        if (segDoneElapsed < 2.0) {
-          const pushIn = Math.min(1.0, segDoneElapsed / 2.0);
+        if (segDoneElapsed < 2.5) {
+          const pushIn = Math.min(1.0, segDoneElapsed / 2.5);
           return {
             camAngle: 18, // Preset 18: Wide framing showing both contestant body & podium scoreboard
             transitionMode: "CUT",
             isOverlayHidden: false,
             pushInProgress: pushIn, // 0.0 -> 1.0 (zoom up to 1.25x)
-          };
-        }
-        if (segDoneElapsed < 4.5) {
-          const isImmediateCut = segDoneElapsed < 2.08;
-          return {
-            camAngle: segDoneElapsed < 2.5 ? 29 : 1,
-            transitionMode: isImmediateCut ? "CUT" : "MORPH",
-            isOverlayHidden: false,
-            pushInProgress: 0,
           };
         }
         return {

@@ -578,7 +578,9 @@ export function StudioFloor({
   }, [isIdle, introStartedAt, serverNow]);
 
   const ringColor = useMemo(() => {
-    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
+    const blue = new THREE.Color("#1d4ed8");
+    const crimson = new THREE.Color("#cc1122");
+    const baseColor = blue.clone().lerp(crimson, Math.max(0.0, Math.min(1.0, stageFadeProgress)));
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [stageFadeProgress, liveFactor]);
@@ -1040,7 +1042,9 @@ export function StudioWalls({
   liveFactor?: number;
 }) {
   const wallLightColor = useMemo(() => {
-    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
+    const blue = new THREE.Color("#1d4ed8");
+    const crimson = new THREE.Color("#cc1122");
+    const baseColor = blue.clone().lerp(crimson, Math.max(0.0, Math.min(1.0, stageFadeProgress)));
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [stageFadeProgress, liveFactor]);
@@ -1199,11 +1203,15 @@ export function StudioCeilingRig({
   liveFactor = 1.0, 
   quality = "HIGH",
   currentRound = null,
+  stageFadeProgress = 0,
+  screenFadeProgress = 0,
 }: { 
   isDimmed?: boolean; 
   liveFactor?: number; 
   quality?: "HIGH" | "MEDIUM" | "LIGHT"; 
   currentRound?: string | null;
+  stageFadeProgress?: number;
+  screenFadeProgress?: number;
 }) {
   const roundLightingTheme = useMemo(() => {
     switch (currentRound) {
@@ -1250,6 +1258,14 @@ export function StudioCeilingRig({
     }
   }, [currentRound]);
 
+  const effectiveFade = Math.max(0, Math.min(1, stageFadeProgress * 0.65 + screenFadeProgress * 0.35));
+
+  const blendedCenterSpotColor = useMemo(() => {
+    const base = new THREE.Color(roundLightingTheme.spotColor);
+    const redSpot = new THREE.Color("#ffccd5");
+    return base.lerp(redSpot, Math.max(0, Math.min(1, stageFadeProgress)) * 0.85);
+  }, [roundLightingTheme.spotColor, stageFadeProgress]);
+
   const trussMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -1293,6 +1309,106 @@ export function StudioCeilingRig({
     []
   );
 
+  // Shared GPU geometries & shaders for Moving-Head Volumetric Sweep Beams & Soft Floor Gobo Projections
+  const sweepBeamGeom = useMemo(
+    () => new THREE.CylinderGeometry(0.032, 0.44, 1.0, 12, 1, true),
+    []
+  );
+
+  const sweepBeamMat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color("#38bdf8") },
+          uOpacity: { value: 0.0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vUv = uv;
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            float vFade = smoothstep(0.0, 0.18, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
+            vec3 normal = normalize(vNormal);
+            vec3 viewDir = normalize(vViewPosition);
+            float edgeFade = pow(clamp(abs(dot(normal, viewDir)), 0.0, 1.0), 1.9);
+            float alpha = uOpacity * vFade * edgeFade;
+            if (alpha < 0.001) discard;
+            gl_FragColor = vec4(uColor, alpha);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.FrontSide,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    []
+  );
+
+  const floorGoboGeom = useMemo(() => new THREE.PlaneGeometry(1.0, 1.0), []);
+
+  const floorGoboMat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color("#38bdf8") },
+          uOpacity: { value: 0.0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          varying vec2 vUv;
+          void main() {
+            vec2 p = (vUv - 0.5) * 2.0;
+            float r2 = dot(p, p);
+            if (r2 > 1.0) discard;
+            float core = exp(-r2 * 5.2);
+            float halo = exp(-r2 * 2.2) * 0.45;
+            float mask = clamp((core + halo) * smoothstep(1.0, 0.55, sqrt(r2)), 0.0, 1.0);
+            float alpha = uOpacity * mask;
+            if (alpha < 0.002) discard;
+            gl_FragColor = vec4(uColor * (1.0 + core * 0.45), alpha);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      sweepBeamGeom.dispose();
+      sweepBeamMat.dispose();
+      floorGoboGeom.dispose();
+      floorGoboMat.dispose();
+    };
+  }, [sweepBeamGeom, sweepBeamMat, floorGoboGeom, floorGoboMat]);
+
   // 8 Fixture angles around inner and outer concentric truss rings
   const fixtureAngles = useMemo(
     () => [
@@ -1307,6 +1423,164 @@ export function StudioCeilingRig({
     ],
     []
   );
+
+  // Refs for zero-re-render 60 FPS moving-head pan/tilt sweep & dynamic floor lighting
+  const innerHeadRefs = useRef<Array<THREE.Group | null>>([]);
+  const sweepBeamRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const floorGoboRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const sweepSpotRef0 = useRef<THREE.SpotLight>(null);
+  const sweepSpotRef1 = useRef<THREE.SpotLight>(null);
+  const sweepSpotTarget0 = useMemo(() => new THREE.Object3D(), []);
+  const sweepSpotTarget1 = useMemo(() => new THREE.Object3D(), []);
+
+  const prevFadeRef = useRef(effectiveFade);
+  const transitionHoldRef = useRef(0);
+  const sweepWeightRef = useRef(0);
+  const sweepPhaseRef = useRef(0);
+
+  // Pre-allocated scratch objects to guarantee 0 GC allocations inside useFrame
+  const scratchRef = useRef({
+    origin: new THREE.Vector3(),
+    standbyTarget: new THREE.Vector3(),
+    floorTarget: new THREE.Vector3(),
+    activeTarget: new THREE.Vector3(),
+    dir: new THREE.Vector3(),
+    mid: new THREE.Vector3(),
+    downVec: new THREE.Vector3(0, -1, 0),
+    blueBeam: new THREE.Color("#38bdf8"),
+    redBeam: new THREE.Color("#ff1e42"),
+    blueLens: new THREE.Color("#38bdf8"),
+    redLens: new THREE.Color("#ff2a4d"),
+    blueEmissive: new THREE.Color("#0284c7"),
+    redEmissive: new THREE.Color("#cc1122"),
+    curColor: new THREE.Color("#38bdf8"),
+    curEmissive: new THREE.Color("#0284c7"),
+  });
+
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.1);
+    const s = scratchRef.current;
+
+    // Detect active Blue <-> Red transition (either direction) and hold smooth moving-head floor sweep
+    const fadeDelta = Math.abs(effectiveFade - prevFadeRef.current);
+    prevFadeRef.current = effectiveFade;
+    const isTransitioningNow = fadeDelta > 0.0005 || (effectiveFade > 0.015 && effectiveFade < 0.985);
+
+    if (isTransitioningNow) {
+      transitionHoldRef.current = 1.65;
+    } else if (transitionHoldRef.current > 0) {
+      transitionHoldRef.current = Math.max(0, transitionHoldRef.current - dt);
+    }
+
+    const targetSweep = transitionHoldRef.current > 0 ? 1.0 : 0.0;
+    const rampSpeed = targetSweep > 0.5 ? 4.8 : 1.15;
+    sweepWeightRef.current = THREE.MathUtils.lerp(
+      sweepWeightRef.current,
+      targetSweep,
+      Math.min(1, dt * rampSpeed)
+    );
+    const sw = sweepWeightRef.current;
+
+    // Advance orbital sweep phase smoothly while active
+    sweepPhaseRef.current += dt * (0.28 + 1.85 * sw);
+    const phase = sweepPhaseRef.current;
+
+    // Crossfade beam, floor gobo & luminaire lens colors smoothly Blue <-> Crimson Red
+    s.blueLens.set(isDimmed ? "#1e293b" : roundLightingTheme.lensColor);
+    s.blueEmissive.set(isDimmed ? "#075985" : roundLightingTheme.lensEmissive);
+    s.curColor.copy(s.blueBeam).lerp(s.redBeam, effectiveFade);
+
+    fixtureLensMat.color.copy(s.blueLens).lerp(s.redLens, effectiveFade);
+    fixtureLensMat.emissive.copy(s.blueEmissive).lerp(s.redEmissive, effectiveFade);
+    fixtureLensMat.emissiveIntensity = (isDimmed ? 0.4 : 1.65) + sw * 0.85;
+
+    const dimScale = isDimmed ? 0.55 : 1.0;
+    const live = Math.max(0, Math.min(1, liveFactor));
+
+    sweepBeamMat.uniforms.uColor.value.copy(s.curColor);
+    sweepBeamMat.uniforms.uOpacity.value = (0.012 + 0.145 * sw) * live * dimScale;
+
+    floorGoboMat.uniforms.uColor.value.copy(s.curColor);
+    floorGoboMat.uniforms.uOpacity.value = 0.52 * sw * live * dimScale;
+
+    // Update all 8 inner-ring moving-head fixtures (pan/tilt head + beam + floor gobo)
+    for (let fIdx = 0; fIdx < fixtureAngles.length; fIdx++) {
+      const ang = fixtureAngles[fIdx];
+      const fx = 5.2 * Math.cos(ang);
+      const fz = 5.2 * Math.sin(ang);
+      s.origin.set(fx, -0.38, fz);
+
+      // Standby aim: elevated ambient broadcast angle (~35 deg inward)
+      s.standbyTarget.set(fx * 0.35, -3.6, fz * 0.35 + 0.4);
+
+      // Floor sweep target: alternating fixtures sweep outer glossy floor & central laurel dais
+      const spinDir = fIdx % 2 === 0 ? 1 : -1;
+      const orbitAng = ang + phase * spinDir * 1.15;
+      const isOuterFloorRing = fIdx % 2 === 0;
+      const rFloor = isOuterFloorRing
+        ? 4.15 + 0.45 * Math.sin(phase * 1.7 + fIdx)
+        : 1.25 + 0.55 * Math.cos(phase * 1.5 + fIdx * 0.9);
+      // Match exact stage floor heights relative to rig origin Y=6.2m, Z=-1.2m (stage center Z=-0.5 -> local Z=+0.70)
+      const floorLocalY = isOuterFloorRing ? -6.182 : -5.995;
+      s.floorTarget.set(
+        Math.cos(orbitAng) * rFloor,
+        floorLocalY,
+        Math.sin(orbitAng) * rFloor + 0.70
+      );
+
+      // Blend smoothly between elevated standby aim and downward floor sweep target
+      s.activeTarget.copy(s.standbyTarget).lerp(s.floorTarget, sw);
+
+      // Aim moving-head fixture lantern (-Y lens axis points strictly toward activeTarget)
+      s.dir.subVectors(s.activeTarget, s.origin);
+      const dist = s.dir.length();
+      if (dist > 0.001) {
+        s.dir.divideScalar(dist);
+        const headGroup = innerHeadRefs.current[fIdx];
+        if (headGroup) {
+          headGroup.quaternion.setFromUnitVectors(s.downVec, s.dir);
+        }
+
+        const beamMesh = sweepBeamRefs.current[fIdx];
+        if (beamMesh) {
+          const showBeam = sw > 0.015 && live > 0.05;
+          beamMesh.visible = showBeam;
+          if (showBeam) {
+            s.mid.addVectors(s.origin, s.activeTarget).multiplyScalar(0.5);
+            beamMesh.position.copy(s.mid);
+            beamMesh.quaternion.setFromUnitVectors(s.downVec, s.dir);
+            beamMesh.scale.set(1, dist, 1);
+          }
+        }
+
+        const goboMesh = floorGoboRefs.current[fIdx];
+        if (goboMesh) {
+          const showGobo = sw > 0.03 && live > 0.05;
+          goboMesh.visible = showGobo;
+          if (showGobo) {
+            goboMesh.position.set(s.floorTarget.x, floorLocalY + 0.004, s.floorTarget.z);
+            const goboSize = isOuterFloorRing ? 2.15 : 1.65;
+            goboMesh.scale.set(goboSize, goboSize, 1);
+          }
+        }
+      }
+
+      // Sync 2 dynamic floor-sweeping SpotLights (fIdx 0 and fIdx 4) for live specular reflection on glossy floor
+      if (fIdx === 0 && sweepSpotRef0.current) {
+        sweepSpotTarget0.position.copy(s.floorTarget);
+        sweepSpotTarget0.updateMatrixWorld();
+        sweepSpotRef0.current.color.copy(s.curColor);
+        sweepSpotRef0.current.intensity = 16.0 * sw * live * dimScale;
+        sweepSpotRef0.current.visible = sw > 0.02 && live > 0.05;
+      } else if (fIdx === 4 && sweepSpotRef1.current) {
+        sweepSpotTarget1.position.copy(s.floorTarget);
+        sweepSpotTarget1.updateMatrixWorld();
+        sweepSpotRef1.current.color.copy(s.curColor);
+        sweepSpotRef1.current.intensity = 16.0 * sw * live * dimScale;
+        sweepSpotRef1.current.visible = sw > 0.02 && live > 0.05;
+      }
+    }
+  });
 
   return (
     <group position={[0, 6.2, -1.2]}>
@@ -1360,47 +1634,112 @@ export function StudioCeilingRig({
         </mesh>
       ))}
 
-      {/* ── 4. SUSPENDED BROADCAST STAGE LUMINAIRES (Fresnel / Spotlights) ── */}
-      {/* A. Inner Ring Spotlights (R = 5.2m) */}
+      {/* ── 4. SUSPENDED BROADCAST STAGE LUMINAIRES (Moving-Head Pan/Tilt on Inner Ring) ── */}
+      {/* A. Inner Ring Moving-Head Spotlights (R = 5.2m) — rotate downward onto stage floor on color transitions */}
       {fixtureAngles.map((ang, fIdx) => {
         const fx = 5.2 * Math.cos(ang);
         const fz = 5.2 * Math.sin(ang);
+        const enableFx = quality !== "LIGHT" || fIdx % 2 === 0;
         return (
-          <group key={`inner-fix-${fIdx}`} position={[fx, -0.22, fz]} rotation={[0, -ang + Math.PI / 2, 0]}>
-            {/* Drop Pipe & C-Clamp */}
-            <mesh position={[0, 0.12, 0]}>
-              <cylinderGeometry args={[0.02, 0.02, 0.24, 8]} />
-              <primitive object={fixtureBodyMat} attach="material" />
-            </mesh>
-            {/* U-Yoke Bracket */}
-            <mesh position={[0, -0.04, 0]}>
-              <boxGeometry args={[0.22, 0.03, 0.12]} />
-              <primitive object={fixtureBodyMat} attach="material" />
-            </mesh>
-            {/* Spotlight Lantern Housing (tilted 35 deg down towards stage) */}
-            <group position={[0, -0.16, 0]} rotation={[0.62, 0, 0]}>
-              <mesh position={[0, 0, 0]}>
-                <cylinderGeometry args={[0.09, 0.11, 0.28, 16]} />
+          <React.Fragment key={`inner-fix-${fIdx}`}>
+            <group position={[fx, -0.22, fz]}>
+              {/* Drop Pipe & C-Clamp */}
+              <mesh position={[0, 0.12, 0]}>
+                <cylinderGeometry args={[0.02, 0.02, 0.24, 8]} />
                 <primitive object={fixtureBodyMat} attach="material" />
               </mesh>
-              {/* Emissive Front Fresnel Lens */}
-              <mesh position={[0, -0.142, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <circleGeometry args={[0.1, 16]} />
-                <primitive object={fixtureLensMat} attach="material" />
+              {/* U-Yoke Bracket */}
+              <mesh position={[0, -0.04, 0]}>
+                <boxGeometry args={[0.22, 0.03, 0.12]} />
+                <primitive object={fixtureBodyMat} attach="material" />
               </mesh>
-              {/* 4-leaf Barndoors */}
-              <mesh position={[0, -0.15, 0.11]} rotation={[-0.35, 0, 0]}>
-                <boxGeometry args={[0.18, 0.005, 0.08]} />
-                <primitive object={barndoorMat} attach="material" />
-              </mesh>
-              <mesh position={[0, -0.15, -0.11]} rotation={[0.35, 0, 0]}>
-                <boxGeometry args={[0.18, 0.005, 0.08]} />
-                <primitive object={barndoorMat} attach="material" />
-              </mesh>
+              {/* Articulated Moving-Head Lantern Housing (rotates dynamically in useFrame toward stage floor) */}
+              <group
+                ref={(el) => {
+                  innerHeadRefs.current[fIdx] = el;
+                }}
+                position={[0, -0.16, 0]}
+              >
+                <mesh position={[0, 0, 0]}>
+                  <cylinderGeometry args={[0.09, 0.11, 0.28, 16]} />
+                  <primitive object={fixtureBodyMat} attach="material" />
+                </mesh>
+                {/* Emissive Front Fresnel Lens */}
+                <mesh position={[0, -0.142, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <circleGeometry args={[0.1, 16]} />
+                  <primitive object={fixtureLensMat} attach="material" />
+                </mesh>
+                {/* 4-leaf Barndoors */}
+                <mesh position={[0, -0.15, 0.11]} rotation={[-0.35, 0, 0]}>
+                  <boxGeometry args={[0.18, 0.005, 0.08]} />
+                  <primitive object={barndoorMat} attach="material" />
+                </mesh>
+                <mesh position={[0, -0.15, -0.11]} rotation={[0.35, 0, 0]}>
+                  <boxGeometry args={[0.18, 0.005, 0.08]} />
+                  <primitive object={barndoorMat} attach="material" />
+                </mesh>
+              </group>
             </group>
-          </group>
+
+            {/* Dynamic Volumetric Moving-Head Light Cone & Soft Floor Gobo Disc */}
+            {enableFx && (
+              <>
+                <mesh
+                  ref={(el) => {
+                    sweepBeamRefs.current[fIdx] = el;
+                  }}
+                  geometry={sweepBeamGeom}
+                  material={sweepBeamMat}
+                  visible={false}
+                />
+                <mesh
+                  ref={(el) => {
+                    floorGoboRefs.current[fIdx] = el;
+                  }}
+                  geometry={floorGoboGeom}
+                  material={floorGoboMat}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  visible={false}
+                />
+              </>
+            )}
+          </React.Fragment>
         );
       })}
+
+      {/* 2 Dynamic Floor-Sweeping SpotLights (castShadow=false) for true specular reflections on sapphire floor */}
+      {quality !== "LIGHT" && (
+        <>
+          <primitive object={sweepSpotTarget0} />
+          <spotLight
+            ref={sweepSpotRef0}
+            position={[5.2, -0.38, 0]}
+            target={sweepSpotTarget0}
+            color="#38bdf8"
+            intensity={0}
+            angle={0.42}
+            penumbra={0.75}
+            distance={16}
+            decay={1.25}
+            castShadow={false}
+            visible={false}
+          />
+          <primitive object={sweepSpotTarget1} />
+          <spotLight
+            ref={sweepSpotRef1}
+            position={[-5.2, -0.38, 0]}
+            target={sweepSpotTarget1}
+            color="#38bdf8"
+            intensity={0}
+            angle={0.42}
+            penumbra={0.75}
+            distance={16}
+            decay={1.25}
+            castShadow={false}
+            visible={false}
+          />
+        </>
+      )}
 
       {/* B. Outer Ring Spotlights (R = 8.6m) */}
       {fixtureAngles.map((ang, fIdx) => {
@@ -1447,7 +1786,7 @@ export function StudioCeilingRig({
                 position={[px, py, pz]}
                 targetPosition={[tx, ty, tz]}
                 intensity={(isDimmed ? 1.8 : 5.5 * roundLightingTheme.intensityMultiplier) * liveFactor}
-                color={roundLightingTheme.spotColor}
+                color={blendedCenterSpotColor}
                 angle={0.25}
                 penumbra={0.7}
                 distance={14}
@@ -1467,7 +1806,7 @@ export function StudioCeilingRig({
         </>
       ) : (
         <>
-          <TargetedSpotLight position={[0, 5.5, -2.0]} targetPosition={[0, 0, -1.5]} intensity={(isDimmed ? 1.8 : 5.0) * liveFactor} color={roundLightingTheme.spotColor} angle={0.45} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
+          <TargetedSpotLight position={[0, 5.5, -2.0]} targetPosition={[0, 0, -1.5]} intensity={(isDimmed ? 1.8 : 5.0) * liveFactor} color={blendedCenterSpotColor} angle={0.45} penumbra={0.7} distance={14} decay={1.2} castShadow={false} />
         </>
       )}
     </group>
@@ -3903,6 +4242,8 @@ export function StudioLighting({
         liveFactor={liveFactor}
         quality={quality}
         currentRound={currentRound}
+        stageFadeProgress={stageFadeProgress}
+        screenFadeProgress={screenFadeProgress}
       />
       <AudienceAmphitheater
         audienceFadeProgress={audienceFadeProgress}

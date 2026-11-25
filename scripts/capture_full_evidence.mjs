@@ -206,13 +206,25 @@ async function main() {
   });
   await sleep(2000);
 
-  // Start Khởi Động turn and reveal Question 1 for Graphics Lower-Third verification
-  console.log("\n[7/10] Starting Khởi Động turn & revealing question for Lower-Third typography...");
+  // Start Khởi Động turn and capture mid-transition ceiling moving-head sweep + full Red mode wide shot
+  console.log("\n[7/10] Starting Khởi Động turn, capturing Blue->Red ceiling sweep crossfade & full Red mode...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
     const startKd = btns.find((b) => (b.innerText || "").includes("BẮT ĐẦU") && !(b.innerText || "").includes("TRẬN"));
     if (startKd) startKd.click();
   });
+
+  // Capture Screenshot 11 mid-transition (~900ms in: moving-head ceiling beams sweeping stage floor & crossfading Blue -> Red)
+  await sleep(900);
+  const p11 = path.join(EVIDENCE_DIR, "11_transition_ceiling_sweep_crossfade.png");
+  await displayPage.screenshot({ path: p11, fullPage: false });
+  console.log(`  -> Captured: ${p11}`);
+
+  // Wait ~1.8s more for full Red mode settlement while still on CAM 1 wide shot, then capture Screenshot 12
+  await sleep(1800);
+  const p12 = path.join(EVIDENCE_DIR, "12_red_mode_math_wall_and_stage_full.png");
+  await displayPage.screenshot({ path: p12, fullPage: false });
+  console.log(`  -> Captured: ${p12}`);
 
   // Wait for kd:start cooldown (3.5s) to fully expire so CÂU TIẾP (MỞ CÂU 1) becomes enabled
   console.log("  -> Waiting for Next Question button to become enabled (cooldown expiry)...");

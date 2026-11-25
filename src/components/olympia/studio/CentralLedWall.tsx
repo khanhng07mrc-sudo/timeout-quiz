@@ -2786,6 +2786,79 @@ export function CentralLedWall({
     formulaWallTextureRef.current = formulaWallTexture;
   }, [formulaWallCanvas, formulaWallTexture]);
 
+  // Custom WebGL ShaderMaterial for Curved Math & Science Wall (R=8.6m):
+  // - Uses single transparent VP9 WebM (yuva420p) with zero duplicate video decode overhead
+  // - Preserves pure white core & exact alpha transparency while smoothly crossfading Cyan/Blue <-> Ruby Crimson
+  // - Flips UV horizontally (1.0 - vUv.x) to correct BackSide cylinder mirroring
+  const mathWallShaderMat = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uMap: { value: null as THREE.Texture | null },
+        uRedProgress: { value: 0.0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uMap;
+        uniform float uRedProgress;
+        varying vec2 vUv;
+
+        void main() {
+          vec2 uvCoord = vec2(1.0 - vUv.x, vUv.y);
+          vec4 tex = texture2D(uMap, uvCoord);
+          if (tex.a < 0.004) discard;
+
+          float t = clamp(uRedProgress, 0.0, 1.0);
+          vec3 baseLinear = max(tex.rgb, vec3(0.0));
+
+          // Perform hue/chroma remapping in perceptual sRGB space so pure white cores stay crisp white
+          vec3 srgb = pow(baseLinear, vec3(1.0 / 2.2));
+          float minCh = min(srgb.r, min(srgb.g, srgb.b));
+          float maxCh = max(srgb.r, max(srgb.g, srgb.b));
+          float chroma = max(0.0, maxCh - minCh);
+
+          // Vibrant VTV3 S14 Ruby-Crimson neon palette matching stage red elements
+          vec3 redSrgb = vec3(
+            clamp(minCh + chroma * 1.18, 0.0, 1.0),
+            clamp(minCh + chroma * 0.11, 0.0, 1.0),
+            clamp(minCh + chroma * 0.22, 0.0, 1.0)
+          );
+
+          // Luminance-preserving crossfade (subtle mid-transition glow prevents muddy gray dip at t=0.5)
+          vec3 mixedSrgb = mix(srgb, redSrgb, t);
+          float midBoost = 1.0 + 0.14 * sin(3.14159265 * t) * clamp(chroma * 1.4, 0.0, 1.0);
+          mixedSrgb = clamp(mixedSrgb * midBoost, 0.0, 1.0);
+
+          vec3 outLinear = pow(mixedSrgb, vec3(2.2));
+          gl_FragColor = vec4(outLinear, tex.a);
+          #include <colorspace_fragment>
+        }
+      `,
+      side: THREE.BackSide,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      mathWallShaderMat.dispose();
+    };
+  }, [mathWallShaderMat]);
+
+  const activeMathWallTexture = mathWallVideoTexture || formulaWallTexture;
+  useEffect(() => {
+    if (activeMathWallTexture) {
+      mathWallShaderMat.uniforms.uMap.value = activeMathWallTexture;
+    }
+  }, [mathWallShaderMat, activeMathWallTexture]);
+
   const isArchRed = screenFadeProgress > 0.5;
 
   // Perforated White LED Dots Arch Texture (Images 3 & 4)
@@ -2915,6 +2988,17 @@ export function CentralLedWall({
       mathWallVideoTexture.needsUpdate = true;
     }
 
+    // Smoothly drive Curved Math & Science Wall WebGL shader crossfade (0.0 Blue <-> 1.0 Ruby Red)
+    const targetRed = Math.max(0, Math.min(1, screenFadeProgress));
+    const curRed = mathWallShaderMat.uniforms.uRedProgress.value as number;
+    const nextRed = Math.abs(targetRed - curRed) < 0.002
+      ? targetRed
+      : THREE.MathUtils.lerp(curRed, targetRed, Math.min(1, dt * 14));
+    mathWallShaderMat.uniforms.uRedProgress.value = nextRed;
+    if (activeMathWallTexture && mathWallShaderMat.uniforms.uMap.value !== activeMathWallTexture) {
+      mathWallShaderMat.uniforms.uMap.value = activeMathWallTexture;
+    }
+
     // Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
     // In Practical Countdown mode, refresh at ~30 FPS (0.033s) for smooth 3D flip card animation
     const isIdle = isPreMatchIdle(state);
@@ -2952,7 +3036,9 @@ export function CentralLedWall({
   });
 
   const neonColor = useMemo(() => {
-    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
+    const navy = new THREE.Color("#1d4ed8");
+    const crimson = new THREE.Color("#cc1122");
+    const baseColor = navy.clone().lerp(crimson, Math.max(0, Math.min(1, screenFadeProgress)));
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [screenFadeProgress, liveFactor]);
@@ -3420,15 +3506,8 @@ export function CentralLedWall({
           <cylinderGeometry
             args={[8.6, 8.6, 2.4, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
           />
-          {mathWallVideoTexture || formulaWallTexture ? (
-            <meshBasicMaterial
-              map={mathWallVideoTexture || formulaWallTexture}
-              side={THREE.BackSide}
-              toneMapped={false}
-              transparent={true}
-              depthWrite={false}
-              color={screenFadeProgress > 0.5 ? "#ffa0b5" : "#ffffff"}
-            />
+          {activeMathWallTexture ? (
+            <primitive object={mathWallShaderMat} attach="material" />
           ) : (
             <meshStandardMaterial color="#040b1a" side={THREE.BackSide} roughness={0.3} metalness={0.8} />
           )}

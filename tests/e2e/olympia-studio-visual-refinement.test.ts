@@ -422,8 +422,9 @@ test("R6.2: CentralLedWall initializes THREE.VideoTexture with horizontal flip f
 
 test("R6.3: Curved science & math wall maps video texture onto CylinderGeometry R=8.6m", () => {
   assert.ok(
+    centralLedWallContent.includes("const activeMathWallTexture = mathWallVideoTexture || formulaWallTexture;") ||
     centralLedWallContent.includes("map={mathWallVideoTexture || formulaWallTexture}"),
-    "Curved wall must map mathWallVideoTexture or fallback to formulaWallTexture"
+    "Curved wall must bind mathWallVideoTexture or fallback to formulaWallTexture"
   );
   assert.ok(
     centralLedWallContent.includes("args={[8.6, 8.6, 2.4,"),
@@ -437,8 +438,8 @@ test("R6.4: Curved math wall uses transparent WebM alpha material without duplic
     "utf-8"
   );
   assert.ok(
-    centralLedWallContent.includes("transparent={true}"),
-    "Curved math wall meshBasicMaterial must set transparent={true} for VP9 alpha WebM"
+    centralLedWallContent.includes("transparent: true") || centralLedWallContent.includes("transparent={true}"),
+    "Curved math wall material must enable alpha transparency for VP9 alpha WebM"
   );
   assert.ok(
     videoGenContent.includes("yuva420p") && videoGenContent.includes("omitBackground: true"),
@@ -447,6 +448,64 @@ test("R6.4: Curved math wall uses transparent WebM alpha material without duplic
   assert.ok(
     !videoGenContent.includes('fillText("QUIZORRA"'),
     "Video generator must NOT draw duplicate 2D QUIZORRA text inside the video texture"
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// R8: Curved Wall Red Crossfade Shader, Moving-Head Ceiling Sweep & Stage Sync
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n--- Requirement R8: Red Mode Crossfade & Moving-Head Ceiling Sweep ---");
+
+test("R8.1: Curved math wall uses custom WebGL ShaderMaterial with uRedProgress crossfade, UV flip, and alpha preservation", () => {
+  assert.ok(
+    centralLedWallContent.includes("mathWallShaderMat") &&
+    centralLedWallContent.includes("uRedProgress"),
+    "CentralLedWall must define mathWallShaderMat with uRedProgress uniform"
+  );
+  assert.ok(
+    centralLedWallContent.includes("vec2(1.0 - vUv.x, vUv.y)"),
+    "ShaderMaterial must flip UV horizontally to prevent BackSide cylinder text mirroring"
+  );
+  assert.ok(
+    centralLedWallContent.includes("gl_FragColor = vec4(outLinear, tex.a);") &&
+    centralLedWallContent.includes("#include <colorspace_fragment>"),
+    "ShaderMaterial must preserve WebM alpha channel and Three.js output color space"
+  );
+});
+
+test("R8.2: StudioCeilingRig rotates moving-head fixtures downward onto stage floor during Blue <-> Red transitions", () => {
+  assert.ok(
+    studioLightingContent.includes("stageFadeProgress = 0") &&
+    studioLightingContent.includes("screenFadeProgress = 0") &&
+    studioLightingContent.includes("stageFadeProgress={stageFadeProgress}"),
+    "StudioCeilingRig must accept and receive stageFadeProgress and screenFadeProgress"
+  );
+  assert.ok(
+    studioLightingContent.includes("innerHeadRefs") &&
+    studioLightingContent.includes("sweepBeamRefs") &&
+    studioLightingContent.includes("floorGoboRefs"),
+    "StudioCeilingRig must animate articulated moving-head luminaires, volumetric beams, and floor gobo spots"
+  );
+  assert.ok(
+    studioLightingContent.includes("sweepSpotRef0") &&
+    studioLightingContent.includes("sweepSpotRef1") &&
+    studioLightingContent.includes("isTransitioningNow"),
+    "StudioCeilingRig must detect transitions and drive floor-sweeping spotlights with castShadow=false"
+  );
+});
+
+test("R8.3: Floor rings, perimeter cyc walls, and stage neon tubes smoothly crossfade Blue <-> Red via lerp", () => {
+  assert.ok(
+    !studioLightingContent.includes('stageFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8")'),
+    "StudioFloor and StudioWalls must replace hard > 0.5 color snap with smooth .lerp() crossfade"
+  );
+  assert.ok(
+    !centralLedWallContent.includes('screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8")'),
+    "CentralLedWall neonColor must replace hard > 0.5 color snap with smooth .lerp() crossfade"
+  );
+  assert.ok(
+    !centralLedWallContent.includes('color={screenFadeProgress > 0.5 ? "#ffa0b5" : "#ffffff"}'),
+    "Curved math wall must replace crude pink tint snap with WebGL red crossfade shader"
   );
 });
 

@@ -1496,12 +1496,14 @@ export function StudioCeilingRig({
 
     const dimScale = isDimmed ? 0.55 : 1.0;
     const live = Math.max(0, Math.min(1, liveFactor));
+    // Compensate perceptual luminance drop of deep red under AdditiveBlending vs cyan
+    const redLuminanceComp = 1.0 + 0.72 * effectiveFade;
 
     sweepBeamMat.uniforms.uColor.value.copy(s.curColor);
-    sweepBeamMat.uniforms.uOpacity.value = (0.012 + 0.145 * sw) * live * dimScale;
+    sweepBeamMat.uniforms.uOpacity.value = (0.012 + 0.165 * sw) * live * dimScale * redLuminanceComp;
 
     floorGoboMat.uniforms.uColor.value.copy(s.curColor);
-    floorGoboMat.uniforms.uOpacity.value = 0.52 * sw * live * dimScale;
+    floorGoboMat.uniforms.uOpacity.value = 0.62 * sw * live * dimScale * redLuminanceComp;
 
     // Update all 8 inner-ring moving-head fixtures (pan/tilt head + beam + floor gobo)
     for (let fIdx = 0; fIdx < fixtureAngles.length; fIdx++) {

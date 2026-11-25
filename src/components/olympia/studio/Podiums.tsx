@@ -23,6 +23,7 @@ interface PodiumsProps {
   state?: OlympiaState | null;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   screenFadeProgress?: number;
+  stageFadeProgress?: number;
   serverNow?: () => number;
   liveFactor?: number;
   introStartedAt?: number | null;
@@ -3010,7 +3011,9 @@ export function CenterMcDesk({
   liveFactor?: number;
 }) {
   const neonColor = useMemo(() => {
-    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
+    const blue = new THREE.Color("#1d4ed8");
+    const crimson = new THREE.Color("#cc1122");
+    const baseColor = blue.clone().lerp(crimson, Math.max(0, Math.min(1, screenFadeProgress)));
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [screenFadeProgress, liveFactor]);
@@ -6031,6 +6034,7 @@ function CentralFloorIntroBurst({
 export function CenterFloorStage({
   state,
   screenFadeProgress = 0,
+  stageFadeProgress,
   serverNow,
   quality = "HIGH",
   liveFactor = 1.0,
@@ -6039,6 +6043,7 @@ export function CenterFloorStage({
 }: {
   state?: OlympiaState | null;
   screenFadeProgress?: number;
+  stageFadeProgress?: number;
   serverNow?: () => number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   liveFactor?: number;
@@ -6054,14 +6059,35 @@ export function CenterFloorStage({
 
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
 
-  // Real-time stage lighting state (BLUE vs RED across all rounds including Về Đích)
+  // Smoothly crossfade stage rings & center dais in sync with StudioFloor (falls back to lightingMode if unprovided)
   const nowMs = serverNow ? serverNow() : Date.now();
   const lightingMode = computeTargetLightingMode(state, nowMs);
-  const isRed = lightingMode === "RED";
+  const fadeT = Math.max(
+    0,
+    Math.min(1, stageFadeProgress !== undefined ? stageFadeProgress : lightingMode === "RED" ? 1.0 : 0.0)
+  );
+  const isRed = fadeT > 0.5;
 
-  // Dynamic broadcast lighting colors matching real-time studio state (Deep Royal Navy & Deep Crimson):
-  const neonColor = isRed ? "#88081a" : "#1d4ed8";
-  const accentColor = isRed ? "#991b1b" : "#2563eb";
+  const {
+    neonColor,
+    accentColor,
+    outerRingColor,
+    bezelColor,
+    bezelEmissive,
+    centerDiscColor,
+    centerDiscEmissive,
+  } = useMemo(() => {
+    const t = fadeT;
+    return {
+      neonColor: new THREE.Color("#1d4ed8").lerp(new THREE.Color("#cc1122"), t),
+      accentColor: new THREE.Color("#2563eb").lerp(new THREE.Color("#b91c1c"), t),
+      outerRingColor: new THREE.Color("#1d4ed8").lerp(new THREE.Color("#88081a"), t),
+      bezelColor: new THREE.Color("#0f172a").lerp(new THREE.Color("#2a040a"), t),
+      bezelEmissive: new THREE.Color("#1d4ed8").lerp(new THREE.Color("#88081a"), t),
+      centerDiscColor: new THREE.Color("#040918").lerp(new THREE.Color("#120206"), t),
+      centerDiscEmissive: new THREE.Color("#030818").lerp(new THREE.Color("#2b0409"), t),
+    };
+  }, [fadeT]);
 
   const isEntrance = !isIdle && Boolean(state?.entranceState?.active);
 
@@ -6223,7 +6249,7 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.3}>
         <ringGeometry args={[2.24, 2.38, 128]} />
         <meshBasicMaterial
-          color={isRed ? "#88081a" : "#1d4ed8"}
+          color={outerRingColor}
           transparent
           opacity={0.85}
           side={THREE.DoubleSide}
@@ -6239,8 +6265,8 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0020, 0]} renderOrder={9.4}>
         <ringGeometry args={[2.16, 2.22, 128]} />
         <meshStandardMaterial
-          color={isRed ? "#2a040a" : "#0f172a"}
-          emissive={isRed ? "#88081a" : "#1d4ed8"}
+          color={bezelColor}
+          emissive={bezelEmissive}
           emissiveIntensity={0.25}
           metalness={0.9}
           roughness={0.15}
@@ -6296,8 +6322,8 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.2} receiveShadow={true}>
         <circleGeometry args={[1.40, 128]} />
         <meshStandardMaterial
-          color={isRed ? "#120206" : "#040918"}
-          emissive={isRed ? "#2b0409" : "#030818"}
+          color={centerDiscColor}
+          emissive={centerDiscEmissive}
           emissiveIntensity={0.08}
           roughness={0.10}
           metalness={0.42}
@@ -6734,6 +6760,7 @@ export function Podiums({
   state,
   quality = "HIGH",
   screenFadeProgress = 0,
+  stageFadeProgress,
   serverNow,
   liveFactor = 1.0,
   introStartedAt = null,
@@ -6797,6 +6824,7 @@ export function Podiums({
         state={state}
         serverNow={serverNow}
         screenFadeProgress={screenFadeProgress}
+        stageFadeProgress={stageFadeProgress}
         quality={quality}
         liveFactor={liveFactor}
         introStartedAt={introStartedAt}

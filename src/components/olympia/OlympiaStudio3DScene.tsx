@@ -503,6 +503,7 @@ export function OlympiaStudio3DScene({
           state={state}
           quality={quality}
           screenFadeProgress={screenFadeProgress}
+          stageFadeProgress={stageFadeProgress}
           serverNow={serverNow}
           liveFactor={liveFactor}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}

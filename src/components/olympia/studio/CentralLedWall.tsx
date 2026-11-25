@@ -1326,42 +1326,56 @@ function renderVibrantBlueGradientWithSheen(
   fadeProgress: number = 0,
   timeSec: number = 0
 ): void {
-  const isRed = fadeProgress > 0.5;
+  const redMix = Math.max(0, Math.min(1, fadeProgress));
+  const isRed = redMix > 0.5;
 
   // 1. Bilateral horizontal base gradient (luminous electric blue in center, rich royal blue on both flanks)
   const baseGrad = ctx.createLinearGradient(0, 0, width, 0);
-  if (isRed) {
-    baseGrad.addColorStop(0.0, "#4a040b");
-    baseGrad.addColorStop(0.22, "#881320");
-    baseGrad.addColorStop(0.50, "#dc2626");
-    baseGrad.addColorStop(0.78, "#881320");
-    baseGrad.addColorStop(1.0, "#4a040b");
-  } else {
-    // Vibrant broadcast electric sapphire (matching reference Images 1, 2, 6)
-    baseGrad.addColorStop(0.0, "#063bb8");
-    baseGrad.addColorStop(0.20, "#0b50dd");
-    baseGrad.addColorStop(0.50, "#257fff");
-    baseGrad.addColorStop(0.80, "#0b50dd");
-    baseGrad.addColorStop(1.0, "#063bb8");
-  }
+  // Vibrant broadcast electric sapphire (matching reference Images 1, 2, 6)
+  baseGrad.addColorStop(0.0, "#063bb8");
+  baseGrad.addColorStop(0.20, "#0b50dd");
+  baseGrad.addColorStop(0.50, "#257fff");
+  baseGrad.addColorStop(0.80, "#0b50dd");
+  baseGrad.addColorStop(1.0, "#063bb8");
   ctx.fillStyle = baseGrad;
   ctx.fillRect(0, 0, width, height);
 
+  // Smooth crossfade overlay into fiery ruby-crimson during Blue <-> Red transition
+  if (redMix > 0.005) {
+    ctx.save();
+    ctx.globalAlpha = redMix;
+    const redBaseGrad = ctx.createLinearGradient(0, 0, width, 0);
+    redBaseGrad.addColorStop(0.0, "#4a040b");
+    redBaseGrad.addColorStop(0.22, "#881320");
+    redBaseGrad.addColorStop(0.50, "#dc2626");
+    redBaseGrad.addColorStop(0.78, "#881320");
+    redBaseGrad.addColorStop(1.0, "#4a040b");
+    ctx.fillStyle = redBaseGrad;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
+
   // 2. Vertical modulation gradient (soft top & bottom broadcast framing)
   const vertGrad = ctx.createLinearGradient(0, 0, 0, height);
-  if (isRed) {
-    vertGrad.addColorStop(0.0, "rgba(20, 2, 5, 0.45)");
-    vertGrad.addColorStop(0.35, "rgba(239, 68, 68, 0.20)");
-    vertGrad.addColorStop(0.65, "rgba(220, 38, 38, 0.15)");
-    vertGrad.addColorStop(1.0, "rgba(20, 2, 5, 0.45)");
-  } else {
-    vertGrad.addColorStop(0.0, "rgba(3, 18, 65, 0.40)");
-    vertGrad.addColorStop(0.35, "rgba(56, 189, 248, 0.22)");
-    vertGrad.addColorStop(0.65, "rgba(37, 99, 235, 0.18)");
-    vertGrad.addColorStop(1.0, "rgba(3, 18, 65, 0.40)");
-  }
+  vertGrad.addColorStop(0.0, "rgba(3, 18, 65, 0.40)");
+  vertGrad.addColorStop(0.35, "rgba(56, 189, 248, 0.22)");
+  vertGrad.addColorStop(0.65, "rgba(37, 99, 235, 0.18)");
+  vertGrad.addColorStop(1.0, "rgba(3, 18, 65, 0.40)");
   ctx.fillStyle = vertGrad;
   ctx.fillRect(0, 0, width, height);
+
+  if (redMix > 0.005) {
+    ctx.save();
+    ctx.globalAlpha = redMix;
+    const redVertGrad = ctx.createLinearGradient(0, 0, 0, height);
+    redVertGrad.addColorStop(0.0, "rgba(20, 2, 5, 0.45)");
+    redVertGrad.addColorStop(0.35, "rgba(239, 68, 68, 0.20)");
+    redVertGrad.addColorStop(0.65, "rgba(220, 38, 38, 0.15)");
+    redVertGrad.addColorStop(1.0, "rgba(20, 2, 5, 0.45)");
+    ctx.fillStyle = redVertGrad;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
 
   // 3. Dynamic sweeping diagonal light beam (Images 1, 2, 6)
   ctx.save();
@@ -2931,8 +2945,8 @@ export function CentralLedWall({
     }
   }, [totemCanvas, totemTexture]);
 
-  // Quantized fade step to prevent 60-FPS canvas re-renders during fade animations
-  const fadeStep = Math.round(screenFadeProgress * 4);
+  // Quantized 8-step fade trigger for smooth crossfade on Stage Right screen without idle spam
+  const fadeStep = Math.round(screenFadeProgress * 8);
 
   // Update dynamic display canvases only when questions change or at key fade milestones
   useEffect(() => {

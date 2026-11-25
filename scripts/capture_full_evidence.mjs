@@ -190,7 +190,9 @@ async function main() {
   console.log("\n  -> Switching to CAM 2 for Stage Right LED Screen closeup (Bilateral Gradient, Scanlines, UTM Neutra)...");
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const cam2Btn = btns.find((b) => (b.innerText || "").includes("Màn LED") || (b.innerText || "").includes("CAM 2"));
+    const cam2Btn =
+      btns.find((b) => (b.innerText || "").trim() === "C2") ||
+      btns.find((b) => (b.innerText || "").includes("Màn LED") || (b.innerText || "").includes("CAM 2"));
     if (cam2Btn) cam2Btn.click();
   });
   await sleep(3000);
@@ -201,7 +203,9 @@ async function main() {
   // Switch back to CAM 1 (Main Wide Angle)
   await hostPage.evaluate(() => {
     const btns = Array.from(document.querySelectorAll("button"));
-    const cam1Btn = btns.find((b) => (b.innerText || "").includes("Toàn Cảnh") || (b.innerText || "").includes("CAM 1"));
+    const cam1Btn =
+      btns.find((b) => (b.innerText || "").trim() === "C1") ||
+      btns.find((b) => (b.innerText || "").includes("Toàn Cảnh") || (b.innerText || "").includes("CAM 1"));
     if (cam1Btn) cam1Btn.click();
   });
   await sleep(2000);
@@ -214,17 +218,32 @@ async function main() {
     if (startKd) startKd.click();
   });
 
-  // Capture Screenshot 11 mid-transition (~900ms in: moving-head ceiling beams sweeping stage floor & crossfading Blue -> Red)
-  await sleep(900);
+  // Pin C1 immediately so Auto Director keeps Wide Shot during Blue->Red crossfade & ceiling sweep capture
+  await sleep(120);
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const cam1Btn = btns.find((b) => (b.innerText || "").trim() === "C1");
+    if (cam1Btn) cam1Btn.click();
+  });
+
+  // Capture Screenshot 11 mid-transition (~750ms in: moving-head ceiling beams sweeping stage floor & crossfading Blue -> Red)
+  await sleep(650);
   const p11 = path.join(EVIDENCE_DIR, "11_transition_ceiling_sweep_crossfade.png");
   await displayPage.screenshot({ path: p11, fullPage: false });
   console.log(`  -> Captured: ${p11}`);
 
-  // Wait ~1.8s more for full Red mode settlement while still on CAM 1 wide shot, then capture Screenshot 12
-  await sleep(1800);
+  // Wait ~1.5s more for full Red mode settlement while still on CAM 1 wide shot, then capture Screenshot 12
+  await sleep(1500);
   const p12 = path.join(EVIDENCE_DIR, "12_red_mode_math_wall_and_stage_full.png");
   await displayPage.screenshot({ path: p12, fullPage: false });
   console.log(`  -> Captured: ${p12}`);
+
+  // Restore Auto Director (TỰ ĐỘNG) before question gameplay
+  await hostPage.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll("button"));
+    const autoBtn = btns.find((b) => (b.innerText || "").includes("TỰ ĐỘNG"));
+    if (autoBtn) autoBtn.click();
+  });
 
   // Wait for kd:start cooldown (3.5s) to fully expire so CÂU TIẾP (MỞ CÂU 1) becomes enabled
   console.log("  -> Waiting for Next Question button to become enabled (cooldown expiry)...");

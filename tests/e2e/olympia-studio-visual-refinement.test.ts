@@ -494,7 +494,7 @@ test("R8.2: StudioCeilingRig rotates moving-head fixtures downward onto stage fl
   );
 });
 
-test("R8.3: Floor rings, perimeter cyc walls, and stage neon tubes smoothly crossfade Blue <-> Red via lerp", () => {
+test("R8.3: Floor rings, center dais, perimeter cyc walls, and stage neon tubes smoothly crossfade Blue <-> Red via lerp", () => {
   assert.ok(
     !studioLightingContent.includes('stageFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8")'),
     "StudioFloor and StudioWalls must replace hard > 0.5 color snap with smooth .lerp() crossfade"
@@ -502,6 +502,11 @@ test("R8.3: Floor rings, perimeter cyc walls, and stage neon tubes smoothly cros
   assert.ok(
     !centralLedWallContent.includes('screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8")'),
     "CentralLedWall neonColor must replace hard > 0.5 color snap with smooth .lerp() crossfade"
+  );
+  assert.ok(
+    !podiumsContent.includes('screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8")') &&
+    podiumsContent.includes("stageFadeProgress !== undefined ? stageFadeProgress"),
+    "CenterMcDesk and CenterFloorStage in Podiums.tsx must smoothly crossfade via lerp instead of boolean snap"
   );
   assert.ok(
     !centralLedWallContent.includes('color={screenFadeProgress > 0.5 ? "#ffa0b5" : "#ffffff"}'),

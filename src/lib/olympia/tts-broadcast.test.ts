@@ -56,7 +56,9 @@ import {
   buildClosingFarewellScript,
   buildContestantIntroContinuousScript,
   buildContestantIntroStepSegment,
+  buildEntranceOpeningBridge,
   buildFinalAwardCeremonyScript,
+  buildKhoiDongTurnBridgeSegment,
   buildKhoiDongTurnExplanations,
   buildLobbyGreetingScript,
   buildOpeningDuoScript,
@@ -66,6 +68,7 @@ import {
   buildScoreSummaryCommentary,
   buildScoreSummaryScript,
   buildScoreSummaryStepSegment,
+  buildVeDichBridgeSegment,
   cancelBuzzerInterrupt,
   cancelDramaticStealCall,
   cancelTTS,
@@ -101,6 +104,7 @@ import {
   pickRandomMCRole,
   refreshOlympiaVoices,
   resetBuzzerTurnState,
+  resetOlympiaTtsSession,
   resetTtsServerFallback,
   resolveMCRole,
   resolveMCVoiceConfig,
@@ -2189,4 +2193,53 @@ test("T4.5: Adversarial Broadcast Stress Test: 100 consecutive rapid broadcast e
   } finally {
     stopFsWriteSpy();
   }
+});
+
+test("T4.6: Multi-run FIFO broadcast chaining (OpeningDuo -> Entrance -> RoundIntro -> KD segIdx=0 / VD pre_stage) & session reset", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken, withAudioContext: true }, async () => {
+    // Run #1: Opening Duo -> Entrance Step 0 queued without cancelling
+    resetOlympiaTtsSession();
+    const seats = [
+      { id: 0, name: "TS. Phạm Quốc", school: "THPT PTNK", score: 0 },
+      { id: 1, name: "N.V.A", school: "THPT KHTN", score: 0 },
+    ];
+    const duo = buildOpeningDuoScript({ roomName: "Tuần 1" });
+    const pDuo = speakDualMcScriptAsync(duo, { engine: "webspeech" });
+    const step0 = buildContestantIntroStepSegment(seats, 0)!;
+    const pStep0 = speakDualMcScriptAsync([step0], { engine: "webspeech", queueAfterActive: true });
+
+    const [duoOk, step0Ok] = await Promise.all([pDuo, pStep0]);
+    assert.equal(duoOk, true);
+    assert.equal(step0Ok, true);
+    assert.equal(spoken.length, 3);
+    assert.ok(spoken[2].text.includes("Phạm Quốc"));
+    assert.ok(spoken[2].text.includes("Phổ thông Năng khiếu"));
+
+    // Run #2 after full session reset: Round Intro -> Khởi Động segIdx=0 chained cleanly
+    resetOlympiaTtsSession();
+    const introOk = await speakRoundIntroTTS("khoiDong", { engine: "webspeech" });
+    assert.equal(introOk, true);
+    const kd0 = buildKhoiDongTurnBridgeSegment({
+      segKind: "solo",
+      segIdx: 0,
+      seatId: 0,
+      name: seats[0].name,
+    });
+    assert.ok(!/bàn phím chuông|bấm chuông/i.test(kd0.text));
+    const kd0Ok = await speakDualMcScriptAsync([kd0], { engine: "webspeech", queueAfterActive: true });
+    assert.equal(kd0Ok, true);
+
+    const entranceBridge = buildEntranceOpeningBridge(seats);
+    assert.ok(entranceBridge && entranceBridge.text.includes("2 nhà leo núi"));
+    const vdPre0 = buildVeDichBridgeSegment({
+      kind: "pre_stage",
+      seatId: 1,
+      name: seats[1].name,
+      score: 120,
+      turnIdx: 0,
+      totalTurns: 2,
+    });
+    assert.ok(vdPre0.text.includes("N.V.A") && vdPre0.text.includes("120 điểm"));
+  });
 });

@@ -6149,43 +6149,54 @@ export function CenterFloorStage({
     }
   });
 
-  // Texture loading with fallback canvas
+  // Texture loading with lazy onError fallback canvas
   const [laurelTex, setLaurelTex] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let cancelled = false;
+    let activeTex: THREE.Texture | null = null;
     const loader = new THREE.TextureLoader();
+
+    const applyTex = (tex: THREE.Texture) => {
+      if (cancelled) {
+        tex.dispose();
+        return;
+      }
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.needsUpdate = true;
+      activeTex = tex;
+      setLaurelTex(tex);
+    };
+
     loader.load(
       "/brand/olympia_laurel_2016.webp",
-      (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.needsUpdate = true;
-        setLaurelTex(tex);
-      },
+      applyTex,
       undefined,
       () => {
-        loader.load("/olympia/Olympia_logo_2016.webp", (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          tex.needsUpdate = true;
-          setLaurelTex(tex);
-        });
+        if (cancelled) return;
+        loader.load(
+          "/olympia/Olympia_logo_2016.webp",
+          applyTex,
+          undefined,
+          () => {
+            if (cancelled || typeof document === "undefined") return;
+            const canvas = createStageLaurelWreathCanvas();
+            const fallback = new THREE.CanvasTexture(canvas);
+            applyTex(fallback);
+          }
+        );
       }
     );
+
+    return () => {
+      cancelled = true;
+      if (activeTex) {
+        activeTex.dispose();
+        activeTex = null;
+      }
+    };
   }, []);
-
-  const fallbackCanvas = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    return createStageLaurelWreathCanvas();
-  }, []);
-
-  const fallbackTex = useMemo(() => {
-    if (!fallbackCanvas) return null;
-    const tex = new THREE.CanvasTexture(fallbackCanvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }, [fallbackCanvas]);
-
-  const activeWreathTex = laurelTex || fallbackTex;
 
   // Authentic Olympia 27 Stage Floor Dais Solid Rings (Continuous RingGeometry R = 2.24m to 2.38m, 128 radial segments)
   const solidTrackGeom = useMemo(() => new THREE.RingGeometry(2.24, 2.38, 128), []);
@@ -6432,10 +6443,10 @@ export function CenterFloorStage({
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={10.0}
       >
-        {activeWreathTex && (
+        {laurelTex && (
           <mesh>
             <planeGeometry args={[2.3, 2.3]} />
-            <meshBasicMaterial ref={wreathMatRef} map={activeWreathTex} transparent={true} opacity={1.0}
+            <meshBasicMaterial ref={wreathMatRef} map={laurelTex} transparent={true} opacity={1.0}
               depthWrite={false}
               toneMapped={false}
               polygonOffset

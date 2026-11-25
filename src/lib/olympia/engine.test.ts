@@ -4149,6 +4149,34 @@ test("M3: Question explanation propagation, player view redaction, and Excel/JSO
   assert.equal(g.view("player", 0).tangToc?.questions[0].explanation, undefined);
 });
 
+test("Right LED Screen (R5): engine validates all 7 modes, rejects invalid modes, and broadcasts to display view", () => {
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4);
+  const validModes = [
+    "auto",
+    "roundTitle",
+    "logo",
+    "question",
+    "scoreboard",
+    "roundGraphics",
+    "camera",
+  ] as const;
+
+  for (const mode of validModes) {
+    act(g, "rightScreen:setMode", { mode });
+    assert.equal(g.state.rightScreenMode, mode, `Engine must accept rightScreenMode=${mode}`);
+    assert.equal(g.view("display").rightScreenMode, mode, `Display view must receive rightScreenMode=${mode}`);
+  }
+
+  // Empty/null falls back to auto
+  act(g, "rightScreen:setMode", { mode: "" });
+  assert.equal(g.state.rightScreenMode, "auto");
+
+  // Unknown mode fails cleanly without corrupting state
+  const badRes = g.hostAction({ type: "rightScreen:setMode", mode: "invalid_mode_xyz" as any }, 100);
+  assert.equal(badRes.ok, false);
+  assert.equal(g.state.rightScreenMode, "auto");
+});
+
 // Import Smart TTS test suite
 import "./tts.test";
 

@@ -8,7 +8,7 @@ import { RULESETS } from "@/lib/olympia/rulesets";
 
 export function isPriorityInstantCue(sound?: string): boolean {
   if (!sound) return false;
-  return /(?:^|\/)(?:bell_ring|correct|wrong|hope_star)(?:\.mp3)?$/.test(sound);
+  return /(?:^|\/)(?:bell_ring|correct|wrong|hope_star|star_of_hope)(?:\.mp3)?$/.test(sound);
 }
 
 type FastCueListener = (cue: NonNullable<OlympiaState["cue"]>, state: OlympiaState) => void;
@@ -481,82 +481,185 @@ export class SeamlessIntroAudioLoopSimulator {
 }
 
 const sfxAudioCache = new Map<string, HTMLAudioElement>();
+const VALID_PREWARM_SEASONS = new Set(["O13-21", "O22", "O23", "O24-25", "O26"]);
+const prewarmedUrlSet = new Set<string>();
+const prewarmInFlight = new Map<string, Promise<void>>();
+let activePrewarmRunId = 0;
+let activePrewarmCancel: (() => void) | null = null;
 
-function prewarmSfx(url: string) {
-  if (typeof window === "undefined") return;
-  if (!sfxAudioCache.has(url)) {
+function normalizePrewarmSeason(season: string = "O26"): string {
+  if (season === "O20") return "O13-21";
+  return VALID_PREWARM_SEASONS.has(season) ? season : "O26";
+}
+
+export function getPrewarmBuzzerUrls(season: string = "O26"): string[] {
+  const effectiveSeason = normalizePrewarmSeason(season);
+  const rawList = [
+    // Priority instant cues first (bell_ring, correct, wrong, star_of_hope)
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/bell_ring.mp3`,
+    `/olympia-audio/${effectiveSeason}/2_VuotChuongNgaiVat/bell_ring.mp3`,
+    `/olympia-audio/${effectiveSeason}/4_VeDich/bell_ring.mp3`,
+    `/olympia-audio/${effectiveSeason}/5_CauHoiPhu/bell_ring.mp3`,
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/correct.mp3`,
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/wrong.mp3`,
+    `/olympia-audio/${effectiveSeason}/2_VuotChuongNgaiVat/correct.mp3`,
+    `/olympia-audio/${effectiveSeason}/2_VuotChuongNgaiVat/wrong.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/correct.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/wrong.mp3`,
+    `/olympia-audio/${effectiveSeason}/4_VeDich/correct.mp3`,
+    `/olympia-audio/${effectiveSeason}/4_VeDich/wrong.mp3`,
+    `/olympia-audio/${effectiveSeason}/4_VeDich/star_of_hope.mp3`,
+    // Non-priority round cues
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/open_question.mp3`,
+    `/olympia-audio/${effectiveSeason}/2_VuotChuongNgaiVat/choose_row.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/show_question.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/show_answer.mp3`,
+    `/olympia-audio/${effectiveSeason}/4_VeDich/open_question.mp3`,
+    `/olympia-audio/${effectiveSeason}/6_NhacKhac/show_intro.mp3`,
+    `/olympia-audio/${effectiveSeason}/6_NhacKhac/contest_intro.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/tick_20s.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/tick_30s.mp3`,
+  ];
+  if (effectiveSeason !== "O26") {
+    rawList.push(
+      `/olympia-audio/${effectiveSeason}/3_TangToc/tick_10s.mp3`,
+      `/olympia-audio/${effectiveSeason}/3_TangToc/tick_40s.mp3`
+    );
+  }
+  return Array.from(new Set(rawList));
+}
+
+function prewarmSfx(url: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  const existing = prewarmInFlight.get(url);
+  if (existing) return existing;
+
+  const task = (async () => {
     try {
-      const a = new Audio(url);
-      a.preload = "auto";
-      sfxAudioCache.set(url, a);
-    } catch {}
-  }
-  if (isPriorityInstantCue(url) && !ramSfxBufferCache.has(url) && !ramSfxFetchPending.has(url)) {
-    ramSfxFetchPending.add(url);
-    fetch(url)
-      .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject()))
-      .then((buf) => {
-        const ctx = getSharedDecodeAudioContext();
-        if (!ctx) return;
-        return ctx.decodeAudioData(buf);
-      })
-      .then((decoded) => {
-        if (decoded) {
-          ramSfxBufferCache.set(url, decoded);
+      let response: Response | null = null;
+      let cache: Cache | null = null;
+
+      if ("caches" in window) {
+        try {
+          cache = await caches.open("olympia-audio-v1");
+          const matched = await cache.match(url);
+          if (matched && matched.ok) {
+            response = matched;
+          }
+        } catch {}
+      }
+
+      if (!response) {
+        const netRes = await fetch(url);
+        if (!netRes.ok) return;
+        if (cache) {
+          try {
+            await cache.put(url, netRes.clone());
+          } catch {}
         }
-      })
-      .catch(() => {})
-      .finally(() => {
-        ramSfxFetchPending.delete(url);
-      });
-  }
+        response = netRes;
+      }
+
+      if (isPriorityInstantCue(url) && !ramSfxBufferCache.has(url) && !ramSfxFetchPending.has(url)) {
+        ramSfxFetchPending.add(url);
+        try {
+          const buf = await response.arrayBuffer();
+          const ctx = getSharedDecodeAudioContext();
+          if (ctx) {
+            const decoded = await ctx.decodeAudioData(buf);
+            if (decoded) {
+              ramSfxBufferCache.set(url, decoded);
+            }
+          }
+        } catch {} finally {
+          ramSfxFetchPending.delete(url);
+        }
+      }
+
+      if (!sfxAudioCache.has(url)) {
+        try {
+          const a = new Audio(url);
+          a.preload = "auto";
+          sfxAudioCache.set(url, a);
+        } catch {}
+      }
+      prewarmedUrlSet.add(url);
+    } catch {} finally {
+      prewarmInFlight.delete(url);
+    }
+  })();
+
+  prewarmInFlight.set(url, task);
+  return task;
 }
 
 export function prewarmBuzzerSounds(season: string = "O26") {
   if (typeof window === "undefined") return;
-  const list = [
-    `/olympia-audio/${season}/1_KhoiDong/bell_ring.mp3`,
-    `/olympia-audio/${season}/2_VuotChuongNgaiVat/bell_ring.mp3`,
-    `/olympia-audio/${season}/4_VeDich/bell_ring.mp3`,
-    `/olympia-audio/${season}/5_CauHoiPhu/bell_ring.mp3`,
-    `/olympia-audio/${season}/1_KhoiDong/correct.mp3`,
-    `/olympia-audio/${season}/1_KhoiDong/wrong.mp3`,
-    `/olympia-audio/${season}/2_VuotChuongNgaiVat/correct.mp3`,
-    `/olympia-audio/${season}/2_VuotChuongNgaiVat/wrong.mp3`,
-    `/olympia-audio/${season}/3_TangToc/correct.mp3`,
-    `/olympia-audio/${season}/3_TangToc/wrong.mp3`,
-    `/olympia-audio/${season}/4_VeDich/correct.mp3`,
-    `/olympia-audio/${season}/4_VeDich/wrong.mp3`,
-    `/olympia-audio/${season}/1_KhoiDong/open_question.mp3`,
-    `/olympia-audio/${season}/2_VuotChuongNgaiVat/open_row.mp3`,
-    `/olympia-audio/${season}/3_TangToc/open_question.mp3`,
-    `/olympia-audio/${season}/3_TangToc/show_answer.mp3`,
-    `/olympia-audio/${season}/4_VeDich/open_question.mp3`,
-    `/olympia-audio/${season}/4_VeDich/hope_star.mp3`,
-    `/olympia-audio/${season}/6_NhacKhac/show_intro.mp3`,
-    `/olympia-audio/${season}/6_NhacKhac/contest_intro.mp3`,
-    `/olympia-audio/${season}/3_TangToc/tick_10s.mp3`,
-    `/olympia-audio/${season}/3_TangToc/tick_20s.mp3`,
-    `/olympia-audio/${season}/3_TangToc/tick_30s.mp3`,
-    `/olympia-audio/${season}/3_TangToc/tick_40s.mp3`,
-    `/olympia-audio/O26/1_KhoiDong/bell_ring.mp3`,
-    `/olympia-audio/O26/2_VuotChuongNgaiVat/bell_ring.mp3`,
-    `/olympia-audio/O26/4_VeDich/bell_ring.mp3`,
-    `/olympia-audio/O26/5_CauHoiPhu/bell_ring.mp3`,
-    `/olympia-audio/O26/1_KhoiDong/correct.mp3`,
-    `/olympia-audio/O26/1_KhoiDong/wrong.mp3`,
-    `/olympia-audio/O26/4_VeDich/hope_star.mp3`,
-  ];
-  list.forEach(prewarmSfx);
-  if ("caches" in window) {
-    caches.open("olympia-audio-v1").then((cache) => {
-      list.forEach((url) => {
-        cache.match(url).then((match) => {
-          if (!match) cache.add(url).catch(() => {});
-        }).catch(() => {});
-      });
-    }).catch(() => {});
-  }
+  const pendingUrls = getPrewarmBuzzerUrls(season).filter((u) => !prewarmedUrlSet.has(u));
+  if (pendingUrls.length === 0) return;
+
+  activePrewarmCancel?.();
+  const runId = ++activePrewarmRunId;
+  let cancelled = false;
+  let delayTimer: ReturnType<typeof setTimeout> | null = null;
+  let idleHandle: number | null = null;
+
+  const cancel = () => {
+    cancelled = true;
+    if (delayTimer) {
+      clearTimeout(delayTimer);
+      delayTimer = null;
+    }
+    if (idleHandle !== null && typeof (window as any).cancelIdleCallback === "function") {
+      try {
+        (window as any).cancelIdleCallback(idleHandle);
+      } catch {}
+      idleHandle = null;
+    }
+  };
+  activePrewarmCancel = cancel;
+
+  const waitDelayOrIdle = (ms: number, useIdle: boolean) =>
+    new Promise<void>((resolve) => {
+      if (cancelled || runId !== activePrewarmRunId) {
+        resolve();
+        return;
+      }
+      delayTimer = setTimeout(() => {
+        delayTimer = null;
+        if (cancelled || runId !== activePrewarmRunId) {
+          resolve();
+          return;
+        }
+        if (useIdle && typeof (window as any).requestIdleCallback === "function") {
+          idleHandle = (window as any).requestIdleCallback(
+            () => {
+              idleHandle = null;
+              resolve();
+            },
+            { timeout: 1200 }
+          );
+        } else {
+          resolve();
+        }
+      }, ms);
+    });
+
+  void (async () => {
+    await waitDelayOrIdle(450, true);
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < pendingUrls.length; i += BATCH_SIZE) {
+      if (cancelled || runId !== activePrewarmRunId) return;
+      const batch = pendingUrls.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(batch.map((url) => prewarmSfx(url)));
+      if (i + BATCH_SIZE < pendingUrls.length) {
+        await waitDelayOrIdle(60, false);
+      }
+    }
+    if (activePrewarmCancel === cancel) {
+      activePrewarmCancel = null;
+    }
+  })();
 }
 
 if (typeof window !== "undefined") {

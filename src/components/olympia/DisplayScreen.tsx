@@ -39,6 +39,7 @@ import {
   unlockOlympiaTTS,
   cancelTTS,
   cancelQuestionTTS,
+  resetOlympiaTtsSession,
   speakSmartQuestion,
   smoothStopOlympiaTTS,
   speakOlympiaResult,
@@ -62,6 +63,7 @@ import {
   buildVeDichBridgeSegment,
   buildRoundCompleteBridgeSegment,
   speakDualMcScript,
+  speakDualMcScriptAsync,
   setGlobalCustomTtsScripts,
   pauseOlympiaTTS,
   resumeOlympiaTTS,
@@ -205,40 +207,247 @@ export default function DisplayScreen({ code }: { code: string }) {
       window.location.search.includes("preview=1") ||
       window.self !== window.top);
   const [audioOn, setAudioOn] = useState(!isExplicitMuteParam);
-  const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [ttsActive, setTtsActive] = useState<boolean>(() => !isExplicitMuteParam && isTtsEnabled());
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(() => isExplicitMuteParam);
   const openingGreetingSpokenRef = useRef<boolean>(false);
+  const openingDuoNeedsRecoveryRef = useRef<boolean>(false);
+  const openingDuoInFlightRef = useRef<boolean>(false);
+  const entranceSeatNeedsRecoveryRef = useRef<number | null>(null);
+  const entranceSeatInFlightRef = useRef<number | null>(null);
+  const audioUnlockedRef = useRef<boolean>(isExplicitMuteParam);
+  const latestStateRef = useRef<OlympiaState | null>(null);
+  const latestTtsActiveRef = useRef<boolean>(ttsActive);
+  const latestSeasonRef = useRef<string>("O26");
+  const prevStageRef = useRef<OlympiaState["stage"] | null>(null);
+  const prevBannerSeqRef = useRef<number>(0);
+
+  const urlRuleset =
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get("ruleset") as RulesetId | null)
+      : null;
+  const urlSeason =
+    typeof window !== "undefined"
+      ? (urlRuleset && RULESETS[urlRuleset]?.audioSeason) ||
+        (new URLSearchParams(window.location.search).get("season") as AudioSeason | null)
+      : null;
+
+  const effectiveAudioSeason =
+    (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) ||
+    join?.audioSeason ||
+    urlSeason ||
+    "O26";
+
+  latestStateRef.current = state;
+  latestTtsActiveRef.current = ttsActive;
+  latestSeasonRef.current = effectiveAudioSeason;
+
+  const speakEntranceSeatWithRecovery = useCallback(
+    (
+      seatIdx: number,
+      seats: OlympiaState["seats"],
+      season: string,
+      isRecovery: boolean = false
+    ) => {
+      if (isExplicitMuteParam) return;
+      const segment = buildContestantIntroStepSegment(seats, seatIdx);
+      if (!segment) return;
+
+      entranceSeatNeedsRecoveryRef.current = null;
+      entranceSeatInFlightRef.current = seatIdx;
+      void speakDualMcScriptAsync([segment], {
+        season,
+        preferServer: true,
+        queueAfterActive: true,
+      }).then((ok) => {
+        if (entranceSeatInFlightRef.current === seatIdx) {
+          entranceSeatInFlightRef.current = null;
+        }
+        if (!ok && !isRecovery) {
+          const cur = latestStateRef.current;
+          if (
+            cur?.stage === "playing" &&
+            cur.entranceState?.active &&
+            (cur.entranceState.currentSeatIdx ?? 0) === seatIdx &&
+            !cur.roundIntroDoneAt &&
+            !cur.banner &&
+            !cur.entranceCompleted &&
+            latestTtsActiveRef.current &&
+            !isExplicitMuteParam
+          ) {
+            if (audioUnlockedRef.current) {
+              if (seatIdx === 0 && openingDuoNeedsRecoveryRef.current) {
+                entranceSeatNeedsRecoveryRef.current = seatIdx;
+              } else {
+                speakEntranceSeatWithRecovery(seatIdx, cur.seats, latestSeasonRef.current, true);
+              }
+            } else {
+              entranceSeatNeedsRecoveryRef.current = seatIdx;
+            }
+          }
+        }
+      });
+    },
+    [isExplicitMuteParam]
+  );
+
+  const triggerOpeningDuo = useCallback(
+    (
+      roomName: string | undefined,
+      season: string,
+      queueAfterActive: boolean = false,
+      isRecovery: boolean = false
+    ) => {
+      if (isExplicitMuteParam) return;
+      openingGreetingSpokenRef.current = true;
+      openingDuoNeedsRecoveryRef.current = false;
+      openingDuoInFlightRef.current = true;
+      const script = buildOpeningDuoScript({ roomName });
+      void speakDualMcScriptAsync(script, {
+        season,
+        preferServer: true,
+        queueAfterActive,
+      }).then((ok) => {
+        openingDuoInFlightRef.current = false;
+        if (!ok && !isRecovery) {
+          const cur = latestStateRef.current;
+          if (
+            cur?.stage === "playing" &&
+            !cur.roundIntroDoneAt &&
+            !cur.banner &&
+            !cur.entranceCompleted &&
+            (!cur.entranceState?.active || cur.entranceState.currentSeatIdx === 0) &&
+            latestTtsActiveRef.current &&
+            !isExplicitMuteParam
+          ) {
+            if (audioUnlockedRef.current && !openingDuoNeedsRecoveryRef.current) {
+              openingDuoNeedsRecoveryRef.current = false;
+              const shouldCancelQueuedEntrance =
+                Boolean(cur.entranceState?.active) && entranceSeatInFlightRef.current === 0;
+              triggerOpeningDuo(
+                cur.name,
+                latestSeasonRef.current,
+                shouldCancelQueuedEntrance ? false : Boolean(cur.entranceState?.active),
+                true
+              );
+              const curSeatIdx = cur.entranceState?.active
+                ? (cur.entranceState.currentSeatIdx ?? 0)
+                : null;
+              if (
+                curSeatIdx !== null &&
+                entranceSeatNeedsRecoveryRef.current === curSeatIdx &&
+                entranceSeatInFlightRef.current !== curSeatIdx
+              ) {
+                entranceSeatNeedsRecoveryRef.current = null;
+                speakEntranceSeatWithRecovery(curSeatIdx, cur.seats, latestSeasonRef.current, true);
+              }
+            } else {
+              openingDuoNeedsRecoveryRef.current = true;
+            }
+          }
+        }
+      });
+    },
+    [isExplicitMuteParam, speakEntranceSeatWithRecovery]
+  );
+
+  const recoverBlockedOpeningDuo = useCallback(() => {
+    if (isExplicitMuteParam) return;
+    const cur = latestStateRef.current;
+    if (!cur || cur.stage !== "playing" || !latestTtsActiveRef.current) return;
+    if (cur.roundIntroDoneAt || cur.banner || cur.entranceCompleted) {
+      return;
+    }
+
+    const entranceActive = Boolean(cur.entranceState?.active);
+    const curSeatIdx = entranceActive ? (cur.entranceState?.currentSeatIdx ?? 0) : null;
+    const canRecoverOpening =
+      (!entranceActive || curSeatIdx === 0) &&
+      (!openingGreetingSpokenRef.current ||
+        (openingDuoNeedsRecoveryRef.current && !openingDuoInFlightRef.current));
+
+    if (canRecoverOpening) {
+      openingDuoNeedsRecoveryRef.current = false;
+      const shouldCancelQueuedEntrance =
+        entranceActive && entranceSeatInFlightRef.current === curSeatIdx;
+      triggerOpeningDuo(
+        cur.name,
+        latestSeasonRef.current,
+        shouldCancelQueuedEntrance ? false : entranceActive,
+        true
+      );
+    }
+
+    if (
+      entranceActive &&
+      curSeatIdx !== null &&
+      entranceSeatNeedsRecoveryRef.current === curSeatIdx &&
+      entranceSeatInFlightRef.current !== curSeatIdx
+    ) {
+      entranceSeatNeedsRecoveryRef.current = null;
+      speakEntranceSeatWithRecovery(curSeatIdx, cur.seats, latestSeasonRef.current, true);
+    }
+  }, [isExplicitMuteParam, speakEntranceSeatWithRecovery, triggerOpeningDuo]);
+
+  useEffect(() => {
+    if (!isExplicitMuteParam) {
+      resetOlympiaTtsSession();
+    }
+    return () => {
+      if (timeoutDelayTimerRef.current) {
+        clearTimeout(timeoutDelayTimerRef.current);
+        timeoutDelayTimerRef.current = null;
+      }
+      if (!isExplicitMuteParam) {
+        cancelTTS();
+      }
+    };
+  }, [isExplicitMuteParam]);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (!e.data || typeof e.data !== "object") return;
       const type = e.data.type;
       if (type === "UNLOCK_AUDIO") {
+        audioUnlockedRef.current = true;
         setAudioUnlocked(true);
-        if (!isExplicitMuteParam) {
-          setAudioOn(true);
-        }
+        if (isExplicitMuteParam) return;
+        setAudioOn(true);
         if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
           (window as any).__OLYMPIA_UNLOCK_AUDIO__();
         }
         unlockOlympiaTTS();
+        recoverBlockedOpeningDuo();
       } else if (type === "SET_TTS") {
+        if (isExplicitMuteParam) return;
         setTtsActive(Boolean(e.data.enabled));
         setTtsEnabled(Boolean(e.data.enabled));
       } else if (type === "TTS_PAUSE") {
+        if (isExplicitMuteParam) return;
         pauseOlympiaTTS();
       } else if (type === "TTS_RESUME") {
+        if (isExplicitMuteParam) return;
         resumeOlympiaTTS();
-      } else if (type === "TTS_SKIP" || type === "TTS_STOP") {
+      } else if (type === "TTS_SKIP") {
+        if (isExplicitMuteParam) return;
         skipOlympiaTTS();
+      } else if (type === "TTS_STOP") {
+        if (isExplicitMuteParam) return;
+        if (e.data.reset) {
+          resetOlympiaTtsSession();
+        } else {
+          cancelTTS();
+        }
       } else if (type === "TTS_VOLUME") {
+        if (isExplicitMuteParam) return;
         if (typeof e.data.volume === "number") {
           setOlympiaTtsVolume(e.data.volume);
         }
       } else if (type === "TTS_REPLAY" || type === "TTS_REREAD") {
+        if (isExplicitMuteParam) return;
         lastQuestionRef.current = "";
         replayCurrentQuestionTTS();
       } else if (type === "TTS_COMMAND") {
+        if (isExplicitMuteParam) return;
         const cmd = e.data.command || e.data.action;
         if (cmd === "pause") pauseOlympiaTTS();
         else if (cmd === "resume") resumeOlympiaTTS();
@@ -258,7 +467,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     };
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "olympia_tts_enabled") {
-        setTtsActive(e.newValue !== "false" && e.newValue !== "0");
+        setTtsActive(!isExplicitMuteParam && e.newValue !== "false" && e.newValue !== "0");
       }
     };
     window.addEventListener("message", handleMessage);
@@ -269,7 +478,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       window.removeEventListener("olympia:tts-speaker", handleSpeakerEvent);
       window.removeEventListener("storage", handleStorage);
     };
-  }, [isExplicitMuteParam]);
+  }, [isExplicitMuteParam, recoverBlockedOpeningDuo]);
 
   useEffect(() => {
     (window as any).__OLYMPIA_CALL__ = (actionType: string, payload?: any) => {
@@ -283,44 +492,58 @@ export default function DisplayScreen({ code }: { code: string }) {
   }, [emit]);
 
   useEffect(() => {
-    preloadOlympiaIntroVideos();
+    const controller = new AbortController();
+    let rafId: number | null = null;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      if (controller.signal.aborted) return;
+      timerId = setTimeout(() => {
+        timerId = null;
+        if (controller.signal.aborted) return;
+        if (typeof (window as any).requestIdleCallback === "function") {
+          idleId = (window as any).requestIdleCallback(
+            () => {
+              idleId = null;
+              if (!controller.signal.aborted) {
+                void preloadOlympiaIntroVideos({ signal: controller.signal });
+              }
+            },
+            { timeout: 1500 }
+          );
+        } else {
+          void preloadOlympiaIntroVideos({ signal: controller.signal });
+        }
+      }, 2000);
+    });
+
+    return () => {
+      controller.abort();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      if (timerId !== null) clearTimeout(timerId);
+      if (idleId !== null && typeof (window as any).cancelIdleCallback === "function") {
+        try {
+          (window as any).cancelIdleCallback(idleId);
+        } catch {}
+      }
+    };
   }, []);
 
-  const urlRuleset =
-    typeof window !== "undefined"
-      ? (new URLSearchParams(window.location.search).get("ruleset") as RulesetId | null)
-      : null;
-  const urlSeason =
-    typeof window !== "undefined"
-      ? (urlRuleset && RULESETS[urlRuleset]?.audioSeason) ||
-        (new URLSearchParams(window.location.search).get("season") as AudioSeason | null)
-      : null;
-
-  const effectiveAudioSeason =
-    (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) ||
-    join?.audioSeason ||
-    urlSeason ||
-    "O26";
-
   const handleUserUnlock = useCallback(() => {
+    if (isExplicitMuteParam) return;
+    audioUnlockedRef.current = true;
     setAudioUnlocked(true);
     if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
       (window as any).__OLYMPIA_UNLOCK_AUDIO__();
     }
     unlockOlympiaTTS();
-    if (!audioOn && !isExplicitMuteParam) {
+    if (!audioOn) {
       setAudioOn(true);
     }
-    // If audio was unlocked during match opening, recover and trigger dual-MC greeting immediately
-    if (state?.stage === "playing" && ttsActive && !openingGreetingSpokenRef.current) {
-      openingGreetingSpokenRef.current = true;
-      const script = buildOpeningDuoScript({ roomName: state.name });
-      speakDualMcScript(script, {
-        season: effectiveAudioSeason,
-        preferServer: true,
-      });
-    }
-  }, [audioOn, isExplicitMuteParam, state?.stage, state?.name, ttsActive, effectiveAudioSeason]);
+    recoverBlockedOpeningDuo();
+  }, [audioOn, isExplicitMuteParam, recoverBlockedOpeningDuo]);
 
   useOlympiaAudio(state, effectiveAudioSeason, audioOn);
 
@@ -444,6 +667,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   // Subscription to state.ttsCommand from Host / engine
   const prevCommandSeqRef = useRef<number>(-1);
   useEffect(() => {
+    if (isExplicitMuteParam) return;
     if (!state?.ttsCommand || state.ttsCommand.seq === prevCommandSeqRef.current) return;
     prevCommandSeqRef.current = state.ttsCommand.seq;
     const cmd = state.ttsCommand;
@@ -925,17 +1149,52 @@ export default function DisplayScreen({ code }: { code: string }) {
     setGlobalCustomTtsScripts(state?.customTtsScripts ?? null);
   }, [state?.customTtsScripts]);
 
+  // Reset all DisplayScreen TTS tracking refs and session state on lobby return (and replay bannerSeq)
+  useEffect(() => {
+    if (state?.stage === "lobby") {
+      if (prevStageRef.current && prevStageRef.current !== "lobby" && !isExplicitMuteParam) {
+        resetOlympiaTtsSession();
+      }
+      openingGreetingSpokenRef.current = false;
+      openingDuoNeedsRecoveryRef.current = false;
+      openingDuoInFlightRef.current = false;
+      prevSpokenRoundRef.current = null;
+      prevBannerSeqRef.current = 0;
+      lastQuestionRef.current = "";
+      prevVerdictRef.current = null;
+      prevRevealKeyRef.current = null;
+      prevBuzzKeyRef.current = null;
+      prevCommandSeqRef.current = -1;
+      prevCnvBellsLenRef.current = 0;
+      handledTimeoutsRef.current.clear();
+      if (timeoutDelayTimerRef.current) {
+        clearTimeout(timeoutDelayTimerRef.current);
+        timeoutDelayTimerRef.current = null;
+      }
+      spokenBridgeKeysRef.current.clear();
+      lastSpokenEntranceSeatRef.current = -1;
+      entranceSeatNeedsRecoveryRef.current = null;
+      entranceSeatInFlightRef.current = null;
+      postIntroBreatherSpokenRef.current = false;
+      wasEntranceActiveRef.current = false;
+    } else if (
+      state?.stage === "playing" &&
+      state.bannerSeq &&
+      state.bannerSeq !== prevBannerSeqRef.current &&
+      !state.roundIntroDoneAt
+    ) {
+      prevBannerSeqRef.current = state.bannerSeq;
+      prevSpokenRoundRef.current = null;
+    }
+    prevStageRef.current = state?.stage ?? null;
+  }, [state?.stage, state?.bannerSeq, state?.roundIntroDoneAt, isExplicitMuteParam]);
+
   // Vocalize Opening Duo Greeting ONLY when match actually starts (stage === "playing")
   // In stage === "lobby", system remains 100% SILENT as required.
   useEffect(() => {
-    if (!state || !ttsActive || state.stage !== "playing" || openingGreetingSpokenRef.current) return;
-    openingGreetingSpokenRef.current = true;
-    const script = buildOpeningDuoScript({ roomName: state.name });
-    speakDualMcScript(script, {
-      season: effectiveAudioSeason,
-      preferServer: true,
-    });
-  }, [state?.stage, state?.name, ttsActive, effectiveAudioSeason]);
+    if (isExplicitMuteParam || !state || !ttsActive || state.stage !== "playing" || openingGreetingSpokenRef.current) return;
+    triggerOpeningDuo(state.name, effectiveAudioSeason);
+  }, [isExplicitMuteParam, state?.stage, state?.name, ttsActive, effectiveAudioSeason, triggerOpeningDuo]);
 
   // Vocalize Contestant Intro as each contestant steps down during entrance
   const lastSpokenEntranceSeatRef = useRef<number>(-1);
@@ -946,30 +1205,30 @@ export default function DisplayScreen({ code }: { code: string }) {
       wasEntranceActiveRef.current = false;
       postIntroBreatherSpokenRef.current = false;
       lastSpokenEntranceSeatRef.current = -1;
+      entranceSeatNeedsRecoveryRef.current = null;
+      entranceSeatInFlightRef.current = null;
       return;
     }
-    if (!ttsActive) {
+    if (!ttsActive || isExplicitMuteParam) {
       if (!state.entranceState?.active) lastSpokenEntranceSeatRef.current = -1;
+      entranceSeatNeedsRecoveryRef.current = null;
+      entranceSeatInFlightRef.current = null;
       wasEntranceActiveRef.current = Boolean(state.entranceState?.active);
       return;
     }
-    if (state.entranceState?.active) {
+    if (state.entranceState?.active && !state.entranceCompleted) {
       wasEntranceActiveRef.current = true;
       const currentSeatIdx = state.entranceState.currentSeatIdx ?? 0;
       if (currentSeatIdx !== lastSpokenEntranceSeatRef.current) {
         lastSpokenEntranceSeatRef.current = currentSeatIdx;
-        const segment = buildContestantIntroStepSegment(state.seats, currentSeatIdx);
-        if (segment) {
-          speakDualMcScript([segment], {
-            season: effectiveAudioSeason,
-            preferServer: true,
-          });
-        }
+        speakEntranceSeatWithRecovery(currentSeatIdx, state.seats, effectiveAudioSeason, false);
       }
       return;
     }
 
     lastSpokenEntranceSeatRef.current = -1;
+    entranceSeatNeedsRecoveryRef.current = null;
+    entranceSeatInFlightRef.current = null;
     // Post-Intro Breather: fire once right after contestant entrance ends while holding in introStandby
     const justFinishedEntrance = wasEntranceActiveRef.current || Boolean(state.entranceCompleted);
     wasEntranceActiveRef.current = false;
@@ -990,9 +1249,11 @@ export default function DisplayScreen({ code }: { code: string }) {
       speakDualMcScript(breatherScript, {
         season: effectiveAudioSeason,
         preferServer: true,
+        queueAfterActive: true,
       });
     }
   }, [
+    isExplicitMuteParam,
     state?.stage,
     state?.entranceState?.active,
     state?.entranceState?.currentSeatIdx,
@@ -1003,27 +1264,43 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.seats,
     ttsActive,
     effectiveAudioSeason,
+    speakEntranceSeatWithRecovery,
   ]);
 
   // Vocalize round intro greeting ONLY after the round intro video/banner has finished 100%
   const prevSpokenRoundRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!state || !ttsActive || state.stage !== "playing" || !state.currentRound) return;
+    if (isExplicitMuteParam || !state || state.stage === "lobby") {
+      prevSpokenRoundRef.current = null;
+      return;
+    }
+    if (!ttsActive || state.stage !== "playing" || !state.currentRound) return;
     // Round intro is active if banner is displaying OR roundIntroDoneAt has not been marked
     const isIntroActive = Boolean(state.banner || !state.roundIntroDoneAt);
     if (isIntroActive) {
       // Keep TTS silent while round intro video and fanfare is playing
+      if (prevSpokenRoundRef.current === state.currentRound) {
+        prevSpokenRoundRef.current = null;
+      }
       return;
     }
     if (state.currentRound !== prevSpokenRoundRef.current) {
       prevSpokenRoundRef.current = state.currentRound;
-      speakRoundIntroTTS(state.currentRound, { season: effectiveAudioSeason });
+      speakRoundIntroTTS(state.currentRound, {
+        season: effectiveAudioSeason,
+        vars:
+          state.currentRound === "vcnv" && state.vcnv
+            ? { soChuCai: state.vcnv.keywordLength || undefined }
+            : undefined,
+      });
     }
   }, [
+    isExplicitMuteParam,
     state?.stage,
     state?.currentRound,
     state?.banner,
     state?.roundIntroDoneAt,
+    state?.vcnv?.keywordLength,
     ttsActive,
     effectiveAudioSeason,
   ]);
@@ -1035,7 +1312,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       spokenBridgeKeysRef.current.clear();
       return;
     }
-    if (!ttsActive || state.stage !== "playing" || !state.currentRound || state.banner || state.introStandby) {
+    if (isExplicitMuteParam || !ttsActive || state.stage !== "playing" || !state.currentRound || state.banner || state.introStandby) {
       return;
     }
     if (!state.roundIntroDoneAt) return;
@@ -1044,7 +1321,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     const speakBridgeOnce = (key: string, seg: ReturnType<typeof buildTangTocBridgeSegment> | null) => {
       if (!seg || spokenBridgeKeysRef.current.has(key)) return;
       spokenBridgeKeysRef.current.add(key);
-      speakDualMcScript([seg], { season: effectiveAudioSeason, preferServer: true });
+      speakDualMcScript([seg], { season: effectiveAudioSeason, preferServer: true, queueAfterActive: true });
     };
 
     // 1. Round Completion bridge (when not handled by KĐ segmentDone timeout)
@@ -1056,12 +1333,12 @@ export default function DisplayScreen({ code }: { code: string }) {
       return;
     }
 
-    // 2. Khởi Động turn bridging (entering segment > 0, or shared segment before start)
+    // 2. Khởi Động turn bridging (entering segment >= 0 before start, chained after round_intro)
     if (round === "khoiDong" && state.khoiDong) {
       const kd = state.khoiDong;
       const segIdx = kd.segIdx ?? 0;
       const curSeg = kd.segments?.[segIdx];
-      if (curSeg && !kd.started && kd.phase !== "segmentDone" && segIdx > 0) {
+      if (curSeg && !kd.started && kd.phase !== "segmentDone" && segIdx >= 0) {
         const seatId = curSeg.kind === "solo" ? curSeg.seat : undefined;
         const name = seatId != null ? state.seats[seatId]?.name : undefined;
         speakBridgeOnce(
@@ -1114,7 +1391,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       }
     }
 
-    // 5. Về Đích on-stage, package choosing, package ready, and off-stage finishTurn bridging
+    // 5. Về Đích pre-stage, on-stage, package choosing, package ready, and off-stage finishTurn bridging
     if (round === "veDich" && state.veDich) {
       const vd = state.veDich;
       const ownerSeat = vd.order?.[vd.turnIdx] ?? 0;
@@ -1164,10 +1441,28 @@ export default function DisplayScreen({ code }: { code: string }) {
           })
         );
       } else if (vd.onStage && vd.qIdx < 0) {
+        const onStageKey = `vd-onstage-${vd.turnIdx}-${ownerSeat}`;
+        const preStageKey = `vd-prestage-${vd.turnIdx}-${ownerSeat}`;
+        if (vd.turnIdx === 0 && spokenBridgeKeysRef.current.has(preStageKey)) {
+          spokenBridgeKeysRef.current.add(onStageKey);
+        } else {
+          speakBridgeOnce(
+            onStageKey,
+            buildVeDichBridgeSegment({
+              kind: "on_stage",
+              seatId: ownerSeat,
+              name,
+              score,
+              turnIdx: vd.turnIdx,
+              totalTurns,
+            })
+          );
+        }
+      } else if (vd.turnIdx === 0 && vd.phase === "idle" && !vd.onStage && vd.qIdx < 0) {
         speakBridgeOnce(
-          `vd-onstage-${vd.turnIdx}-${ownerSeat}`,
+          `vd-prestage-${vd.turnIdx}-${ownerSeat}`,
           buildVeDichBridgeSegment({
-            kind: "on_stage",
+            kind: "pre_stage",
             seatId: ownerSeat,
             name,
             score,
@@ -1178,6 +1473,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       }
     }
   }, [
+    isExplicitMuteParam,
     state?.stage,
     state?.currentRound,
     state?.banner,
@@ -1331,6 +1627,7 @@ export default function DisplayScreen({ code }: { code: string }) {
                 : "border-white/10 text-slate-400 hover:bg-white/5"
             }`}
             onClick={() => {
+              if (isExplicitMuteParam) return;
               const next = !ttsActive;
               setTtsActive(next);
               setTtsEnabled(next);
@@ -1344,7 +1641,10 @@ export default function DisplayScreen({ code }: { code: string }) {
           <button
             type="button"
             className="px-2 py-1 border border-violet-400/30 rounded-lg hover:bg-violet-500/15 transition text-xs cursor-pointer"
-            onClick={() => setAudioOn((v) => !v)}
+            onClick={() => {
+              if (isExplicitMuteParam) return;
+              setAudioOn((v) => !v);
+            }}
           >
             {audioOn ? "🔊" : "🔈"}
           </button>

@@ -321,9 +321,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     label: "Bục MC & Cổng Lục Giác",
     // Coaxial direct eye-level frontal angle along MC desk normal, framing full MC desk, presenters & Hexagon Portal
     // Legacy baseline: pos: [2.30, 1.26, -3.94], target: [3.12, 1.02, -7.16]
-    pos: [1.70, 1.44, -3.10],
-    target: [2.05, 1.28, -6.10],
-    fov: 42,
+    pos: [1.40, 1.44, -3.17],
+    target: [2.02, 1.28, -5.95],
+    fov: 40,
   },
   4: {
     id: 4,
@@ -564,18 +564,16 @@ export function CameraController({
   const targetPos = useMemo(
     () => {
       if (isIdleLobby && camAngle === 3) return _mcTightPos.clone();
-      if (isPostIntroStandby && camAngle === 3) return _frontCenterMCPos.clone();
       return new THREE.Vector3(...targetPreset.pos);
     },
-    [isIdleLobby, isPostIntroStandby, camAngle, targetPreset]
+    [isIdleLobby, camAngle, targetPreset]
   );
   const targetLookAt = useMemo(
     () => {
       if (isIdleLobby && camAngle === 3) return _mcTightTarget.clone();
-      if (isPostIntroStandby && camAngle === 3) return _frontCenterMCTarget.clone();
       return new THREE.Vector3(...targetPreset.target);
     },
-    [isIdleLobby, isPostIntroStandby, camAngle, targetPreset]
+    [isIdleLobby, camAngle, targetPreset]
   );
 
   const prevCamAngleRef = useRef<number>(camAngle);
@@ -584,23 +582,42 @@ export function CameraController({
   const prevQIdxRef = useRef<number>(qIdx ?? -1);
   const prevRevealedRef = useRef<boolean>(questionRevealed ?? false);
   const questionZoomStartRef = useRef<number>(0);
+  const kdZoomActiveRef = useRef<number | null>(null);
 
-  // Handle instant cut on camera or seat switch when mode is CUT (no forced standby/CAM 14 morph locks)
+  // Handle instant cut on camera or seat switch when mode is CUT, and 0ms CAM 14 -> CAM 10 CUT at t = 3.5s
   useEffect(() => {
     const isCamChanged = prevCamAngleRef.current !== camAngle;
     const isSeatChanged = prevActiveSeatRef.current !== activeSeat;
     const isSummarySeatCut = camAngle === 18 && isSeatChanged;
 
+    if (!isContestantCam || isManualCamera) {
+      kdZoomActiveRef.current = null;
+    }
+
     if (isCamChanged || isSeatChanged) {
-      const isMcHandoff = prevCamAngleRef.current === 3 || camAngle === 3;
-      if ((transitionMode === "CUT" || isMcHandoff || isSummarySeatCut) && !isPostIntroStandby) {
-        currentPos.current.copy(targetPos);
-        currentTarget.current.copy(targetLookAt);
-        camera.position.copy(targetPos);
-        camera.lookAt(targetLookAt);
-        if (camera instanceof THREE.PerspectiveCamera && targetPreset.fov) {
-          camera.fov = targetPreset.fov;
+      if (prevCamAngleRef.current === 14 && camAngle !== 14) {
+        // 0ms hard CUT from CAM 14 to CAM 10 (all podiums) at t = 3.5s
+        const cam10 = getWidePodiumsCameraPreset(effectiveTotalSeats);
+        currentPos.current.set(...cam10.pos);
+        currentTarget.current.set(...cam10.target);
+        camera.position.copy(currentPos.current);
+        camera.lookAt(currentTarget.current);
+        if (camera instanceof THREE.PerspectiveCamera && cam10.fov) {
+          camera.fov = cam10.fov;
           camera.updateProjectionMatrix();
+        }
+        kdZoomActiveRef.current = isContestantCam && kdStartCooldownUntil ? kdStartCooldownUntil : null;
+      } else {
+        const isMcHandoff = prevCamAngleRef.current === 3 || camAngle === 3;
+        if ((transitionMode === "CUT" || isMcHandoff || isSummarySeatCut) && !isPostIntroStandby) {
+          currentPos.current.copy(targetPos);
+          currentTarget.current.copy(targetLookAt);
+          camera.position.copy(targetPos);
+          camera.lookAt(targetLookAt);
+          if (camera instanceof THREE.PerspectiveCamera && targetPreset.fov) {
+            camera.fov = targetPreset.fov;
+            camera.updateProjectionMatrix();
+          }
         }
       }
       if (transitionMode === "CUT" || isCamChanged) {
@@ -612,7 +629,7 @@ export function CameraController({
       prevCamAngleRef.current = camAngle;
       prevActiveSeatRef.current = activeSeat;
     }
-  }, [camAngle, activeSeat, transitionMode, targetPos, targetLookAt, targetPreset.fov, isPostIntroStandby, pushInProgress, camera]);
+  }, [camAngle, activeSeat, transitionMode, targetPos, targetLookAt, targetPreset.fov, isPostIntroStandby, pushInProgress, camera, effectiveTotalSeats, isContestantCam, isManualCamera, kdStartCooldownUntil]);
 
   useFrame((_, delta) => {
     // Smooth push-in zoom:
@@ -621,6 +638,120 @@ export function CameraController({
     const isNewQuestion = isKdActive && (qIdx !== prevQIdxRef.current || !prevRevealedRef.current);
     const isSummarySeatCut = camAngle === 18 && prevActiveSeatRef.current !== activeSeat;
     const isCamChanged = prevCamAngleRef.current !== camAngle;
+
+    // 0a. Khởi Động 0s -> 3.5s: CAM 14 low-left Laurel Wreath sweep
+    if (kdStartCooldownUntil && !isManualCamera) {
+      const now = serverNow ? serverNow() : Date.now();
+      if (now < kdStartCooldownUntil) {
+        const cam14 = OLYMPIA_CAM_PRESETS[14];
+        _sweepStartPos.set(...cam14.pos);
+        _sweepStartTarget.set(...cam14.target);
+
+        const duration = 3500;
+        const elapsed = Math.max(0, duration - (kdStartCooldownUntil - now));
+        const t = Math.min(1.0, elapsed / duration);
+        const smoothT = t * t * (3 - 2 * t);
+
+        _curPos.lerpVectors(_sweepStartPos, _sweepEndPos, smoothT);
+        _curTarget.lerpVectors(_sweepStartTarget, _sweepEndTarget, smoothT);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+
+        if (camera instanceof THREE.PerspectiveCamera) {
+          const baseFov = cam14.fov ?? 43;
+          const aspect = size.width / Math.max(1, size.height);
+          const targetAspect = 16 / 9;
+          let nextFov = baseFov;
+          if (aspect < targetAspect) {
+            const radBase = (baseFov * Math.PI) / 360;
+            const radAdp = 2 * Math.atan(Math.tan(radBase) * (targetAspect / Math.max(0.48, aspect)));
+            nextFov = Math.min(72, Math.max(baseFov, (radAdp * 180) / Math.PI));
+          }
+          const targetFov = Math.min(85, Math.max(12, nextFov / Math.max(0.25, ptzZoom)));
+          if (Math.abs(camera.fov - targetFov) > 1e-4) {
+            camera.fov = targetFov;
+            camera.updateProjectionMatrix();
+          }
+        }
+
+        prevQIdxRef.current = -1;
+        prevRevealedRef.current = false;
+        questionZoomStartRef.current = 0;
+        smoothPushRef.current = 0.0;
+        prevCamAngleRef.current = camAngle;
+        prevActiveSeatRef.current = activeSeat;
+        return;
+      }
+    }
+
+    // 0b. Khởi Động 3.5s -> 6.0s (Lượt Riêng): 0ms CUT to CAM 10 at 3.5s, then smooth 2.5s zoom/pan to targetContestantCam
+    if (!isContestantCam || isManualCamera) {
+      kdZoomActiveRef.current = null;
+    } else if (prevCamAngleRef.current === 14 && camAngle !== 14 && kdStartCooldownUntil) {
+      kdZoomActiveRef.current = kdStartCooldownUntil;
+    }
+
+    if (
+      kdZoomActiveRef.current != null &&
+      kdStartCooldownUntil === kdZoomActiveRef.current &&
+      isContestantCam &&
+      !isManualCamera
+    ) {
+      const now = serverNow ? serverNow() : Date.now();
+      if (now >= kdStartCooldownUntil && now < kdStartCooldownUntil + 2500) {
+        const cam10 = getWidePodiumsCameraPreset(effectiveTotalSeats);
+        const zoomElapsed = Math.max(0, (now - kdStartCooldownUntil) / 1000);
+        const tZoom = Math.min(1.0, zoomElapsed / 2.5);
+        const smoothZoom = tZoom * tZoom * (3 - 2 * tZoom);
+
+        _sweepStartPos.set(...cam10.pos);
+        _sweepStartTarget.set(...cam10.target);
+        _curPos.lerpVectors(_sweepStartPos, targetPos, smoothZoom);
+        _curTarget.lerpVectors(_sweepStartTarget, targetLookAt, smoothZoom);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+
+        if (camera instanceof THREE.PerspectiveCamera) {
+          const cam10Fov = cam10.fov ?? 40;
+          const endFov = targetPreset.fov ?? 36;
+          let nextFov = THREE.MathUtils.lerp(cam10Fov, endFov, smoothZoom);
+          const aspect = size.width / Math.max(1, size.height);
+          const targetAspect = 16 / 9;
+          if (aspect < targetAspect) {
+            const radBase = (nextFov * Math.PI) / 360;
+            const radAdp = 2 * Math.atan(Math.tan(radBase) * (targetAspect / Math.max(0.48, aspect)));
+            nextFov = Math.min(72, Math.max(nextFov, (radAdp * 180) / Math.PI));
+          }
+          const targetFov = Math.min(85, Math.max(12, nextFov / Math.max(0.25, ptzZoom)));
+          if (Math.abs(camera.fov - targetFov) > 1e-4) {
+            camera.fov = targetFov;
+            camera.updateProjectionMatrix();
+          }
+        }
+
+        // Q1 collision guard: absorb isNewQuestion cleanly without snapping, schedule 7.5s push-in at t = 6.0s
+        if (isNewQuestion) {
+          prevQIdxRef.current = qIdx ?? -1;
+          prevRevealedRef.current = Boolean(questionRevealed);
+          questionZoomStartRef.current = kdStartCooldownUntil + 2500;
+          smoothPushRef.current = 0.0;
+        } else if (!questionRevealed && prevRevealedRef.current) {
+          prevRevealedRef.current = false;
+          questionZoomStartRef.current = 0;
+        }
+        prevCamAngleRef.current = camAngle;
+        prevActiveSeatRef.current = activeSeat;
+        return;
+      } else {
+        kdZoomActiveRef.current = null;
+      }
+    }
 
     if (isNewQuestion) {
       prevQIdxRef.current = qIdx ?? -1;
@@ -665,9 +796,7 @@ export function CameraController({
 
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = (isPostIntroStandby && camAngle === 3)
-        ? 24.5
-        : (targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 40 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43));
+      const baseFov = targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 40 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43);
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;
@@ -692,7 +821,11 @@ export function CameraController({
         camera.fov = Math.min(85, Math.max(12, pushFov));
         camera.updateProjectionMatrix();
       } else {
-        camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 8.0, delta);
+        const dampedFov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 8.0, delta);
+        if (Math.abs(dampedFov - camera.fov) > 1e-4) {
+          camera.fov = dampedFov;
+          camera.updateProjectionMatrix();
+        }
       }
     }
     // 0. Opening Sequence Camera Director (VTV3 Olympia 27 Broadcast Parity 10s 5-Phase Choreography):
@@ -762,7 +895,7 @@ export function CameraController({
     }
 
     // 0.2. Post-Intro Opening Round Camera Director (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
-    // Tối giản giai đoạn sau intro: Frame bục MC (CAM 3) đẩy nhẹ trong 3.0s rồi chuyển thẳng về toàn cảnh trường quay
+    // Quỹ đạo mở màn sau intro: Xoay mượt từ góc chéo phải +28° (+0.49 rad) đẩy nhẹ (3.15m -> 2.85m) vào chính diện 0° CAM 3 trong 3.0s rồi CUT sang CAM 1
     if (isPostIntroStandby) {
       const now = serverNow ? serverNow() : Date.now();
       const startAt = roundIntroDoneAt ?? postIntroStandbyStartRef.current ?? now;
@@ -770,12 +903,21 @@ export function CameraController({
 
       if (elapsedSec < 3.0) {
         const mcPreset = OLYMPIA_CAM_PRESETS[3];
-        _sweepStartPos.set(...mcPreset.pos);
-        _sweepStartTarget.set(...mcPreset.target);
-        const pushFrac = Math.min(1.0, elapsedSec / 3.0);
-        _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
-        _curPos.copy(_sweepStartPos).addScaledVector(_dir, pushFrac * 0.25);
-        _curTarget.copy(_sweepStartTarget);
+        const t = Math.min(1.0, elapsedSec / 3.0);
+        const smoothT = t * t * (3 - 2 * t);
+        const angleOffset = THREE.MathUtils.lerp(0.49, 0.0, smoothT);
+        const dist = THREE.MathUtils.lerp(3.15, 2.85, smoothT);
+
+        // Unit horizontal normal from CAM 3 target to CAM 3 coaxial pos (-0.22 rad)
+        _dir.set(mcPreset.pos[0] - mcPreset.target[0], 0, mcPreset.pos[2] - mcPreset.target[2]).normalize();
+        _dir.applyAxisAngle(_axisY, angleOffset);
+
+        _curTarget.set(...mcPreset.target);
+        _curPos.set(
+          _curTarget.x + _dir.x * dist,
+          mcPreset.pos[1],
+          _curTarget.z + _dir.z * dist
+        );
 
         currentPos.current.copy(_curPos);
         currentTarget.current.copy(_curTarget);

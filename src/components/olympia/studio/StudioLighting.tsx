@@ -157,7 +157,7 @@ export function TargetedSpotLight({
  * - High-res 2048x2048 canvas covering the central platform with concentric radar tracks,
  *   glowing cyan perimeter ring, championship gold ring, and symmetrical twin golden laurel branches.
  */
-function createFloorLaurelWreathCanvas(): HTMLCanvasElement {
+export function createFloorLaurelWreathCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
   canvas.height = 1024;
@@ -586,43 +586,6 @@ export function StudioFloor({
   }, [stageFadeProgress, liveFactor]);
 
   const goldColor = new THREE.Color("#ffd700");
-
-  // Official Olympia 2016 Laurel Wreath Texture from /brand/olympia_laurel_2016.webp
-  const [laurelTexture, setLaurelTexture] = React.useState<THREE.Texture | null>(null);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      "/brand/olympia_laurel_2016.webp",
-      (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.needsUpdate = true;
-        setLaurelTexture(tex);
-      },
-      undefined,
-      () => {
-        loader.load("/olympia/Olympia_logo_2016.webp", (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          tex.needsUpdate = true;
-          setLaurelTexture(tex);
-        });
-      }
-    );
-  }, []);
-
-  // Floor Laurel Wreath Canvas Texture (Fallback)
-  const wreathCanvas = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    return createFloorLaurelWreathCanvas();
-  }, []);
-
-  const wreathTexture = useMemo(() => {
-    if (!wreathCanvas) return null;
-    const tex = new THREE.CanvasTexture(wreathCanvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }, [wreathCanvas]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // INTERMEDIATE CIRCULAR ELEVATED TIER (R1 Broadcast Architecture)
@@ -2821,7 +2784,6 @@ export function AudienceAmphitheater({
   liveFactor = 1.0,
   camAngle = 1,
   isEntranceActive = false,
-  introStartedAt = null,
 }: {
   audienceFadeProgress?: number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
@@ -2847,9 +2809,7 @@ export function AudienceAmphitheater({
     camAngle === 13 ||
     camAngle === 19 ||
     camAngle === 20 ||
-    isEntranceActive ||
-    introStartedAt != null ||
-    audienceFadeProgress > 0;
+    isEntranceActive;
 
   const [aiBackdropTex, setAiBackdropTex] = React.useState<THREE.Texture | null>(null);
   const [quizorraLogoTex, setQuizorraLogoTex] = React.useState<THREE.Texture | null>(null);
@@ -2857,22 +2817,44 @@ export function AudienceAmphitheater({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    let cancelled = false;
+    const loadedTextures: THREE.Texture[] = [];
     const loader = new THREE.TextureLoader();
-    loader.load("/brand/olympia_vtv3_backdrop_ai.jpg", (tex) => {
+
+    const trackAndSet = (
+      tex: THREE.Texture,
+      setter: React.Dispatch<React.SetStateAction<THREE.Texture | null>>
+    ) => {
+      if (cancelled) {
+        tex.dispose();
+        return;
+      }
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.needsUpdate = true;
-      setAiBackdropTex(tex);
-    });
-    loader.load("/brand/quizorra_logo.png", (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.needsUpdate = true;
-      setQuizorraLogoTex(tex);
-    });
-    loader.load("/brand/Olympia_logo_2020.webp", (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.needsUpdate = true;
-      setOlympia2020Tex(tex);
-    });
+      loadedTextures.push(tex);
+      setter(tex);
+    };
+
+    loader.load(
+      "/brand/olympia_vtv3_backdrop_ai.jpg",
+      (tex) => trackAndSet(tex, setAiBackdropTex),
+      undefined,
+      () => {
+        if (cancelled || typeof document === "undefined") return;
+        const canvas = createAudienceBackdropCanvas();
+        const fallbackTex = new THREE.CanvasTexture(canvas);
+        trackAndSet(fallbackTex, setAiBackdropTex);
+      }
+    );
+    loader.load("/brand/quizorra_logo.png", (tex) => trackAndSet(tex, setQuizorraLogoTex));
+    loader.load("/brand/Olympia_logo_2020.webp", (tex) => trackAndSet(tex, setOlympia2020Tex));
+
+    return () => {
+      cancelled = true;
+      for (const tex of loadedTextures) {
+        tex.dispose();
+      }
+    };
   }, []);
 
   const banner1Canvas = useMemo(() => {
@@ -2896,21 +2878,6 @@ export function AudienceAmphitheater({
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   }, [banner2Canvas]);
-
-  const fallbackCanvas = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    return createAudienceBackdropCanvas();
-  }, []);
-
-  const fallbackTexture = useMemo(() => {
-    if (!fallbackCanvas) return null;
-    const tex = new THREE.CanvasTexture(fallbackCanvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    return tex;
-  }, [fallbackCanvas]);
-
-  const activeBackdropTex = aiBackdropTex || fallbackTexture;
 
   const cycloramaGeometry = useMemo(() => createCylindricalCycloramaGeometry(22.5, 8.5, 0.83775804, 96, 16), []);
   const cycloramaTrimCurve = useMemo(() => new CylindricalTrimCurve(22.5, 0.83775804), []);
@@ -3339,7 +3306,13 @@ export function AudienceAmphitheater({
       {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 48°, Apex Z = 7.20m (Z_world = 15.70m), Center Z_c = -15.30m, H = 8.50m */}
       <mesh position={[0, 4.05, -15.30]}>
         <primitive object={cycloramaGeometry} attach="geometry" />
-        <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          key={aiBackdropTex ? "textured" : "solid"}
+          map={aiBackdropTex ?? undefined}
+          color={aiBackdropTex ? "#ffffff" : "#030e2a"}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       {/* Top Curved Neon Header Trim (Y = 8.28m) */}

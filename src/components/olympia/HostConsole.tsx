@@ -2033,18 +2033,20 @@ export const HostConsole = React.memo(function HostConsole({
                 )}
 
                 {/* Right LED Screen Mode Selector */}
-                <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-cyan-500/20 text-[11px]">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-cyan-500/20 text-[11px]">
                   <span className="text-cyan-300 font-bold flex items-center gap-1">
                     <span>🖥️</span>
                     <span>Màn hình phải (Right Screen):</span>
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     {[
                       { id: "auto", label: "Tự động" },
                       { id: "roundTitle", label: "Tên phần thi" },
                       { id: "logo", label: "Logo Olympia" },
                       { id: "question", label: "Câu hỏi" },
                       { id: "scoreboard", label: "Bảng điểm" },
+                      { id: "roundGraphics", label: "Đồ hoạ phần thi" },
+                      { id: "camera", label: "Camera" },
                     ].map((m) => {
                       const active = (state.rightScreenMode || "auto") === m.id;
                       return (

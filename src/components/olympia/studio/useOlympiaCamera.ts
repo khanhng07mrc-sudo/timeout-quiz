@@ -677,12 +677,28 @@ export function useOlympiaCameraState(
         };
       }
 
-      // 3.3. Khi nhấn Bắt đầu (trong 3.5s đếm lùi mở đồ hoạ):
-      // CUT ngay sang CAM 10 (Toàn cảnh hàng bục thí sinh), sau đó CUT thẳng sang góc thí sinh tương ứng (không morph CAM 14)
+      // 3.3. Khi nhấn Bắt đầu (0s -> 3.5s): Lượt quét thấp qua Vòng Nguyệt Quế (CAM 14),
+      // sau đó tại t = 3.5s CUT 0ms sang CAM 10 (Toàn cảnh bục thí sinh):
+      // - Lượt Chung: giữ CAM 10
+      // - Lượt Riêng: từ 3.5s -> 6.0s zoom/pan mượt 2.5s từ CAM 10 vào đúng camera thí sinh
       if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
         return {
-          camAngle: 10,
+          camAngle: 14,
           transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      if (
+        isSolo &&
+        kd.phase !== "segmentDone" &&
+        kd.startCooldownUntil &&
+        now < kd.startCooldownUntil + 2500
+      ) {
+        return {
+          camAngle: targetContestantCam,
+          transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
         };

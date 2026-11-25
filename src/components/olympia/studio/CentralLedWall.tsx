@@ -2,8 +2,8 @@
 
 import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
-import type { OlympiaState } from "@/lib/olympia/types";
+import { useFrame, useThree } from "@react-three/fiber";
+import type { OlympiaRightScreenMode, OlympiaState } from "@/lib/olympia/types";
 import { parseVcnvAnswer } from "@/lib/olympia/engine";
 import { isPreMatchIdle } from "./useOlympiaLightingState";
 
@@ -1487,12 +1487,523 @@ function render3DTitleCardToCanvas(
   ctx.restore();
 }
 
+export const RIGHT_SCREEN_DELAY_MS = 200;
+
+export function hasActiveRightQuestionContent(state?: OlympiaState | null): boolean {
+  if (!state || state.stage !== "playing") return false;
+  const round = state.currentRound;
+  if (round === "khoiDong") {
+    return Boolean(
+      state.khoiDong?.current?.q &&
+        (state.khoiDong.questionRevealed || state.khoiDong.started || state.khoiDong.phase === "question")
+    );
+  }
+  if (round === "vcnv") {
+    const v = state.vcnv;
+    if (!v) return false;
+    if (v.answersRevealed) return true;
+    const cur = v.currentRow ?? -1;
+    if (cur < 0) return false;
+    return v.phase === "selecting" || v.phase === "question" || v.phase === "waitingAnswer" || v.phase === "answers";
+  }
+  if (round === "tangToc") {
+    const tt = state.tangToc;
+    return Boolean(tt && tt.qIdx != null && tt.qIdx >= 0 && tt.phase === "question");
+  }
+  if (round === "veDich") {
+    const vd = state.veDich;
+    return Boolean(
+      vd?.current?.q?.q &&
+        (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result")
+    );
+  }
+  if (round === "cauHoiPhu") {
+    const chp = state.cauHoiPhu;
+    return Boolean(
+      chp &&
+        chp.qIdx != null &&
+        chp.qIdx >= 0 &&
+        chp.questions?.[chp.qIdx]?.q &&
+        chp.phase !== "idle"
+    );
+  }
+  return false;
+}
+
+export function resolveRightScreenDisplayMode(
+  state?: OlympiaState | null
+): Exclude<OlympiaRightScreenMode, "auto"> {
+  const explicit: OlympiaRightScreenMode = state?.rightScreenMode || "auto";
+
+  if (explicit === "camera") return "camera";
+  if (explicit === "logo") return "logo";
+  if (explicit === "roundTitle") return "roundTitle";
+  if (explicit === "scoreboard") return "scoreboard";
+  if (explicit === "roundGraphics") return "roundGraphics";
+
+  if (explicit === "question") {
+    if (hasActiveRightQuestionContent(state)) return "question";
+    return state?.stage === "playing" && state?.currentRound ? "roundTitle" : "logo";
+  }
+
+  // Dynamic "auto" mode routing by live match state
+  if (state?.showScoreboard || state?.summaryState?.active || state?.awardsState?.active) {
+    return "scoreboard";
+  }
+  if (isPreMatchIdle(state)) {
+    return "logo";
+  }
+  if (state?.banner || !state?.roundIntroDoneAt || state?.introStandby || state?.entranceState?.active) {
+    return "roundTitle";
+  }
+  if (hasActiveRightQuestionContent(state)) {
+    return "question";
+  }
+  if (state?.currentRound && state.roundStatus?.[state.currentRound] === "done") {
+    return "scoreboard";
+  }
+  if (state?.currentRound) {
+    return "roundGraphics";
+  }
+  return "roundTitle";
+}
+
+function getRoundDisplayTitleAndKey(round?: OlympiaState["currentRound"] | null): {
+  titleKey: string;
+  displayTitle: string;
+} {
+  if (round === "khoiDong") return { titleKey: "khoidong", displayTitle: "KHỞI ĐỘNG" };
+  if (round === "vcnv") return { titleKey: "vcnv", displayTitle: "VƯỢT CHƯỚNG NGẠI VẬT" };
+  if (round === "tangToc") return { titleKey: "tangtoc", displayTitle: "TĂNG TỐC" };
+  if (round === "veDich") return { titleKey: "vedich", displayTitle: "VỀ ĐÍCH" };
+  if (round === "cauHoiPhu") return { titleKey: "cauhoiphu", displayTitle: "CÂU HỎI PHỤ" };
+  return { titleKey: "olympia", displayTitle: "ĐƯỜNG LÊN ĐỈNH OLYMPIA" };
+}
+
+function drawWrappedCenterText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  startY: number,
+  maxW: number,
+  lineH: number,
+  maxBottomY: number
+): void {
+  const words = text.trim().split(/\s+/);
+  let line = "";
+  let y = startY;
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line ? `${line} ${words[i]}` : words[i];
+    if (ctx.measureText(testLine).width > maxW && line) {
+      ctx.fillText(line, cx, y);
+      line = words[i];
+      y += lineH;
+      if (y > maxBottomY) break;
+    } else {
+      line = testLine;
+    }
+  }
+  if (line && y <= maxBottomY) {
+    ctx.fillText(line, cx, y);
+  }
+}
+
+function renderOlympiaLogoCardToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  logoImg: HTMLImageElement | null,
+  fadeProgress: number
+): void {
+  const cx = width / 2;
+  const cy = height / 2;
+  const isRed = fadeProgress > 0.5;
+  const titleImg = TITLE_IMAGE_CACHE["olympia"] || getOrLoadTitleImage("olympia");
+
+  if (titleImg && titleImg.complete && titleImg.naturalWidth > 0 && !logoImg) {
+    ctx.drawImage(titleImg, 0, 0, width, height);
+    return;
+  }
+
+  ctx.save();
+  // Soft luminous crest behind Olympia emblem
+  const auraGrad = ctx.createRadialGradient(cx, cy * 0.88, 20, cx, cy * 0.88, height * 0.52);
+  auraGrad.addColorStop(0, isRed ? "rgba(255, 80, 110, 0.38)" : "rgba(56, 189, 248, 0.42)");
+  auraGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = auraGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+    const maxLogoH = height * 0.52;
+    const scale = Math.min((width * 0.58) / logoImg.naturalWidth, maxLogoH / logoImg.naturalHeight);
+    const dw = logoImg.naturalWidth * scale;
+    const dh = logoImg.naturalHeight * scale;
+    ctx.shadowColor = isRed ? "rgba(255, 60, 90, 0.6)" : "rgba(0, 240, 255, 0.55)";
+    ctx.shadowBlur = 24;
+    ctx.drawImage(logoImg, cx - dw / 2, height * 0.14, dw, dh);
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 ${Math.round(height * 0.088)}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = isRed ? "#ff2a4b" : "#00e5ff";
+  ctx.shadowBlur = 18;
+  ctx.fillText("ĐƯỜNG LÊN ĐỈNH OLYMPIA", cx, height * 0.78);
+
+  ctx.shadowBlur = 0;
+  ctx.font = `700 ${Math.round(height * 0.042)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#fde68a";
+  ctx.fillText("QUIZORRA STUDIO", cx, height * 0.88);
+  ctx.restore();
+}
+
+function renderRoundTitleSlideToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState | null | undefined,
+  fadeProgress: number
+): void {
+  const { titleKey, displayTitle } = getRoundDisplayTitleAndKey(state?.currentRound);
+  const titleImg = TITLE_IMAGE_CACHE[titleKey] || getOrLoadTitleImage(titleKey);
+  if (titleImg && titleImg.complete && titleImg.naturalWidth > 0) {
+    ctx.drawImage(titleImg, 0, 0, width, height);
+  } else {
+    render3DTitleCardToCanvas(ctx, width, height, displayTitle, fadeProgress);
+  }
+}
+
+function renderRightScoreboardToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState | null | undefined,
+  fadeProgress: number
+): void {
+  const isRed = fadeProgress > 0.5;
+  const accent = isRed ? "#fb7185" : "#38bdf8";
+  const seats = (state?.seats || []).slice(0, 8);
+  const ranked = seats
+    .map((s, idx) => ({ seat: s, idx }))
+    .sort((a, b) => (b.seat?.score ?? 0) - (a.seat?.score ?? 0) || a.idx - b.idx);
+
+  ctx.save();
+  ctx.fillStyle = isRed ? "rgba(60, 10, 22, 0.72)" : "rgba(8, 22, 54, 0.72)";
+  ctx.strokeStyle = isRed ? "rgba(251, 113, 133, 0.7)" : "rgba(56, 189, 248, 0.7)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(width * 0.06, height * 0.045, width * 0.88, height * 0.145, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = `900 ${Math.round(height * 0.068)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#fde047";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(250, 204, 21, 0.45)";
+  ctx.shadowBlur = 16;
+  ctx.fillText("BẢNG ĐIỂM THÍ SINH", width / 2, height * 0.118);
+  ctx.restore();
+
+  if (ranked.length === 0) return;
+
+  const isTwoCol = ranked.length > 4;
+  const cols = isTwoCol ? 2 : 1;
+  const rowsPerCol = Math.ceil(ranked.length / cols);
+  const startY = height * 0.225;
+  const availH = height * 0.72;
+  const gapY = Math.round(height * 0.022);
+  const rowH = Math.min(Math.round((availH - gapY * (rowsPerCol - 1)) / rowsPerCol), Math.round(height * 0.165));
+  const areaX = width * 0.06;
+  const areaW = width * 0.88;
+  const gapX = isTwoCol ? width * 0.03 : 0;
+  const cardW = (areaW - gapX * (cols - 1)) / cols;
+
+  ranked.forEach(({ seat, idx }, rankIdx) => {
+    const col = isTwoCol ? Math.floor(rankIdx / rowsPerCol) : 0;
+    const row = isTwoCol ? rankIdx % rowsPerCol : rankIdx;
+    const x = areaX + col * (cardW + gapX);
+    const y = startY + row * (rowH + gapY);
+    const isLeader = rankIdx === 0 && (seat?.score ?? 0) > 0;
+
+    ctx.save();
+    ctx.fillStyle = isLeader ? "rgba(180, 120, 12, 0.28)" : "rgba(6, 15, 38, 0.82)";
+    ctx.strokeStyle = isLeader ? "#facc15" : accent;
+    ctx.lineWidth = isLeader ? 3 : 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, cardW, rowH, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    const badgeSize = Math.round(rowH * 0.62);
+    ctx.fillStyle = isLeader ? "#facc15" : isRed ? "#e11d48" : "#0284c7";
+    ctx.beginPath();
+    ctx.roundRect(x + 14, y + (rowH - badgeSize) / 2, badgeSize, badgeSize, 10);
+    ctx.fill();
+
+    ctx.font = `900 ${Math.round(badgeSize * 0.56)}px "Plus Jakarta Sans", sans-serif`;
+    ctx.fillStyle = isLeader ? "#0f172a" : "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${idx + 1}`, x + 14 + badgeSize / 2, y + rowH / 2);
+
+    ctx.font = `800 ${Math.round(rowH * 0.36)}px "Plus Jakarta Sans", sans-serif`;
+    ctx.fillStyle = "#f8fafc";
+    ctx.textAlign = "left";
+    const nameStr = seat?.name || `Thí sinh ${idx + 1}`;
+    ctx.fillText(nameStr, x + badgeSize + 30, y + (seat?.school ? rowH * 0.36 : rowH / 2));
+
+    if (seat?.school) {
+      ctx.font = `600 ${Math.round(rowH * 0.24)}px "Plus Jakarta Sans", sans-serif`;
+      ctx.fillStyle = "#bae6fd";
+      ctx.fillText(seat.school, x + badgeSize + 30, y + rowH * 0.70);
+    }
+
+    ctx.font = `900 ${Math.round(rowH * 0.50)}px "Plus Jakarta Sans", sans-serif`;
+    ctx.fillStyle = "#fde047";
+    ctx.textAlign = "right";
+    ctx.fillText(`${seat?.score ?? 0}`, x + cardW - 20, y + rowH / 2);
+    ctx.restore();
+  });
+}
+
+function renderRightRoundStatusGraphicsToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState | null | undefined,
+  fadeProgress: number,
+  timeSec: number
+): void {
+  const round = state?.currentRound;
+  if (
+    (round === "vcnv" && (state?.vcnv?.answersRevealed || state?.vcnv?.rows)) ||
+    (round === "tangToc" && state?.tangToc?.phase === "ranking")
+  ) {
+    renderRoundGraphicsToCanvas(ctx, width, height, state, fadeProgress);
+    return;
+  }
+
+  const cx = width / 2;
+  const isRed = fadeProgress > 0.5;
+  const accent = isRed ? "#fb7185" : "#00e5ff";
+  const { displayTitle } = getRoundDisplayTitleAndKey(round);
+
+  let subtitle = "CHUẨN BỊ THI ĐẤU";
+  const statusLines: string[] = [];
+
+  if (round === "khoiDong" && state?.khoiDong) {
+    const kd = state.khoiDong;
+    const seg = kd.segments?.[kd.segIdx ?? 0];
+    if (seg?.kind === "solo" && seg.seat != null) {
+      const seat = state.seats?.[seg.seat];
+      subtitle = `LƯỢT RIÊNG — ${seat?.name || `THÍ SINH ${seg.seat + 1}`}`.toUpperCase();
+    } else if (seg?.kind === "shared") {
+      subtitle = "KHỞI ĐỘNG CHUNG";
+    }
+    const qTotal = seg?.questions ?? 0;
+    const qCur = Math.max(0, (kd.qIdx ?? -1) + 1);
+    if (qTotal > 0 && qTotal < 900) statusLines.push(`Câu ${qCur} / ${qTotal}`);
+    else if (qCur > 0) statusLines.push(`Câu ${qCur}`);
+    if (kd.buzzedSeat != null) {
+      statusLines.push(`Chuông: ${state.seats?.[kd.buzzedSeat]?.name || `TS ${kd.buzzedSeat + 1}`}`);
+    }
+  } else if (round === "tangToc" && state?.tangToc) {
+    const tt = state.tangToc;
+    const qNum = Math.max(1, (tt.qIdx ?? 0) + 1);
+    subtitle = `CÂU HỎI TĂNG TỐC SỐ ${qNum} / ${tt.questions?.length || 4}`;
+    const qObj = tt.questions?.[tt.qIdx ?? 0];
+    if (qObj?.category === "iq") statusLines.push("Dạng câu: Tư duy logic (IQ)");
+    else if (qObj?.category === "data") statusLines.push("Dạng câu: Dữ kiện mở dần");
+    else if (qObj?.category === "arrange") statusLines.push("Dạng câu: Sắp xếp thứ tự");
+    const subCount = Object.keys(tt.submissions || {}).length;
+    if (subCount > 0) statusLines.push(`Đã nộp đáp án: ${subCount} thí sinh`);
+  } else if (round === "veDich" && state?.veDich) {
+    const vd = state.veDich;
+    const owner = vd.order?.[vd.turnIdx] ?? 0;
+    const seat = state.seats?.[owner];
+    subtitle = `LƯỢT THI: ${(seat?.name || `THÍ SINH ${owner + 1}`).toUpperCase()} (${seat?.score ?? 0}đ)`;
+    const pkg = vd.packages?.[owner];
+    if (pkg && pkg.length > 0) {
+      statusLines.push(`Gói câu hỏi: ${pkg.map((p) => `${p.points}đ`).join(" · ")}`);
+    } else {
+      statusLines.push("Đang chọn gói câu hỏi (20đ / 30đ)");
+    }
+    if (vd.hopeStarActive) statusLines.push("⭐ NGÔI SAO HY VỌNG ĐANG BẬT");
+  } else if (round === "cauHoiPhu" && state?.cauHoiPhu) {
+    const chp = state.cauHoiPhu;
+    subtitle = `CÂU HỎI PHỤ SỐ ${Math.max(1, (chp.qIdx ?? 0) + 1)}`;
+    if (chp.tied?.length) {
+      statusLines.push(
+        `Thí sinh tham gia: ${chp.tied
+          .map((id: number) => state.seats?.[id]?.name || `TS ${id + 1}`)
+          .join(", ")}`
+      );
+    }
+  }
+
+  ctx.save();
+  // Header strip
+  ctx.fillStyle = "rgba(8, 22, 54, 0.80)";
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(width * 0.06, height * 0.05, width * 0.88, height * 0.16, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = `900 ${Math.round(height * 0.072)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = 18;
+  ctx.fillText(displayTitle, cx, height * 0.13);
+
+  // Mid graphic card
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(4, 12, 32, 0.84)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(width * 0.08, height * 0.25, width * 0.84, height * 0.36, 18);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = `800 ${Math.round(height * 0.056)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#fde047";
+  ctx.fillText(subtitle, cx, height * 0.36);
+
+  ctx.font = `700 ${Math.round(height * 0.045)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#e0f2fe";
+  statusLines.slice(0, 2).forEach((ln, idx) => {
+    ctx.fillText(ln, cx, height * (0.46 + idx * 0.085));
+  });
+
+  // Compact horizontal seat strip along bottom
+  const seats = (state?.seats || []).slice(0, 8);
+  if (seats.length > 0) {
+    const stripY = height * 0.67;
+    const stripH = height * 0.26;
+    const gap = Math.round(width * 0.015);
+    const totalW = width * 0.88;
+    const boxW = (totalW - gap * (seats.length - 1)) / seats.length;
+    const startX = width * 0.06;
+
+    seats.forEach((s, idx) => {
+      const bx = startX + idx * (boxW + gap);
+      ctx.fillStyle = "rgba(10, 24, 58, 0.88)";
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(bx, stripY, boxW, stripH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = `800 ${Math.round(height * 0.036)}px "Plus Jakarta Sans", sans-serif`;
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(s?.name || `TS ${idx + 1}`, bx + boxW / 2, stripY + stripH * 0.30, boxW - 14);
+
+      ctx.font = `900 ${Math.round(height * 0.068)}px "Plus Jakarta Sans", sans-serif`;
+      ctx.fillStyle = "#fde047";
+      ctx.fillText(`${s?.score ?? 0}`, bx + boxW / 2, stripY + stripH * 0.68);
+    });
+  }
+  ctx.restore();
+  void timeSec;
+}
+
+function renderQuestionPromptToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState | null | undefined,
+  fadeProgress: number
+): boolean {
+  const cx = width / 2;
+  const isRed = fadeProgress > 0.5;
+  const accent = isRed ? "#ff4d6d" : "#00e5ff";
+
+  let roundTitle: string | null = null;
+  let questionPrompt: string | null = null;
+  if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
+    roundTitle = "KHỞI ĐỘNG";
+    questionPrompt = state.khoiDong.current.q;
+  } else if (state?.currentRound === "vcnv") {
+    roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
+    const cur = state.vcnv?.currentRow ?? -1;
+    if (cur >= 0 && cur < 4) questionPrompt = state.vcnv?.rows?.[cur]?.hint || null;
+    else if (cur === 4) questionPrompt = state.vcnv?.centerQuestion?.q || null;
+  } else if (state?.currentRound === "tangToc" && state.tangToc?.qIdx != null) {
+    roundTitle = `TĂNG TỐC — CÂU ${(state.tangToc.qIdx ?? 0) + 1}`;
+    questionPrompt = state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
+  } else if (state?.currentRound === "veDich" && state.veDich?.current) {
+    roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
+    questionPrompt = state.veDich.current.q?.q || null;
+  } else if (state?.currentRound === "cauHoiPhu" && state.cauHoiPhu?.qIdx != null) {
+    roundTitle = "CÂU HỎI PHỤ";
+    questionPrompt = state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx]?.q || null;
+  }
+
+  if (!roundTitle || !questionPrompt) return false;
+
+  ctx.save();
+  const bannerH = height * 0.18;
+  const bannerGrad = ctx.createLinearGradient(0, 0, width, 0);
+  bannerGrad.addColorStop(0, isRed ? "rgba(220, 38, 38, 0.20)" : "rgba(0, 180, 255, 0.15)");
+  bannerGrad.addColorStop(0.5, isRed ? "rgba(244, 63, 94, 0.45)" : "rgba(0, 220, 255, 0.45)");
+  bannerGrad.addColorStop(1, isRed ? "rgba(220, 38, 38, 0.20)" : "rgba(0, 180, 255, 0.15)");
+  ctx.fillStyle = bannerGrad;
+  ctx.fillRect(0, 20, width, bannerH);
+
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(40, 20, width - 80, bannerH);
+
+  ctx.font = `900 ${Math.round(height * 0.068)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = 20;
+  ctx.fillText(roundTitle, cx, 20 + bannerH / 2);
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(10, 22, 48, 0.85)";
+  ctx.strokeStyle = isRed ? "rgba(244, 63, 94, 0.55)" : "rgba(0, 229, 255, 0.55)";
+  ctx.lineWidth = 2;
+  const qx = width * 0.08;
+  const qy = height * 0.28;
+  const qw = width * 0.84;
+  const qh = height * 0.62;
+  ctx.fillRect(qx, qy, qw, qh);
+  ctx.strokeRect(qx, qy, qw, qh);
+
+  const fontSize = Math.round(height * 0.056);
+  ctx.font = `700 ${fontSize}px "Plus Jakarta Sans", sans-serif`;
+  ctx.fillStyle = "#f8fafc";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  drawWrappedCenterText(
+    ctx,
+    questionPrompt,
+    cx,
+    qy + height * 0.075,
+    qw - width * 0.08,
+    Math.round(fontSize * 1.38),
+    qy + qh - height * 0.08
+  );
+  ctx.restore();
+  return true;
+}
+
 /**
  * Canvas generator for Stage Right Elevated 16:9 LED Screen.
- * Renders authentic vibrant blue 3D Title Slide ('ĐƯỜNG LÊN ĐỈNH OLYMPIA' / 'KHỞI ĐỘNG' / ...)
- * with zero scoreboard rectangles as specified by the user and confirmed in Answer 2.
+ * Supports all 7 Right Screen modes (auto, roundTitle, logo, question, scoreboard, roundGraphics, camera fallback).
  */
-function renderLedScreenToCanvas(
+export function renderLedScreenToCanvas(
   targetCanvas: HTMLCanvasElement,
   logoImg: HTMLImageElement | null,
   fadeProgress: number = 0,
@@ -1504,142 +2015,55 @@ function renderLedScreenToCanvas(
   const ctx = targetCanvas.getContext("2d");
   if (!ctx) return;
 
-  const cx = width / 2;
-  const cy = height / 2;
-
-  // 1. Render Vibrant Blue Gradient Background with diagonal sheen (Images 1, 2, 3, 4)
+  // 1. Render Vibrant Blue/Red Crossfade Gradient Background with diagonal sheen
   renderVibrantBlueGradientWithSheen(ctx, width, height, fadeProgress, timeSec);
 
-  // 2. Check for Về Đích 3D flip clock countdown
+  // 2. Check for Về Đích 3D flip clock countdown (practical question active timer)
   const vd = state?.veDich;
   const isPracticeCountdown = Boolean(
     state?.currentRound === "veDich" &&
-    vd?.current?.q?.type === "practice" && (
-      (vd.phase === "thinking" && vd.timer?.startedAt) ||
-      (vd.phase === "stealing" && vd.steal?.timer?.startedAt)
-    )
+      vd?.current?.q?.type === "practice" &&
+      ((vd.phase === "thinking" && vd.timer?.startedAt) ||
+        (vd.phase === "stealing" && vd.steal?.timer?.startedAt))
   );
 
-  if (isPracticeCountdown) {
+  const resolvedMode = resolveRightScreenDisplayMode(state);
+
+  if (isPracticeCountdown && resolvedMode !== "logo" && resolvedMode !== "scoreboard" && resolvedMode !== "camera") {
     render3DFlipClockToCanvas(ctx, width, height, state, timeSec);
     return;
   }
 
-  // 3. Resolve Screen Title / Content
-  const screenMode = (state as any)?.rightScreenMode || "auto";
+  // 3. Camera mode canvas backdrop (prevents black void / recursion during initial 200ms buffer fill & capture guard)
+  if (resolvedMode === "camera") {
+    renderOlympiaLogoCardToCanvas(ctx, width, height, logoImg, fadeProgress);
+    return;
+  }
 
-  // Explicit Question Mode override
-  if (screenMode === "question") {
-    let roundTitle: string | null = null;
-    let questionPrompt: string | null = null;
-    if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
-      roundTitle = "KHỞI ĐỘNG";
-      questionPrompt = state.khoiDong.current.q;
-    } else if (state?.currentRound === "vcnv") {
-      roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
-      const cur = state.vcnv?.currentRow ?? -1;
-      if (cur >= 0 && cur < 4) questionPrompt = state.vcnv?.rows?.[cur]?.hint || null;
-      else if (cur === 4) questionPrompt = state.vcnv?.centerQuestion?.q || null;
-    } else if (state?.currentRound === "tangToc" && state.tangToc?.qIdx != null) {
-      roundTitle = `TĂNG TỐC — CÂU ${(state.tangToc.qIdx ?? 0) + 1}`;
-      questionPrompt = state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
-    } else if (state?.currentRound === "veDich" && state.veDich?.current) {
-      roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
-      questionPrompt = state.veDich.current.q?.q || null;
-    } else if (state?.currentRound === "cauHoiPhu" && state.cauHoiPhu?.qIdx != null) {
-      roundTitle = "CÂU HỎI PHỤ";
-      questionPrompt = state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx]?.q || null;
-    }
+  if (resolvedMode === "logo") {
+    renderOlympiaLogoCardToCanvas(ctx, width, height, logoImg, fadeProgress);
+    return;
+  }
 
-    if (roundTitle && questionPrompt) {
-      ctx.save();
-      const bannerH = height * 0.18;
-      const bannerGrad = ctx.createLinearGradient(0, 0, width, 0);
-      bannerGrad.addColorStop(0, "rgba(0, 180, 255, 0.15)");
-      bannerGrad.addColorStop(0.5, "rgba(0, 220, 255, 0.45)");
-      bannerGrad.addColorStop(1, "rgba(0, 180, 255, 0.15)");
-      ctx.fillStyle = bannerGrad;
-      ctx.fillRect(0, 20, width, bannerH);
+  if (resolvedMode === "scoreboard") {
+    renderRightScoreboardToCanvas(ctx, width, height, state, fadeProgress);
+    return;
+  }
 
-      ctx.strokeStyle = "#00e5ff";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(40, 20, width - 80, bannerH);
+  if (resolvedMode === "roundGraphics") {
+    renderRightRoundStatusGraphicsToCanvas(ctx, width, height, state, fadeProgress, timeSec);
+    return;
+  }
 
-      ctx.font = '900 52px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.shadowColor = "#00f0ff";
-      ctx.shadowBlur = 20;
-      ctx.fillText(roundTitle, cx, 20 + bannerH / 2);
-
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "rgba(10, 22, 48, 0.85)";
-      ctx.strokeStyle = "rgba(0, 229, 255, 0.55)";
-      ctx.lineWidth = 2;
-      const qx = width * 0.08;
-      const qy = height * 0.28;
-      const qw = width * 0.84;
-      const qh = height * 0.62;
-      ctx.fillRect(qx, qy, qw, qh);
-      ctx.strokeRect(qx, qy, qw, qh);
-
-      ctx.font = '700 42px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#f8fafc";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-
-      const words = questionPrompt.split(" ");
-      let line = "";
-      let y = qy + 60;
-      const maxW = qw - 100;
-      const lineH = 58;
-
-      for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i] + " ";
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxW && i > 0) {
-          ctx.fillText(line, cx, y);
-          line = words[i] + " ";
-          y += lineH;
-          if (y > qy + qh - 70) break;
-        } else {
-          line = testLine;
-        }
-      }
-      ctx.fillText(line, cx, y);
-      ctx.restore();
+  if (resolvedMode === "question") {
+    if (renderQuestionPromptToCanvas(ctx, width, height, state, fadeProgress)) {
       return;
     }
+    renderRoundTitleSlideToCanvas(ctx, width, height, state, fadeProgress);
+    return;
   }
 
-  // 4. Standard Broadcast Mode: Authentic UTM Neutra 3D Title Slide (Images 1, 2, 3, 4, 6)
-  // Completely eliminates score boxes as requested
-  let titleKey = "olympia";
-  let displayTitle = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
-  if (state?.currentRound === "khoiDong") {
-    titleKey = "khoidong";
-    displayTitle = "KHỞI ĐỘNG";
-  } else if (state?.currentRound === "vcnv") {
-    titleKey = "vcnv";
-    displayTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
-  } else if (state?.currentRound === "tangToc") {
-    titleKey = "tangtoc";
-    displayTitle = "TĂNG TỐC";
-  } else if (state?.currentRound === "veDich") {
-    titleKey = "vedich";
-    displayTitle = "VỀ ĐÍCH";
-  } else if (state?.currentRound === "cauHoiPhu") {
-    titleKey = "cauhoiphu";
-    displayTitle = "CÂU HỎI PHỤ";
-  }
-
-  const titleImg = TITLE_IMAGE_CACHE[titleKey] || getOrLoadTitleImage(titleKey);
-  if (titleImg && titleImg.complete && titleImg.naturalWidth > 0) {
-    ctx.drawImage(titleImg, 0, 0, width, height);
-  } else {
-    render3DTitleCardToCanvas(ctx, width, height, displayTitle, fadeProgress);
-  }
+  renderRoundTitleSlideToCanvas(ctx, width, height, state, fadeProgress);
 }
 
 /**
@@ -2630,9 +3054,11 @@ export function CentralLedWall({
   quality = "HIGH",
   liveFactor = 1.0,
 }: CentralLedWallProps) {
+  const { gl, scene, camera } = useThree();
   const logoImageRef = useRef<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
+  const rightScreenMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
   const totemCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const totemTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const starryCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -2646,16 +3072,57 @@ export function CentralLedWall({
   const lastScreenFrameRef = useRef<number>(0);
   const lastFadeRef = useRef<number>(-1);
 
-  // Preload UTM Neutra 3D Title PNGs and trigger canvas refresh as soon as loaded
+  // ── Uniform 0.2s (200ms) Broadcast LED Processor Delay Queue ──
+  // Every Right LED Screen update (mode switches, questions, graphics, scoreboard, blue/red fades)
+  // enters this FIFO queue and commits 200ms after live studio events.
+  const delayedStateRef = useRef<OlympiaState | null | undefined>(state);
+  const delayedFadeRef = useRef<number>(screenFadeProgress);
+  const hasMountedRightRef = useRef<boolean>(false);
+  const rightNeedsRedrawRef = useRef<boolean>(false);
+  const rightDelayQueueRef = useRef<
+    Array<{ readyAt: number; state: OlympiaState | null | undefined; fade: number }>
+  >([]);
+  const rightNeonMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const rightBezelBaseNavy = useMemo(() => new THREE.Color("#1d4ed8"), []);
+  const rightBezelCrimson = useMemo(() => new THREE.Color("#cc1122"), []);
+  const rightBezelDark = useMemo(() => new THREE.Color("#020712"), []);
+  const rightBezelWorkColor = useMemo(() => new THREE.Color(), []);
+
+  // Lazy WebGLRenderTarget ring buffer for Right Screen live delayed "camera" mode
+  const camRingRef = useRef<{
+    qualityKey: "HIGH" | "MEDIUM" | "LIGHT";
+    slots: Array<{ rt: THREE.WebGLRenderTarget; capturedAt: number }>;
+    writeIdx: number;
+    lastCaptureAt: number;
+    firstCaptureAt: number;
+  } | null>(null);
+
+  const disposeCameraRing = React.useCallback(() => {
+    const ring = camRingRef.current;
+    if (!ring) return;
+    ring.slots.forEach((s) => s.rt.dispose());
+    camRingRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      disposeCameraRing();
+    };
+  }, [disposeCameraRing]);
+
+  useEffect(() => {
+    if (camRingRef.current && camRingRef.current.qualityKey !== quality) {
+      disposeCameraRing();
+    }
+  }, [quality, disposeCameraRing]);
+
+  // Preload UTM Neutra 3D Title PNGs and trigger delayed canvas refresh as soon as loaded
   useEffect(() => {
     if (typeof window === "undefined") return;
     const titles = ["olympia", "khoidong", "vcnv", "tangtoc", "vedich", "cauhoiphu"];
     titles.forEach((key) => {
       getOrLoadTitleImage(key, () => {
-        if (canvasRef.current && textureRef.current) {
-          renderLedScreenToCanvas(canvasRef.current, logoImageRef.current, screenFadeProgress, state);
-          textureRef.current.needsUpdate = true;
-        }
+        rightNeedsRedrawRef.current = true;
       });
     });
   }, []);
@@ -2706,10 +3173,7 @@ export function CentralLedWall({
     img.src = `${window.location.origin}/olympia/Olympia_logo_2016.webp`;
     img.onload = () => {
       logoImageRef.current = img;
-      if (canvasRef.current && textureRef.current) {
-        renderLedScreenToCanvas(canvasRef.current, img, screenFadeProgress, state);
-        textureRef.current.needsUpdate = true;
-      }
+      rightNeedsRedrawRef.current = true;
       if (totemCanvasRef.current && totemTextureRef.current) {
         renderVerticalTotemToCanvas(totemCanvasRef.current, state, screenFadeProgress);
         totemTextureRef.current.needsUpdate = true;
@@ -2725,10 +3189,7 @@ export function CentralLedWall({
       fallback.src = "/olympia/Olympia_logo_2016.webp";
       fallback.onload = () => {
         logoImageRef.current = fallback;
-        if (canvasRef.current && textureRef.current) {
-          renderLedScreenToCanvas(canvasRef.current, fallback, screenFadeProgress, state);
-          textureRef.current.needsUpdate = true;
-        }
+        rightNeedsRedrawRef.current = true;
         if (totemCanvasRef.current && totemTextureRef.current) {
           renderVerticalTotemToCanvas(totemCanvasRef.current, state, screenFadeProgress);
           totemTextureRef.current.needsUpdate = true;
@@ -2945,14 +3406,34 @@ export function CentralLedWall({
     }
   }, [totemCanvas, totemTexture]);
 
+  const rightNeonMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#1d4ed8" }), []);
+  useEffect(() => {
+    return () => {
+      rightNeonMat.dispose();
+    };
+  }, [rightNeonMat]);
+
   // Quantized 8-step fade trigger for smooth crossfade on Stage Right screen without idle spam
   const fadeStep = Math.round(screenFadeProgress * 8);
 
-  // Update dynamic display canvases only when questions change or at key fade milestones
+  // Enqueue Right LED Screen updates with uniform 0.2s (RIGHT_SCREEN_DELAY_MS) broadcast delay;
+  // Vertical Totem & Curved Formula Wall update immediately.
   useEffect(() => {
-    if (canvasRef.current && textureRef.current) {
-      renderLedScreenToCanvas(canvasRef.current, logoImageRef.current, screenFadeProgress, state);
-      textureRef.current.needsUpdate = true;
+    if (!hasMountedRightRef.current) {
+      hasMountedRightRef.current = true;
+      delayedStateRef.current = state;
+      delayedFadeRef.current = screenFadeProgress;
+      rightNeedsRedrawRef.current = true;
+    } else {
+      const q = rightDelayQueueRef.current;
+      q.push({
+        readyAt: performance.now() + RIGHT_SCREEN_DELAY_MS,
+        state,
+        fade: screenFadeProgress,
+      });
+      if (q.length > 120) {
+        q.splice(0, q.length - 120);
+      }
     }
     if (totemCanvasRef.current && totemTextureRef.current) {
       renderVerticalTotemToCanvas(totemCanvasRef.current, state, screenFadeProgress);
@@ -2968,35 +3449,19 @@ export function CentralLedWall({
       formulaWallTextureRef.current.needsUpdate = true;
     }
   }, [
+    state,
+    screenFadeProgress,
     fadeStep,
-    state?.currentRound,
-    state?.rightScreenMode,
-    state?.introTimer,
-    state?.entranceState?.active,
-    state?.introStandby,
-    state?.khoiDong?.questionRevealed,
-    state?.khoiDong?.started,
-    state?.khoiDong?.phase,
-    state?.khoiDong?.qIdx,
-    state?.khoiDong?.current?.q,
-    state?.vcnv?.phase,
-    state?.vcnv?.currentRow,
-    state?.tangToc?.phase,
-    state?.tangToc?.qIdx,
-    state?.veDich?.phase,
-    state?.veDich?.current?.q?.q,
-    state?.cauHoiPhu?.phase,
-    state?.cauHoiPhu?.qIdx,
+    quality,
   ]);
 
   // 30 FPS Dynamic Canvas Engine (Requirement R5)
-  // Drives smooth floating kinematics, 320 px/s rail pulses, 240 px/s specular sweeps, and idle screen graphics.
-  // Formula wall canvas continuous 250ms repaint is eliminated to prevent 8MB main-thread GPU hitching;
-  // formula graphics are updated statically upon round/lighting transitions via useEffect above.
+  // Drives smooth floating kinematics, uniform 0.2s delayed Right LED Screen queue & optional Camera RenderTarget feed.
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
+    const nowMs = performance.now();
 
     if (mathWallVideoTexture && mathWallVideoRef.current && !mathWallVideoRef.current.paused) {
       mathWallVideoTexture.needsUpdate = true;
@@ -3013,31 +3478,144 @@ export function CentralLedWall({
       mathWallShaderMat.uniforms.uMap.value = activeMathWallTexture;
     }
 
-    // Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
-    // In Practical Countdown mode, refresh at ~30 FPS (0.033s) for smooth 3D flip card animation
-    const isIdle = isPreMatchIdle(state);
-    const vd = state?.veDich;
+    // ── Drain uniform 0.2s delay queue for the Right LED Screen ──
+    const q = rightDelayQueueRef.current;
+    while (q.length > 0 && q[0].readyAt <= nowMs) {
+      const next = q.shift()!;
+      delayedStateRef.current = next.state;
+      delayedFadeRef.current = next.fade;
+      rightNeedsRedrawRef.current = true;
+    }
+
+    const dState = delayedStateRef.current;
+    const dFade = delayedFadeRef.current;
+
+    // Update Right Screen bezel neon color using the 0.2s delayed fade factor
+    rightBezelWorkColor.copy(rightBezelBaseNavy).lerp(rightBezelCrimson, Math.max(0, Math.min(1, dFade)));
+    rightNeonMat.color.copy(rightBezelDark).lerp(rightBezelWorkColor, Math.max(0.0, Math.min(1.0, liveFactor)));
+
+    const resolvedRightMode = resolveRightScreenDisplayMode(dState);
+
+    // ── Live 3D Studio Camera Mode (~0.2s delayed ring buffer of WebGLRenderTargets) ──
+    if (resolvedRightMode === "camera" && rightScreenMatRef.current) {
+      const spec =
+        quality === "LIGHT"
+          ? { w: 256, h: 144, intervalMs: 70, slots: 4 }
+          : quality === "MEDIUM"
+          ? { w: 384, h: 216, intervalMs: 45, slots: 6 }
+          : { w: 512, h: 288, intervalMs: 33, slots: 8 };
+
+      if (!camRingRef.current) {
+        const created = Array.from({ length: spec.slots }, () => ({
+          rt: new THREE.WebGLRenderTarget(spec.w, spec.h, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            depthBuffer: true,
+            stencilBuffer: false,
+          }),
+          capturedAt: 0,
+        }));
+        camRingRef.current = {
+          qualityKey: quality,
+          slots: created,
+          writeIdx: 0,
+          lastCaptureAt: 0,
+          firstCaptureAt: nowMs,
+        };
+        if (canvasRef.current && textureRef.current) {
+          renderLedScreenToCanvas(canvasRef.current, logoImageRef.current, dFade, dState, t);
+          textureRef.current.needsUpdate = true;
+        }
+      }
+
+      const ring = camRingRef.current;
+      if (nowMs - ring.lastCaptureAt >= spec.intervalMs) {
+        const slot = ring.slots[ring.writeIdx];
+        ring.writeIdx = (ring.writeIdx + 1) % ring.slots.length;
+        ring.lastCaptureAt = nowMs;
+
+        // Guard against recursive nested reflection on the Right LED Screen during offscreen capture
+        const mat = rightScreenMatRef.current;
+        const prevMap = mat.map;
+        const prevRt = gl.getRenderTarget();
+        const prevXr = gl.xr.enabled;
+        try {
+          if (textureRef.current) {
+            mat.map = textureRef.current;
+          }
+          gl.xr.enabled = false;
+          gl.setRenderTarget(slot.rt);
+          gl.clear();
+          gl.render(scene, camera);
+          slot.capturedAt = nowMs;
+        } finally {
+          gl.setRenderTarget(prevRt);
+          gl.xr.enabled = prevXr;
+          mat.map = prevMap;
+        }
+      }
+
+      // Select frame captured >= RIGHT_SCREEN_DELAY_MS ago; hold oldest captured frame during initial 200ms fill
+      const cutoff = nowMs - RIGHT_SCREEN_DELAY_MS;
+      let delayedSlot: { rt: THREE.WebGLRenderTarget; capturedAt: number } | null = null;
+      let oldestSlot: { rt: THREE.WebGLRenderTarget; capturedAt: number } | null = null;
+      for (const s of ring.slots) {
+        if (s.capturedAt <= 0) continue;
+        if (!oldestSlot || s.capturedAt < oldestSlot.capturedAt) {
+          oldestSlot = s;
+        }
+        if (s.capturedAt <= cutoff && (!delayedSlot || s.capturedAt > delayedSlot.capturedAt)) {
+          delayedSlot = s;
+        }
+      }
+      const chosenSlot = delayedSlot || oldestSlot;
+      const desiredMap = chosenSlot ? chosenSlot.rt.texture : textureRef.current;
+      if (desiredMap && rightScreenMatRef.current.map !== desiredMap) {
+        rightScreenMatRef.current.map = desiredMap;
+        rightScreenMatRef.current.needsUpdate = true;
+      }
+    } else {
+      // Non-camera Right Screen modes: restore 2D CanvasTexture cleanly
+      if (rightScreenMatRef.current && textureRef.current && rightScreenMatRef.current.map !== textureRef.current) {
+        rightScreenMatRef.current.map = textureRef.current;
+        rightScreenMatRef.current.needsUpdate = true;
+        rightNeedsRedrawRef.current = true;
+      }
+      if (camRingRef.current) {
+        disposeCameraRing();
+      }
+    }
+
+    // Throttle Stage Right Screen & Vertical Totem periodic animations; also commit immediate delayed updates
+    const isIdle = isPreMatchIdle(dState);
+    const vd = dState?.veDich;
     const isPracticeCountdown = Boolean(
-      state?.currentRound === "veDich" &&
+      dState?.currentRound === "veDich" &&
       vd?.current?.q?.type === "practice" && (
         (vd.phase === "thinking" && vd.timer?.startedAt) ||
         (vd.phase === "stealing" && vd.steal?.timer?.startedAt)
       )
     );
     const screenInterval = isPracticeCountdown ? 0.033 : quality === "LIGHT" ? 0.400 : 0.300;
-    if ((isIdle || isPracticeCountdown) && t - lastScreenFrameRef.current >= screenInterval) {
-      lastScreenFrameRef.current = t;
-      if (canvasRef.current && textureRef.current) {
-        renderLedScreenToCanvas(
-          canvasRef.current,
-          logoImageRef.current,
-          screenFadeProgress,
-          state,
-          t
-        );
-        textureRef.current.needsUpdate = true;
+    const periodicDue = (isIdle || isPracticeCountdown) && t - lastScreenFrameRef.current >= screenInterval;
+    if (rightNeedsRedrawRef.current || periodicDue) {
+      if (periodicDue) lastScreenFrameRef.current = t;
+      const forceRightRedraw = rightNeedsRedrawRef.current;
+      rightNeedsRedrawRef.current = false;
+
+      if ((forceRightRedraw || periodicDue) && resolvedRightMode !== "camera") {
+        if (canvasRef.current && textureRef.current) {
+          renderLedScreenToCanvas(
+            canvasRef.current,
+            logoImageRef.current,
+            dFade,
+            dState,
+            t
+          );
+          textureRef.current.needsUpdate = true;
+        }
       }
-      if (totemCanvasRef.current && totemTextureRef.current) {
+      if (periodicDue && totemCanvasRef.current && totemTextureRef.current) {
         renderVerticalTotemToCanvas(
           totemCanvasRef.current,
           state,
@@ -3349,17 +3927,15 @@ export function CentralLedWall({
 
         {/* Continuous Horizontal Glowing Neon Tubes Underneath Elevated Screen down to stage floor (spans 5.5m) */}
         {[-3.0, -2.5, -2.0, -1.5].map((slatY, sIdx) => (
-          <mesh key={`lower-slat-${sIdx}`} position={[0, slatY, -0.32]}>
+          <mesh key={`lower-slat-${sIdx}`} position={[0, slatY, -0.32]} material={rightNeonMat}>
             <boxGeometry args={[5.50, 0.045, 0.045]} />
-            <meshBasicMaterial color={neonColor} />
           </mesh>
         ))}
 
         {/* Horizontal LED wall slats behind screen (width 5.4m) */}
         {[-1.2, -0.6, 0.0, 0.6, 1.2].map((slatY, sIdx) => (
-          <mesh key={`slat-${sIdx}`} position={[0, slatY, -0.32]}>
+          <mesh key={`slat-${sIdx}`} position={[0, slatY, -0.32]} material={rightNeonMat}>
             <boxGeometry args={[5.40, 0.05, 0.05]} />
-            <meshBasicMaterial color={neonColor} />
           </mesh>
         ))}
 
@@ -3370,21 +3946,17 @@ export function CentralLedWall({
           <meshStandardMaterial color="#070d1e" metalness={0.92} roughness={0.18} />
         </mesh>
         {/* Viền Neon Lớp 1 */}
-        <mesh position={[0, 1.6825, -0.09]}>
+        <mesh position={[0, 1.6825, -0.09]} material={rightNeonMat}>
           <boxGeometry args={[5.36, 0.035, 0.035]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.6825, -0.09]}>
+        <mesh position={[0, -1.6825, -0.09]} material={rightNeonMat}>
           <boxGeometry args={[5.36, 0.035, 0.035]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-2.68, 0, -0.09]}>
+        <mesh position={[-2.68, 0, -0.09]} material={rightNeonMat}>
           <boxGeometry args={[0.035, 3.365, 0.035]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[2.68, 0, -0.09]}>
+        <mesh position={[2.68, 0, -0.09]} material={rightNeonMat}>
           <boxGeometry args={[0.035, 3.365, 0.035]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
 
         {/* Lớp viền 2 (Middle Bezel Tier): 5.06m x 3.065m x 0.12m tại Z = -0.06 */}
@@ -3393,21 +3965,17 @@ export function CentralLedWall({
           <meshStandardMaterial color="#0f172a" metalness={0.90} roughness={0.20} />
         </mesh>
         {/* Viền Neon Lớp 2 */}
-        <mesh position={[0, 1.5325, 0.00]}>
+        <mesh position={[0, 1.5325, 0.00]} material={rightNeonMat}>
           <boxGeometry args={[5.06, 0.03, 0.03]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.5325, 0.00]}>
+        <mesh position={[0, -1.5325, 0.00]} material={rightNeonMat}>
           <boxGeometry args={[5.06, 0.03, 0.03]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-2.53, 0, 0.00]}>
+        <mesh position={[-2.53, 0, 0.00]} material={rightNeonMat}>
           <boxGeometry args={[0.03, 3.065, 0.03]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[2.53, 0, 0.00]}>
+        <mesh position={[2.53, 0, 0.00]} material={rightNeonMat}>
           <boxGeometry args={[0.03, 3.065, 0.03]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
 
         {/* Lớp viền 3 (Inner Bezel Tier): 4.76m x 2.765m x 0.12m tại Z = 0.02 */}
@@ -3416,28 +3984,24 @@ export function CentralLedWall({
           <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.22} />
         </mesh>
         {/* Viền Neon Lớp 3 */}
-        <mesh position={[0, 1.3825, 0.08]}>
+        <mesh position={[0, 1.3825, 0.08]} material={rightNeonMat}>
           <boxGeometry args={[4.76, 0.025, 0.025]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[0, -1.3825, 0.08]}>
+        <mesh position={[0, -1.3825, 0.08]} material={rightNeonMat}>
           <boxGeometry args={[4.76, 0.025, 0.025]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[-2.38, 0, 0.08]}>
+        <mesh position={[-2.38, 0, 0.08]} material={rightNeonMat}>
           <boxGeometry args={[0.025, 2.765, 0.025]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[2.38, 0, 0.08]}>
+        <mesh position={[2.38, 0, 0.08]} material={rightNeonMat}>
           <boxGeometry args={[0.025, 2.765, 0.025]} />
-          <meshBasicMaterial color={neonColor} />
         </mesh>
 
         {/* LED Screen Display Plane (Aspect Ratio 16:9, 4.56m x 2.565m) */}
         <mesh position={[0, 0, 0.085]}>
           <planeGeometry args={[4.56, 2.565]} />
           {texture ? (
-            <meshBasicMaterial map={texture} toneMapped={false} />
+            <meshBasicMaterial ref={rightScreenMatRef} map={texture} toneMapped={false} />
           ) : (
             <meshStandardMaterial color="#020817" roughness={0.2} metalness={0.9} />
           )}

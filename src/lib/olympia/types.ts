@@ -604,6 +604,15 @@ export interface OlympiaTranscriptEntry {
 
 export type LobbyPhase = "lobby" | "playing" | "finished";
 
+export type OlympiaRightScreenMode =
+  | "auto"
+  | "roundTitle"
+  | "logo"
+  | "question"
+  | "scoreboard"
+  | "roundGraphics"
+  | "camera";
+
 export interface OlympiaState {
   code: string;
   name?: string;
@@ -669,8 +678,8 @@ export interface OlympiaState {
   /** Buzzer test mode across rounds with buzzers */
   bellTestMode?: boolean;
   bellTestLogs?: { seat: number; at: number; order: number }[];
-  /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics" */
-  rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics";
+  /** Right LED screen content mode: "auto" | "roundTitle" | "logo" | "question" | "scoreboard" | "roundGraphics" | "camera" */
+  rightScreenMode?: OlympiaRightScreenMode;
   /** Overall Summary Mode setting: "graphic" (2D scoreboard) | "cinematic_o27" (3D contestant close-ups from lowest to highest score) */
   summaryMode?: "graphic" | "cinematic_o27";
   /** State for the lower-third sequence summarizing contestant points from lowest to highest */

@@ -78,6 +78,7 @@ export interface SpeakTTSOptions {
   voice?: string;
   voiceConfig?: McVoiceCustomization;
   noCancel?: boolean;
+  queueAfterActive?: boolean;
   vars?: Record<string, string | number | undefined | null>;
   deterministic?: boolean;
   onEnd?: () => void;
@@ -319,6 +320,8 @@ export interface DualMcSpeakOptions {
   baseRate?: number;
   preferServer?: boolean;
   engine?: "server" | "webspeech" | "auto";
+  queueAfterActive?: boolean;
+  noCancel?: boolean;
   onSegmentStart?: (segment: DualMcScriptSegment, index: number) => void;
   onEnd?: () => void;
 }
@@ -357,6 +360,81 @@ export function pickRandomMCRole(rng: () => number = Math.random): DualMcRole {
 // 1. Vietnamese Broadcast Normalization & Answer Summarization
 // ============================================================================
 
+const VIETNAMESE_LETTER_MAP: Record<string, string> = {
+  A: "A",
+  Ă: "Á",
+  Â: "Ớ",
+  B: "Bê",
+  C: "Xê",
+  D: "Dê",
+  Đ: "Đê",
+  E: "E",
+  Ê: "Ê",
+  F: "Ép",
+  G: "Gờ",
+  H: "Hát",
+  I: "I",
+  J: "Gi",
+  K: "Ca",
+  L: "E-lờ",
+  M: "Em-mờ",
+  N: "En-nờ",
+  O: "O",
+  Ô: "Ô",
+  Ơ: "Ơ",
+  P: "Pê",
+  Q: "Quy",
+  R: "E-rờ",
+  S: "Ét",
+  T: "Tê",
+  U: "U",
+  Ư: "Ư",
+  V: "Vê",
+  W: "Vê-kép",
+  X: "Ích",
+  Y: "Y",
+  Z: "Dét",
+};
+
+function spellVietnameseLetters(letters: string): string {
+  return Array.from(letters.toUpperCase())
+    .map((ch) => VIETNAMESE_LETTER_MAP[ch] ?? ch)
+    .join(" ");
+}
+
+const SKIP_ACRONYM_EXPANSION = new Set([
+  "HTTP",
+  "HTTPS",
+  "HTML",
+  "CSS",
+  "GDP",
+  "GNP",
+  "TNT",
+  "MC",
+  "TV",
+  "CD",
+  "DVD",
+  "PDF",
+  "PHP",
+  "SQL",
+  "FPS",
+  "GPS",
+  "VIP",
+  "WC",
+  "PM",
+  "AM",
+  "VS",
+  "XX",
+  "XXX",
+  "XV",
+  "XC",
+  "LX",
+  "LV",
+  "CL",
+  "MD",
+  "DC",
+]);
+
 export function normalizeVietnameseTTS(rawText: string): string {
   if (!rawText) return "";
   let t = rawText;
@@ -364,53 +442,92 @@ export function normalizeVietnameseTTS(rawText: string): string {
   t = t.replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1");
   // Remove parenthetical stage cues or points: (10 điểm), (5 chữ cái), (30 giây), etc.
   t = t.replace(/\(\s*\d+\s*(điểm|chữ cái|ký tự|giây)\s*\)/gi, "");
-  // Expand common broadcast abbreviations
-  t = t.replace(/\bTP\.\s*/gi, "Thành phố ");
-  t = t.replace(/\bTpHCM\b/gi, "Thành phố Hồ Chí Minh");
-  t = t.replace(/\bTHPT\b/gi, "Trung học phổ thông");
-  t = t.replace(/\bTHCS\b/gi, "Trung học cơ sở");
-  t = t.replace(/\bVN\b/gi, "Việt Nam");
-  t = t.replace(/\bVTV\b/gi, "Vê Tê Vê");
-  t = t.replace(/\bVTV3\b/gi, "Vê Tê Vê Ba");
-  t = t.replace(/\bCNV\b/gi, "Chướng ngại vật");
-  t = t.replace(/\bVCNV\b/gi, "Vượt chướng ngại vật");
-  t = t.replace(/\bO20\b/gi, "Ô hai mươi");
-  t = t.replace(/\bO21\b/gi, "Ô hai mốt");
-  t = t.replace(/\bO22\b/gi, "Ô hai hai");
-  t = t.replace(/\bO23\b/gi, "Ô hai ba");
-  t = t.replace(/\bO24\b/gi, "Ô hai bốn");
-  t = t.replace(/\bO25\b/gi, "Ô hai lăm");
-  t = t.replace(/\bO26\b/gi, "Ô hai sáu");
-  t = t.replace(/\bO27\b/gi, "Ô hai bảy");
-  t = t.replace(/\bkm\/h\b/gi, "ki lô mét một giờ");
-  t = t.replace(/\bm\/s\b/gi, "mét một giây");
-  t = t.replace(/\bcm\/s\b/gi, "xen ti mét một giây");
-  t = t.replace(/\bmm\/s\b/gi, "mi li mét một giây");
-  t = t.replace(/\brad\/s\b/gi, "ra đi an một giây");
-  t = t.replace(/\bkg\/m3\b/gi, "ki lô gam trên mét khối");
-  t = t.replace(/\bg\/cm3\b/gi, "gam trên xen ti mét khối");
-  t = t.replace(/\bkWh\b/gi, "ki lô oát giờ");
-  t = t.replace(/\bkW\b/gi, "ki lô oát");
-  t = t.replace(/\bha\b/gi, "héc ta");
+  // Expand TP.HCM / TPHCM / TpHCM before generic TP.
+  t = t.replace(/(?<![\p{L}\p{N}])TP\.?\s*HCM(?![\p{L}\p{N}])/giu, "Thành phố Hồ Chí Minh");
+  t = t.replace(/(?<![\p{L}\p{N}])TP\.\s*/giu, "Thành phố ");
+  // Protect "TS." used as initials (e.g. "TS.A", standalone "TS.") vs academic title ("TS. Ngô Bảo Châu")
+  t = t.replace(
+    /(?<![\p{L}\p{N}])TS\.([A-ZĂÂĐÊÔƠƯ])(?![\p{L}\p{N}])/gu,
+    (_, ch: string) => `Tê Ét ${spellVietnameseLetters(ch)}`
+  );
+  t = t.replace(/(?<![\p{L}\p{N}])TS\.(?!\s*\p{Lu}\p{Ll}+)(?![\p{L}\p{N}])/gu, "Tê Ét");
+  t = t.replace(/(?<![\p{L}\p{N}])TS\.(?=\s+\p{Lu}\p{Ll}+)/gu, "Tiến sĩ");
+  // Expand dotted uppercase initials (e.g. N.V.A, H.A, T.S, Đ.T.M, L.H.P, T.S.A)
+  t = t.replace(
+    /(?<![\p{L}\p{N}])(\p{Lu}(?:\.\p{Lu})+)(?![\p{L}\p{N}])/gu,
+    (_, seq: string) => spellVietnameseLetters(seq.replace(/\./g, ""))
+  );
+  // Expand common broadcast, school & station abbreviations using Unicode boundaries
+  t = t.replace(/(?<![\p{L}\p{N}])VTV3(?![\p{L}\p{N}])/giu, "Vê Tê Vê Ba");
+  t = t.replace(/(?<![\p{L}\p{N}])VTV(?![\p{L}\p{N}])/giu, "Vê Tê Vê");
+  t = t.replace(/(?<![\p{L}\p{N}])VCNV(?![\p{L}\p{N}])/giu, "Vượt chướng ngại vật");
+  t = t.replace(/(?<![\p{L}\p{N}])CNV(?![\p{L}\p{N}])/giu, "Chướng ngại vật");
+  t = t.replace(/(?<![\p{L}\p{N}])THPT(?![\p{L}\p{N}])/giu, "Trung học phổ thông");
+  t = t.replace(/(?<![\p{L}\p{N}])THCS(?![\p{L}\p{N}])/giu, "Trung học cơ sở");
+  t = t.replace(/(?<![\p{L}\p{N}])PTNK(?![\p{L}\p{N}])/giu, "Phổ thông Năng khiếu");
+  t = t.replace(/(?<![\p{L}\p{N}])KHTN(?![\p{L}\p{N}])/giu, "Khoa học Tự nhiên");
+  t = t.replace(/(?<![\p{L}\p{N}])KHXH(?![\p{L}\p{N}])/giu, "Khoa học Xã hội");
+  t = t.replace(/(?<![\p{L}\p{N}])XHNV(?![\p{L}\p{N}])/giu, "Xã hội Nhân văn");
+  t = t.replace(/(?<![\p{L}\p{N}])BKHN(?![\p{L}\p{N}])/giu, "Bách khoa Hà Nội");
+  t = t.replace(/(?<![\p{L}\p{N}])CNTT(?![\p{L}\p{N}])/giu, "Công nghệ thông tin");
+  t = t.replace(/(?<![\p{L}\p{N}])UBND(?![\p{L}\p{N}])/giu, "Ủy ban nhân dân");
+  t = t.replace(/(?<![\p{L}\p{N}])ĐHQG(?![\p{L}\p{N}])/gu, "Đại học Quốc gia");
+  t = t.replace(/(?<![\p{L}\p{N}])ĐHBK(?![\p{L}\p{N}])/gu, "Đại học Bách khoa");
+  t = t.replace(/(?<![\p{L}\p{N}])ĐHSP(?![\p{L}\p{N}])/gu, "Đại học Sư phạm");
+  t = t.replace(/(?<![\p{L}\p{N}])ĐH(?![\p{L}\p{N}])/gu, "Đại học");
+  t = t.replace(/(?<![\p{L}\p{N}])CĐ(?![\p{L}\p{N}])/gu, "Cao đẳng");
+  t = t.replace(/(?<![\p{L}\p{N}])ĐTV(?![\p{L}\p{N}])/gu, "Đê Tê Vê");
+  t = t.replace(/(?<![\p{L}\p{N}])NBTV(?![\p{L}\p{N}])/gu, "En-nờ Bê Tê Vê");
+  t = t.replace(/(?<![\p{L}\p{N}])QRT(?![\p{L}\p{N}])/gu, "Quy E-rờ Tê");
+  t = t.replace(/(?<![\p{L}\p{N}])VN(?![\p{L}\p{N}])/giu, "Việt Nam");
+  // Generic fallback for remaining 2-5 char uppercase consonant-only acronyms (LHP, NTMK, HTV, THVL, BTV, PTV, HBC, TS...)
+  t = t.replace(
+    /(?<![\p{L}\p{N}])([BCDĐFGHJKLMNPQRSTVWXZ]{2,5})(?![\p{L}\p{N}])/gu,
+    (tok: string) => {
+      if (SKIP_ACRONYM_EXPANSION.has(tok) || /^([A-ZĐ])\1+$/.test(tok)) return tok;
+      return spellVietnameseLetters(tok);
+    }
+  );
+  t = t.replace(/(?<![\p{L}\p{N}])O20(?![\p{L}\p{N}])/giu, "Ô hai mươi");
+  t = t.replace(/(?<![\p{L}\p{N}])O21(?![\p{L}\p{N}])/giu, "Ô hai mốt");
+  t = t.replace(/(?<![\p{L}\p{N}])O22(?![\p{L}\p{N}])/giu, "Ô hai hai");
+  t = t.replace(/(?<![\p{L}\p{N}])O23(?![\p{L}\p{N}])/giu, "Ô hai ba");
+  t = t.replace(/(?<![\p{L}\p{N}])O24(?![\p{L}\p{N}])/giu, "Ô hai bốn");
+  t = t.replace(/(?<![\p{L}\p{N}])O25(?![\p{L}\p{N}])/giu, "Ô hai lăm");
+  t = t.replace(/(?<![\p{L}\p{N}])O26(?![\p{L}\p{N}])/giu, "Ô hai sáu");
+  t = t.replace(/(?<![\p{L}\p{N}])O27(?![\p{L}\p{N}])/giu, "Ô hai bảy");
+  t = t.replace(/(?<![\p{L}\p{N}])km\/h(?![\p{L}\p{N}])/giu, "ki lô mét một giờ");
+  t = t.replace(/(?<![\p{L}\p{N}])m\/s(?![\p{L}\p{N}])/giu, "mét một giây");
+  t = t.replace(/(?<![\p{L}\p{N}])cm\/s(?![\p{L}\p{N}])/giu, "xen ti mét một giây");
+  t = t.replace(/(?<![\p{L}\p{N}])mm\/s(?![\p{L}\p{N}])/giu, "mi li mét một giây");
+  t = t.replace(/(?<![\p{L}\p{N}])rad\/s(?![\p{L}\p{N}])/giu, "ra đi an một giây");
+  t = t.replace(/(?<![\p{L}\p{N}])kg\/m3(?![\p{L}\p{N}])/giu, "ki lô gam trên mét khối");
+  t = t.replace(/(?<![\p{L}\p{N}])g\/cm3(?![\p{L}\p{N}])/giu, "gam trên xen ti mét khối");
+  t = t.replace(/(?<![\p{L}\p{N}])kWh(?![\p{L}\p{N}])/giu, "ki lô oát giờ");
+  t = t.replace(/(?<![\p{L}\p{N}])kW(?![\p{L}\p{N}])/giu, "ki lô oát");
+  t = t.replace(/(?<![\p{L}\p{N}])ha(?![\p{L}\p{N}])/giu, "héc ta");
   // Chemical formulas & Acronyms
-  t = t.replace(/\bCO2\b/gi, "Cac-bo-nic");
-  t = t.replace(/\bH2O\b/gi, "Nước");
-  t = t.replace(/\bUNESCO\b/gi, "U-nét-xcô");
-  t = t.replace(/\bASEAN\b/gi, "A-xê-an");
-  t = t.replace(/\bWHO\b/gi, "Vê-kép-hát-ô");
-  t = t.replace(/\bDNA\b/gi, "A-đê-en");
-  t = t.replace(/\bRNA\b/gi, "A-e-ren");
+  t = t.replace(/(?<![\p{L}\p{N}])CO2(?![\p{L}\p{N}])/giu, "Cac-bo-nic");
+  t = t.replace(/(?<![\p{L}\p{N}])H2O(?![\p{L}\p{N}])/giu, "Nước");
+  t = t.replace(/(?<![\p{L}\p{N}])UNESCO(?![\p{L}\p{N}])/giu, "U-nét-xcô");
+  t = t.replace(/(?<![\p{L}\p{N}])ASEAN(?![\p{L}\p{N}])/giu, "A-xê-an");
+  t = t.replace(/(?<![\p{L}\p{N}])WHO(?![\p{L}\p{N}])/giu, "Vê-kép-hát-ô");
+  t = t.replace(/(?<![\p{L}\p{N}])DNA(?![\p{L}\p{N}])/giu, "A-đê-en");
+  t = t.replace(/(?<![\p{L}\p{N}])RNA(?![\p{L}\p{N}])/giu, "A-e-ren");
   // Roman numerals for centuries
-  t = t.replace(/\bthế\s*kỷ\s*XXI\b/gi, "thế kỷ hai mươi mốt");
-  t = t.replace(/\bthế\s*kỷ\s*XX\b/gi, "thế kỷ hai mươi");
-  t = t.replace(/\bthế\s*kỷ\s*XIX\b/gi, "thế kỷ mười chín");
-  t = t.replace(/\bthế\s*kỷ\s*XVIII\b/gi, "thế kỷ mười tám");
+  t = t.replace(/(?<![\p{L}\p{N}])thế\s*kỷ\s*XXI(?![\p{L}\p{N}])/giu, "thế kỷ hai mươi mốt");
+  t = t.replace(/(?<![\p{L}\p{N}])thế\s*kỷ\s*XX(?![\p{L}\p{N}])/giu, "thế kỷ hai mươi");
+  t = t.replace(/(?<![\p{L}\p{N}])thế\s*kỷ\s*XIX(?![\p{L}\p{N}])/giu, "thế kỷ mười chín");
+  t = t.replace(/(?<![\p{L}\p{N}])thế\s*kỷ\s*XVIII(?![\p{L}\p{N}])/giu, "thế kỷ mười tám");
   // Convert standalone fractions (e.g. 1/2) while protecting dd/mm/yyyy dates (e.g. 2/9/1945)
-  t = t.replace(/\b(\d+\/\d+\/\d+)\b|\b(\d+)\/(\d+)\b/g, (full, dateStr, num, den) => {
-    if (dateStr) return dateStr;
-    return `${num} phần ${den}`;
-  });
-  t = t.replace(/(?:°\s*C|°C|\bđộ\s*C\b)/gi, "độ xê");
+  t = t.replace(
+    /(?<![\p{L}\p{N}])(\d+\/\d+\/\d+)(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])(\d+)\/(\d+)(?![\p{L}\p{N}])/gu,
+    (full, dateStr, num, den) => {
+      if (dateStr) return dateStr;
+      return `${num} phần ${den}`;
+    }
+  );
+  t = t.replace(/(?:°\s*C|°C|(?<![\p{L}\p{N}])độ\s*C(?![\p{L}\p{N}]))/giu, "độ xê");
   t = t.replace(/%/g, " phần trăm");
   return t.replace(/\s+/g, " ").trim();
 }
@@ -770,6 +887,33 @@ const PROTECTED_VI_TOKENS = new Set([
   "cal",
   "kcal",
   "rad",
+  "ptnk",
+  "khtn",
+  "khxh",
+  "xhnv",
+  "bkhn",
+  "cntt",
+  "ubnd",
+  "tphcm",
+  "đtv",
+  "dtv",
+  "nbtv",
+  "qrt",
+  "đh",
+  "dh",
+  "cđ",
+  "cd",
+  "đhqg",
+  "đhbk",
+  "đhsp",
+  "ts",
+  "hbc",
+  "lhp",
+  "ntmk",
+  "htv",
+  "thvl",
+  "btv",
+  "ptv",
 ]);
 
 const STRONG_ENGLISH_WORDS = new Set([
@@ -924,12 +1068,19 @@ const STRONG_ENGLISH_WORDS = new Set([
 const ENGLISH_ONLY_MORPH_RE =
   /(?:tion|sion|ment|ness|ance|ence|able|ible|ious|eous|ight|ough|augh|logy|graphy|metry|sis|ism|ist|ity|ize|ise|[jwzf]|^wh|^sh|^sc|^sk|^sl|^sm|^sn|^sp|^st|^sw|^bl|^cl|^fl|^gl|^pl|^br|^cr|^dr|^fr|^gr|^pr|^wr|^kn|ck$|[bdefjklrsvwxz]{1}$)/i;
 
+const DOTTED_INITIAL_RE =
+  /^(?:\p{Lu}\.)+\p{Lu}\.?$|^(?:TS|T\.S)\.(?:\p{Lu}\.?)?$/u;
+const VI_CONSONANT_ACRONYM_RE = /^[BCDĐFGHJKLMNPQRSTVWXZ]{2,6}$/u;
+
 function isStrongEnglishToken(rawToken: string): boolean {
+  const dotPreserved = rawToken.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, "");
+  if (DOTTED_INITIAL_RE.test(dotPreserved)) return false;
   const clean = rawToken.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
   if (!clean || !/[a-zA-Z]/.test(clean)) return false;
   if (VI_DIACRITIC_RE.test(clean)) return false;
   const lower = clean.toLowerCase();
   if (PROTECTED_VI_TOKENS.has(lower)) return false;
+  if (!STRONG_ENGLISH_WORDS.has(lower) && VI_CONSONANT_ACRONYM_RE.test(clean)) return false;
   if (/^(?:km\/h|m\/s|cm\/s|mm\/s|rad\/s|kg\/m3|g\/cm3)$/i.test(clean)) return false;
   if (/^\d+$/.test(clean)) return false;
   if (STRONG_ENGLISH_WORDS.has(lower)) return true;
@@ -938,11 +1089,14 @@ function isStrongEnglishToken(rawToken: string): boolean {
 }
 
 function isNeutralEnglishCandidate(rawToken: string): boolean {
+  const dotPreserved = rawToken.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, "");
+  if (DOTTED_INITIAL_RE.test(dotPreserved)) return false;
   const clean = rawToken.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
   if (!clean) return false;
   if (VI_DIACRITIC_RE.test(clean)) return false;
   const lower = clean.toLowerCase();
   if (PROTECTED_VI_TOKENS.has(lower)) return false;
+  if (!STRONG_ENGLISH_WORDS.has(lower) && VI_CONSONANT_ACRONYM_RE.test(clean)) return false;
   if (/^\d+(?:[.,:/-]\d+)*%?$/.test(clean)) return true;
   return /^[a-zA-Z0-9''-]+$/.test(clean);
 }
@@ -982,9 +1136,11 @@ export function detectTextLanguage(text: string): TtsLang {
   }
 
   if (words.length === 1) {
+    const singleDotPreserved = words[0].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, "");
+    if (DOTTED_INITIAL_RE.test(singleDotPreserved)) return "vi";
     const singleClean = words[0].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
     if (PROTECTED_VI_TOKENS.has(singleClean.toLowerCase())) return "vi";
-    if (/^[A-Z0-9]{2,6}$/.test(singleClean)) return "vi";
+    if (/^[A-Z0-9]{2,6}$/.test(singleClean) || VI_CONSONANT_ACRONYM_RE.test(singleClean)) return "vi";
     if (singleClean.length >= 6 && isStrongEnglishToken(singleClean)) return "en";
     return "vi";
   }
@@ -1514,14 +1670,21 @@ export function unlockOlympiaTTS(): void {
   } catch {}
   if (!("speechSynthesis" in window)) return;
   try {
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
+    const synth = window.speechSynthesis;
+    if (synth.paused && !isOlympiaTtsPausedState) {
+      synth.resume();
     }
-    if (typeof SpeechSynthesisUtterance === "function") {
+    const isBusy = Boolean(synth.speaking || synth.pending);
+    if (
+      unlockedSpeechSynthesisRef !== synth &&
+      !isBusy &&
+      typeof SpeechSynthesisUtterance === "function"
+    ) {
+      unlockedSpeechSynthesisRef = synth;
       const silent = new SpeechSynthesisUtterance(" ");
       silent.volume = 0.01;
       silent.rate = 2.0;
-      window.speechSynthesis.speak(silent);
+      synth.speak(silent);
     }
     refreshOlympiaVoices();
   } catch {}
@@ -1529,11 +1692,28 @@ export function unlockOlympiaTTS(): void {
 
 // Playback coordination state
 let playbackEpoch = 0;
+let activePlaybackPromise: Promise<boolean> | null = null;
+let unlockedSpeechSynthesisRef: SpeechSynthesis | null = null;
 let activeAbortController: AbortController | null = null;
 let activeAudioCleanup: (() => void) | null = null;
 let activeFadeStopper: ((fadeMs: number, maxWaitMs: number) => number) | null = null;
 let activePauseTimer: any = null;
+let activePauseResolver: ((ok: boolean) => void) | null = null;
 let currentUtterance: SpeechSynthesisUtterance | null = null;
+
+function clearActivePauseTimer(): void {
+  if (activePauseTimer) {
+    clearTimeout(activePauseTimer);
+    activePauseTimer = null;
+  }
+  if (activePauseResolver) {
+    const r = activePauseResolver;
+    activePauseResolver = null;
+    try {
+      r(false);
+    } catch {}
+  }
+}
 let stopRequested = false;
 let boundaryCleanupTimer: any = null;
 let buzzerPauseTimer: any = null;
@@ -1598,11 +1778,13 @@ export function computeBoundaryStopDelayMs(
  */
 export function smoothStopOlympiaTTS(fadeMs: number = 45, maxWaitMs: number = 160): number {
   playbackEpoch++;
+  activePlaybackPromise = null;
 
   if (boundaryCleanupTimer) {
     clearTimeout(boundaryCleanupTimer);
     boundaryCleanupTimer = null;
   }
+  clearActivePauseTimer();
 
   if (activeAbortController) {
     try {
@@ -1673,6 +1855,7 @@ export function cancelQuestionTTS(): void {
 
 export function cancelTTS(): void {
   playbackEpoch++;
+  activePlaybackPromise = null;
   stopRequested = false;
   activePlaybackSegment = null;
 
@@ -1680,10 +1863,7 @@ export function cancelTTS(): void {
     clearTimeout(boundaryCleanupTimer);
     boundaryCleanupTimer = null;
   }
-  if (activePauseTimer) {
-    clearTimeout(activePauseTimer);
-    activePauseTimer = null;
-  }
+  clearActivePauseTimer();
   cancelBuzzerInterrupt();
   cancelDramaticStealCall();
 
@@ -1711,6 +1891,25 @@ export function cancelTTS(): void {
   try {
     window.speechSynthesis.cancel();
   } catch {}
+}
+
+/**
+ * Resets all per-session TTS state across sandbox room switches, deletions, and lobby resets
+ * without erasing persisted user settings (`ttsEnabled`, `olympiaTtsVolume`, `ttsBaseRate`).
+ */
+export function resetOlympiaTtsSession(): void {
+  cancelTTS();
+  isOlympiaTtsPausedState = false;
+  activeGainNodeRef = null;
+  activeHtmlAudioRef = null;
+  unlockedSpeechSynthesisRef = null;
+  if (sharedAudioContext && (sharedAudioContext as any).state === "closed") {
+    sharedAudioContext = null;
+  }
+  resetTtsServerFallback();
+  resetBuzzerTurnState();
+  lastHypeFiller = null;
+  lastStealPrompt = null;
 }
 
 export function getOlympiaTtsVolume(): number {
@@ -1825,6 +2024,7 @@ export function speakTimerExpiredTTS(round?: string, options?: SpeakTTSOptions):
 
 function cancelPlaybackOnly(): void {
   playbackEpoch++;
+  activePlaybackPromise = null;
   stopRequested = false;
   activePlaybackSegment = null;
 
@@ -1832,10 +2032,7 @@ function cancelPlaybackOnly(): void {
     clearTimeout(boundaryCleanupTimer);
     boundaryCleanupTimer = null;
   }
-  if (activePauseTimer) {
-    clearTimeout(activePauseTimer);
-    activePauseTimer = null;
-  }
+  clearActivePauseTimer();
 
   if (activeAbortController) {
     try {
@@ -2075,6 +2272,15 @@ function speakWebSpeechSegmentSync(
     return;
   }
 
+  let watchdogTimer: any = null;
+  const clearWatchdog = () => {
+    if (watchdogTimer) {
+      clearTimeout(watchdogTimer);
+      watchdogTimer = null;
+    }
+  };
+  let cleanupFn: (() => void) | null = null;
+
   try {
     const { voice, pitch, rate: voiceRate } = resolveMCVoiceConfig(role, seg.lang, options?.voiceConfig);
     const utterance = new SpeechSynthesisUtterance(seg.text);
@@ -2086,15 +2292,50 @@ function speakWebSpeechSegmentSync(
     const speechStartedAt = Date.now();
     let settled = false;
     let speakerSessionId = 0;
+
     const finish = (completed: boolean) => {
       if (settled) return;
       settled = true;
+      clearWatchdog();
+      if (cleanupFn && activeAudioCleanup === cleanupFn) {
+        activeAudioCleanup = null;
+      }
+      activeFadeStopper = null;
       if (currentUtterance === utterance) {
         currentUtterance = null;
       }
+      try {
+        utterance.onend = null;
+        utterance.onerror = null;
+        utterance.onboundary = null;
+      } catch {}
       endTtsSpeakerSession(speakerSessionId);
       onDone(completed);
     };
+
+    const scheduleWatchdog = (delayMs: number) => {
+      clearWatchdog();
+      watchdogTimer = setTimeout(() => {
+        watchdogTimer = null;
+        if (settled) return;
+        if (isOlympiaTtsPausedState) {
+          scheduleWatchdog(3000);
+          return;
+        }
+        if (currentUtterance === utterance) {
+          try {
+            window.speechSynthesis.cancel();
+          } catch {}
+        }
+        finish(epoch === playbackEpoch && !stopRequested);
+      }, delayMs);
+      if (typeof watchdogTimer?.unref === "function") {
+        watchdogTimer.unref();
+      }
+    };
+
+    cleanupFn = () => finish(false);
+    activeAudioCleanup = cleanupFn;
 
     activeFadeStopper = (fadeMs: number, maxWaitMs: number) => {
       const wordCount = seg.text.split(/\s+/).filter(Boolean).length;
@@ -2131,10 +2372,28 @@ function speakWebSpeechSegmentSync(
     utterance.onend = () => finish(epoch === playbackEpoch && !stopRequested);
     utterance.onerror = () => finish(false);
 
+    if (window.speechSynthesis.paused && !isOlympiaTtsPausedState) {
+      try {
+        window.speechSynthesis.resume();
+      } catch {}
+    }
+
     currentUtterance = utterance;
     speakerSessionId = beginTtsSpeakerSession(role);
     window.speechSynthesis.speak(utterance);
+
+    if (!settled) {
+      const effectiveRate = Math.max(0.5, utterance.rate || rate || 1.0);
+      const wordCount = seg.text.split(/\s+/).filter(Boolean).length;
+      const estDurationMs = Math.max(800, (wordCount / (effectiveRate * 2.2)) * 1000);
+      scheduleWatchdog(Math.round(estDurationMs + 3000));
+    }
   } catch {
+    clearWatchdog();
+    if (cleanupFn && activeAudioCleanup === cleanupFn) {
+      activeAudioCleanup = null;
+    }
+    activeFadeStopper = null;
     emitTtsSpeaker(null);
     onDone(false);
   }
@@ -2199,11 +2458,9 @@ async function fetchServerTtsAudio(
 
   const endpoint = transportConfig.endpoint || DEFAULT_ENDPOINT;
   const timeoutMs =
-    transportConfig.timeoutMs !== undefined && transportConfig.timeoutMs !== DEFAULT_TIMEOUT_MS
+    transportConfig.timeoutMs !== undefined
       ? transportConfig.timeoutMs
-      : options?.engine === "server"
-      ? DEFAULT_TIMEOUT_MS
-      : 600;
+      : DEFAULT_TIMEOUT_MS;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   activeAbortController = controller;
 
@@ -2292,9 +2549,25 @@ async function playAudioBufferWithWebAudio(
     throw new Error("webaudio_unavailable");
   }
   if (ctx.state === "suspended" && typeof ctx.resume === "function") {
+    let resumeTimer: any = null;
     try {
-      await ctx.resume();
-    } catch {}
+      await Promise.race([
+        ctx.resume(),
+        new Promise<void>((resolve) => {
+          resumeTimer = setTimeout(resolve, 150);
+          if (typeof resumeTimer?.unref === "function") {
+            resumeTimer.unref();
+          }
+        }),
+      ]);
+    } catch {
+    } finally {
+      if (resumeTimer) clearTimeout(resumeTimer);
+    }
+  }
+  if (epoch !== playbackEpoch) return false;
+  if (ctx.state !== "running") {
+    throw new Error(`webaudio_context_${ctx.state || "suspended"}`);
   }
 
   const audioBuffer = await ctx.decodeAudioData(buf.slice(0));
@@ -2362,7 +2635,11 @@ async function playAudioBufferWithWebAudio(
 
     source.onended = () => cleanup(epoch === playbackEpoch);
     speakerSessionId = beginTtsSpeakerSession(role);
-    source.start(0);
+    try {
+      source.start(0);
+    } catch {
+      cleanup(false);
+    }
   });
 }
 
@@ -2437,6 +2714,7 @@ async function playAudioBufferWithHtmlAudio(
         settled = true;
         activeAudioCleanup = null;
         activeFadeStopper = null;
+        activeHtmlAudioRef = null;
         try {
           UrlApi.revokeObjectURL?.(objectUrl);
         } catch {}
@@ -2454,6 +2732,7 @@ async function playAudioBufferWithHtmlAudio(
             settled = true;
             activeAudioCleanup = null;
             activeFadeStopper = null;
+            activeHtmlAudioRef = null;
             try {
               UrlApi.revokeObjectURL?.(objectUrl);
             } catch {}
@@ -2464,6 +2743,9 @@ async function playAudioBufferWithHtmlAudio(
       }
     } catch (err) {
       settled = true;
+      activeAudioCleanup = null;
+      activeFadeStopper = null;
+      activeHtmlAudioRef = null;
       try {
         UrlApi.revokeObjectURL?.(objectUrl);
       } catch {}
@@ -2556,16 +2838,13 @@ async function runServerTtsPipeline(
  * - Emits 3D lip-sync speaker events (`__olympiaTtsSpeaker` + `olympia:tts-speaker`)
  * - Resolves `true` if spoken to completion, `false` if disabled/empty/cancelled
  */
-export function speakOlympiaTTSAsync(
+function speakOlympiaTTSNow(
   text: string,
-  options?: SpeakTTSOptions
+  options: SpeakTTSOptions | undefined,
+  epoch: number
 ): Promise<boolean> {
-  if (typeof window === "undefined" || !ttsEnabled) {
+  if (typeof window === "undefined" || !ttsEnabled || epoch !== playbackEpoch) {
     return Promise.resolve(false);
-  }
-
-  if (!options?.noCancel) {
-    cancelPlaybackOnly();
   }
 
   const segments = prepareLanguageSegments(text, options);
@@ -2585,7 +2864,6 @@ export function speakOlympiaTTSAsync(
     speedCategory: options?.speedCategory,
   });
 
-  const epoch = playbackEpoch;
   activePlaybackSegment = options?.segment ?? null;
 
   if (shouldAttemptServerTts(options)) {
@@ -2596,6 +2874,90 @@ export function speakOlympiaTTSAsync(
   return new Promise<boolean>((resolve) => {
     speakWebSpeechSegmentsSync(segments, role, rate, epoch, options, resolve);
   });
+}
+
+function speakOlympiaTTSInternal(
+  text: string,
+  options: SpeakTTSOptions | undefined,
+  trackTopLevel: boolean
+): Promise<boolean> {
+  if (typeof window === "undefined" || !ttsEnabled) {
+    return Promise.resolve(false);
+  }
+
+  if (options?.queueAfterActive) {
+    const prev = activePlaybackPromise;
+    const queuedEpoch = playbackEpoch;
+    const queuedPromise = (async () => {
+      if (prev) {
+        try {
+          await prev;
+        } catch {}
+      }
+      if (queuedEpoch !== playbackEpoch || !ttsEnabled) return false;
+      return speakOlympiaTTSNow(
+        text,
+        { ...options, noCancel: true, queueAfterActive: false },
+        queuedEpoch
+      );
+    })();
+    if (trackTopLevel) {
+      activePlaybackPromise = queuedPromise;
+      void queuedPromise.finally(() => {
+        if (activePlaybackPromise === queuedPromise) {
+          activePlaybackPromise = null;
+        }
+      });
+    }
+    return queuedPromise;
+  }
+
+  if (!options?.noCancel) {
+    cancelPlaybackOnly();
+  }
+
+  const epoch = playbackEpoch;
+  const p = speakOlympiaTTSNow(text, options, epoch);
+  if (trackTopLevel) {
+    if (options?.noCancel && activePlaybackPromise) {
+      const prev = activePlaybackPromise;
+      const combined = Promise.allSettled([prev, p]).then(async () => {
+        try {
+          return await p;
+        } catch {
+          return false;
+        }
+      });
+      activePlaybackPromise = combined;
+      void combined.finally(() => {
+        if (activePlaybackPromise === combined) {
+          activePlaybackPromise = null;
+        }
+      });
+    } else {
+      activePlaybackPromise = p;
+      void p.finally(() => {
+        if (activePlaybackPromise === p) {
+          activePlaybackPromise = null;
+        }
+      });
+    }
+  }
+  return p;
+}
+
+/**
+ * Async Multi-role Olympia TTS invocation:
+ * - Resolves MC role, language segments, and separated question/narration rate
+ * - Attempts server TTS (`POST /api/olympia/tts`) when eligible, falling back automatically to Web Speech
+ * - Emits 3D lip-sync speaker events (`__olympiaTtsSpeaker` + `olympia:tts-speaker`)
+ * - Resolves `true` if spoken to completion, `false` if disabled/empty/cancelled
+ */
+export function speakOlympiaTTSAsync(
+  text: string,
+  options?: SpeakTTSOptions
+): Promise<boolean> {
+  return speakOlympiaTTSInternal(text, options, true);
 }
 
 /**
@@ -2615,74 +2977,124 @@ export const speakSmartQuestion = (
 /**
  * Plays a sequence of DualMcScriptSegments in order with pauses between segments.
  */
-export async function speakDualMcScriptAsync(
+export function speakDualMcScriptAsync(
   segments: DualMcScriptSegment[],
   options?: DualMcSpeakOptions
 ): Promise<boolean> {
   if (typeof window === "undefined" || !ttsEnabled || !segments || segments.length === 0) {
-    return false;
+    return Promise.resolve(false);
   }
 
-  cancelPlaybackOnly();
+  const queueAfter = Boolean(options?.queueAfterActive);
+  const noCancel = Boolean(options?.noCancel) || queueAfter;
+  const prevPlayback = queueAfter ? activePlaybackPromise : null;
+
+  if (!noCancel) {
+    cancelPlaybackOnly();
+  }
+
   const epoch = playbackEpoch;
 
-  for (let i = 0; i < segments.length; i++) {
-    if (epoch !== playbackEpoch) return false;
-    const seg = segments[i];
-    options?.onSegmentStart?.(seg, i);
-
-    const ttsSegment: TTSSegment =
-      seg.kind === "greeting"
-        ? "intro_greeting"
-        : seg.kind === "contestant_intro"
-        ? "contestant_intro"
-        : seg.kind === "breather"
-        ? "breather"
-        : seg.kind === "ready_check"
-        ? "ready_check"
-        : seg.kind === "round_transition"
-        ? "round_transition"
-        : seg.kind === "summary_item" || seg.kind === "summary_commentary"
-        ? "score_summary"
-        : seg.kind === "post_match_opening" || seg.kind === "post_match_item"
-        ? "post_match_summary"
-        : seg.kind === "award_item" || seg.kind === "tie_notice"
-        ? "final_awards"
-        : seg.kind === "farewell"
-        ? "closing_farewell"
-        : seg.kind === "hype"
-        ? "hype_filler"
-        : "round_intro";
-
-    const completed = await speakOlympiaTTSAsync(seg.text, {
-      role: seg.role,
-      segment: ttsSegment,
-      seatId: seg.seatId,
-      lang: seg.lang ?? "auto",
-      season: options?.season,
-      baseRate: options?.baseRate,
-      preferServer: options?.preferServer,
-      engine: options?.engine,
-      noCancel: true,
-    });
-
-    if (!completed || epoch !== playbackEpoch) return false;
-
-    const pauseMs = seg.pauseAfterMs ?? 0;
-    if (pauseMs > 0 && i < segments.length - 1) {
-      const pauseOk = await new Promise<boolean>((resolve) => {
-        activePauseTimer = setTimeout(() => {
-          activePauseTimer = null;
-          resolve(epoch === playbackEpoch);
-        }, pauseMs);
-      });
-      if (!pauseOk || epoch !== playbackEpoch) return false;
+  const scriptPromise = (async () => {
+    if (prevPlayback) {
+      try {
+        await prevPlayback;
+      } catch {}
+      if (epoch !== playbackEpoch || !ttsEnabled) return false;
     }
+
+    for (let i = 0; i < segments.length; i++) {
+      if (epoch !== playbackEpoch || !ttsEnabled) return false;
+      const seg = segments[i];
+      options?.onSegmentStart?.(seg, i);
+
+      const ttsSegment: TTSSegment =
+        seg.kind === "greeting"
+          ? "intro_greeting"
+          : seg.kind === "contestant_intro"
+          ? "contestant_intro"
+          : seg.kind === "breather"
+          ? "breather"
+          : seg.kind === "ready_check"
+          ? "ready_check"
+          : seg.kind === "round_transition"
+          ? "round_transition"
+          : seg.kind === "summary_item" || seg.kind === "summary_commentary"
+          ? "score_summary"
+          : seg.kind === "post_match_opening" || seg.kind === "post_match_item"
+          ? "post_match_summary"
+          : seg.kind === "award_item" || seg.kind === "tie_notice"
+          ? "final_awards"
+          : seg.kind === "farewell"
+          ? "closing_farewell"
+          : seg.kind === "hype"
+          ? "hype_filler"
+          : "round_intro";
+
+      const completed = await speakOlympiaTTSInternal(
+        seg.text,
+        {
+          role: seg.role,
+          segment: ttsSegment,
+          seatId: seg.seatId,
+          lang: seg.lang ?? "auto",
+          season: options?.season,
+          baseRate: options?.baseRate,
+          preferServer: options?.preferServer,
+          engine: options?.engine,
+          noCancel: true,
+        },
+        false
+      );
+
+      if (!completed || epoch !== playbackEpoch) return false;
+
+      const pauseMs = seg.pauseAfterMs ?? 0;
+      if (pauseMs > 0 && i < segments.length - 1) {
+        const pauseOk = await new Promise<boolean>((resolve) => {
+          clearActivePauseTimer();
+          activePauseResolver = resolve;
+          activePauseTimer = setTimeout(() => {
+            activePauseTimer = null;
+            const r = activePauseResolver;
+            activePauseResolver = null;
+            r?.(epoch === playbackEpoch);
+          }, pauseMs);
+        });
+        if (!pauseOk || epoch !== playbackEpoch) return false;
+      }
+    }
+
+    if (epoch !== playbackEpoch) return false;
+    options?.onEnd?.();
+    return true;
+  })();
+
+  if (noCancel && !queueAfter && activePlaybackPromise) {
+    const prev = activePlaybackPromise;
+    const combined = Promise.allSettled([prev, scriptPromise]).then(async () => {
+      try {
+        return await scriptPromise;
+      } catch {
+        return false;
+      }
+    });
+    activePlaybackPromise = combined;
+    void combined.finally(() => {
+      if (activePlaybackPromise === combined) {
+        activePlaybackPromise = null;
+      }
+    });
+  } else {
+    activePlaybackPromise = scriptPromise;
+    void scriptPromise.finally(() => {
+      if (activePlaybackPromise === scriptPromise) {
+        activePlaybackPromise = null;
+      }
+    });
   }
 
-  if (epoch !== playbackEpoch) return false;
-  options?.onEnd?.();
-  return true;
+  return scriptPromise;
 }
 
 export function speakDualMcScript(
@@ -2862,7 +3274,7 @@ export const ROUND_INTRO_LINES: Record<string, { role: MCRole; text: string }> =
   },
 };
 
-export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): void {
+export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): Promise<boolean> {
   let targetKey = round;
   if (round === "khoiDong") {
     if (options?.segKind === "shared") {
@@ -2876,14 +3288,14 @@ export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): vo
     activeCustomTtsScripts?.roundIntros?.[targetKey] ||
     activeCustomTtsScripts?.roundIntros?.[round];
   const intro = ROUND_INTRO_LINES[targetKey] || ROUND_INTRO_LINES[round];
-  if (!customIntro && !intro) return;
+  if (!customIntro && !intro) return Promise.resolve(false);
 
   let text = customIntro || intro.text;
   if (options?.vars) {
     text = interpolateTemplate(text, options.vars);
   }
   const role = options?.role || intro?.role || "khanh_vy";
-  speakOlympiaTTS(text, {
+  return speakOlympiaTTSAsync(text, {
     ...options,
     role,
     segment: "round_intro",
@@ -3137,6 +3549,23 @@ export function formatContestantIntroLine(
 }
 
 /**
+ * Optional pre-entrance opening bridge introducing the contestants arriving on stage.
+ * Preserves `buildContestantIntroStepSegment(seats, 0)` intact.
+ */
+export function buildEntranceOpeningBridge(
+  seats: ContestantScriptInput[]
+): DualMcScriptSegment | null {
+  const active = normalizeIntroSeats(seats);
+  if (active.length === 0) return null;
+  return {
+    role: "ngoc_huy",
+    kind: "breather",
+    pauseAfterMs: 220,
+    text: `Xin mời ${active.length} nhà leo núi cùng tiến vào sân khấu và giới thiệu đôi nét về bản thân mình!`,
+  };
+}
+
+/**
  * 3D-stepped per-seat introduction segment (`pauseAfterMs: 0`).
  */
 export function buildContestantIntroStepSegment(
@@ -3245,20 +3674,30 @@ export function buildKhoiDongTurnBridgeSegment(options: {
     const labelName =
       getContestantSpokenName(options.name || "") ||
       `Thí sinh ${(options.seatId ?? options.segIdx) + 1}`;
+    const text =
+      options.segIdx === 0
+        ? `Và ngay bây giờ, xin mời thí sinh đầu tiên bước vào lượt thi Khởi Động riêng: bạn ${labelName}. Hãy giữ bình tĩnh và thật tự tin nhé!`
+        : `Tiếp theo sẽ là lượt thi Khởi Động riêng dành cho bạn ${labelName}. Hãy giữ bình tĩnh và thật tự tin nhé!`;
     return {
       role,
       kind: "round_transition",
       seatId: options.seatId,
       pauseAfterMs: 0,
-      text: `Tiếp theo sẽ là lượt thi Khởi Động riêng dành cho bạn ${labelName}. Hãy giữ bình tĩnh và thật tự tin nhé!`,
+      text,
     };
   }
   const countText = options.seatCount ? `${options.seatCount} ` : "";
+  const text =
+    options.segIdx === 0
+      ? options.segKind === "shared"
+        ? `Và ngay bây giờ là lượt thi Khởi Động chung đầu tiên dành cho cả ${countText}nhà leo núi! Các bạn hãy tập trung lắng nghe và bấm chuông thật nhanh để giành quyền trả lời.`
+        : `Và ngay bây giờ là lượt thi Khởi Động đầu tiên dành cho cả ${countText}nhà leo núi! Các bạn hãy tập trung lắng nghe và bấm chuông thật nhanh để giành quyền trả lời.`
+      : `Ngay sau đây là phần thi Khởi Động chung dành cho cả ${countText}nhà leo núi! Các bạn hãy tập trung lắng nghe và bấm chuông thật nhanh để giành quyền trả lời.`;
   return {
     role,
     kind: "round_transition",
     pauseAfterMs: 0,
-    text: `Ngay sau đây là phần thi Khởi Động chung dành cho cả ${countText}nhà leo núi! Các bạn hãy tập trung lắng nghe và bấm chuông thật nhanh để giành quyền trả lời.`,
+    text,
   };
 }
 
@@ -3329,7 +3768,7 @@ export function buildTangTocBridgeSegment(options: {
 }
 
 export function buildVeDichBridgeSegment(options: {
-  kind: "on_stage" | "choosing" | "package_ready" | "seat_done";
+  kind: "pre_stage" | "on_stage" | "choosing" | "package_ready" | "seat_done";
   seatId: number;
   name?: string;
   score: number;
@@ -3339,6 +3778,19 @@ export function buildVeDichBridgeSegment(options: {
 }): DualMcScriptSegment {
   const role: DualMcRole = options.turnIdx % 2 === 0 ? "ngoc_huy" : "khanh_vy";
   const labelName = getContestantSpokenName(options.name || "") || `Thí sinh ${options.seatId + 1}`;
+  if (options.kind === "pre_stage") {
+    const text =
+      options.turnIdx === 0
+        ? `Xin mời thí sinh đầu tiên bước lên vị trí thi đấu Về Đích: bạn ${labelName}, hiện đang có ${options.score} điểm!`
+        : `Xin mời thí sinh tiếp theo chuẩn bị bước lên vị trí thi đấu Về Đích: bạn ${labelName}, hiện đang có ${options.score} điểm!`;
+    return {
+      role,
+      kind: "round_transition",
+      seatId: options.seatId,
+      pauseAfterMs: 0,
+      text,
+    };
+  }
   if (options.kind === "on_stage") {
     if (options.turnIdx === 0) {
       return {
@@ -4263,7 +4715,9 @@ export function speakAwardTier(
 export function getContestantSpokenName(name: string): string {
   if (!name) return "";
   let clean = name.trim();
-  clean = clean.replace(/^(thí sinh|ghế\s*\d*[\s:\.-]*|bạn|ts\.?)\s*/i, "").trim();
+  clean = clean
+    .replace(/^(?:(?:thí sinh|bạn)\s+|ts\.?\s+|ghế\s*\d*(?:\s*[:.\-]\s*|\s+))(?=.+)/i, "")
+    .trim();
   return clean;
 }
 
@@ -4732,9 +5186,131 @@ function extractTargetAnswerCandidates(targetAnswer?: string): string[] {
 const VALID_ALPHA_DIGIT_PATTERN =
   /^(?:[A-Z][a-z]?\d+(?:[A-Z][a-z]?\d*)*|(?:O|VTV|G|K|N|Q|U)\d{1,3}|\d+[A-Za-z]|[A-Za-z]+\s+\d{1,4})$/;
 
+const CHEMICAL_FORMULA_RE =
+  /^(?:[A-Z][a-z]?\d*|\((?:[A-Z][a-z]?\d*)+\)\d*|\[(?:[A-Z][a-z]?\d*|\((?:[A-Z][a-z]?\d*)+\)\d*)+\]\d*){1,10}(?:[·.]\d*(?:[A-Z][a-z]?\d*|\((?:[A-Z][a-z]?\d*)+\)\d*){1,6})*(?:[+-]\d*|\^\d*[+-])?$/;
+
+const KNOWN_VALID_ACRONYMS = new Set([
+  "THPT",
+  "THCS",
+  "TPHCM",
+  "ĐTV",
+  "NBTV",
+  "QRT",
+  "PTNK",
+  "KHTN",
+  "KHXH",
+  "XHNV",
+  "BKHN",
+  "CNTT",
+  "UBND",
+  "ĐHQG",
+  "ĐHBK",
+  "ĐHSP",
+  "ĐH",
+  "CĐ",
+  "VTV",
+  "VTV3",
+  "VCNV",
+  "CNV",
+  "UNESCO",
+  "ASEAN",
+  "WHO",
+  "WTO",
+  "NATO",
+  "NASA",
+  "COVID",
+  "DNA",
+  "RNA",
+  "ATP",
+  "GDP",
+  "GNP",
+  "HTTP",
+  "HTTPS",
+  "HTML",
+  "CSS",
+  "CPU",
+  "RAM",
+  "URL",
+  "USB",
+  "TNT",
+  "III",
+  "VIII",
+  "XIII",
+  "XVIII",
+]);
+
+const DOTTED_ABBR_RE = /^(?:\p{Lu}\.){1,7}\p{Lu}\.?$/u;
+const UPPER_CONSONANT_ABBR_RE = /^[BCDĐFGHJKLMNPQRSTVWXZ0-9]{2,5}$/u;
+
+const KNOWN_DOUBLED_CONSONANT_NAMES = new Set([
+  "gauss",
+  "glenn",
+  "planck",
+  "higgs",
+  "mann",
+  "watt",
+  "bell",
+  "cross",
+  "kirchhoff",
+  "riemann",
+  "boltzmann",
+  "schumann",
+  "neumann",
+  "hoffmann",
+  "grimm",
+  "bonn",
+  "tallinn",
+  "webb",
+  "bragg",
+  "kerr",
+  "carr",
+  "jazz",
+  "buzz",
+  "finn",
+  "hoff",
+  "cliff",
+  "staff",
+  "buff",
+  "krupp",
+]);
+
+function countAdjacentDoubledLetters(s: string): number {
+  let count = 0;
+  for (let i = 1; i < s.length; i++) {
+    if (s[i] === s[i - 1] && /[a-z]/i.test(s[i])) {
+      count++;
+    }
+  }
+  return count;
+}
+
+function isDistinctRealAnswerPair(normSub: string, normCand: string): boolean {
+  if (countAdjacentDoubledLetters(normSub) > countAdjacentDoubledLetters(normCand)) {
+    return false;
+  }
+  const subTokens = normSub.split(/\s+/).filter(Boolean);
+  const candTokens = normCand.split(/\s+/).filter(Boolean);
+  if (subTokens.length === 0 || subTokens.length !== candTokens.length) {
+    return false;
+  }
+  let diffIdx = -1;
+  for (let i = 0; i < subTokens.length; i++) {
+    if (subTokens[i] !== candTokens[i]) {
+      if (diffIdx !== -1) return false;
+      diffIdx = i;
+    }
+  }
+  if (diffIdx === -1) return false;
+  const sTok = subTokens[diffIdx];
+  const cTok = candTokens[diffIdx];
+  const tokDist = computeLevenshteinDistance(sTok, cTok);
+  const tokMaxLen = Math.max(sTok.length, cTok.length);
+  return tokMaxLen > 0 && tokDist / tokMaxLen >= 0.5;
+}
+
 /**
  * Detects whether a submitted answer is a typo/spelling error or meaningless gibberish:
- * - Preserves exemptions for numbers, number+units, 2-5 char ALL-CAPS acronyms, and distinct wrong real words
+ * - Preserves exemptions for numbers, number+units, 2-5 char ALL-CAPS acronyms, chemical formulas, and distinct wrong real words
  * - Checks target alternates (e.g. "Methane (hoặc CH4)")
  * - Catches keyboard mashes, 3+ repeated identical letters (except Roman III), stray symbols,
  *   awkward digit-in-word typos ("Qu4ng"), awkward doubled endings ("nn", "hh"), diacritic omission, and Levenshtein distance
@@ -4776,19 +5352,36 @@ export function detectSpellingError(
     return { isError: false };
   }
 
-  // 3. Keyboard row mashes
+  // 3. Keyboard row mashes (checked before acronym exemptions so "QWRT"/"QWRTY" are always caught)
   if (
-    /(?:asdf|sdfg|dfgh|fghj|ghjk|hjkl|lkjh|qwer|wert|erty|rtyu|tyui|yuiop|uiop|poiu|zxcv|xcvb|cvbn|vbnm|mnbv|qwrty|rewq)/i.test(
+    /(?:asdf|sdfg|dfgh|fghj|ghjk|hjkl|lkjh|qwer|wert|erty|rtyu|tyui|yuiop|uiop|poiu|zxcv|xcvb|cvbn|vbnm|mnbv|qwrt|wrty|rewq)/i.test(
       cleanSub
     )
   ) {
     return { isError: true, reason: "gibberish" };
   }
 
-  // 3b. Short all-caps acronyms (2-5 chars, e.g. "GDP", "TNT", "BBC", "C4") are valid
+  // 3e. 3+ consecutive identical letters (excluding Roman numerals), checked before acronym exemptions so "KKK" is caught
   if (
-    /^[A-Z0-9]{2,5}$/.test(cleanSub) &&
-    (targetCandidates.length === 0 || targetCandidates.every((c) => /^[A-Z0-9\s-]+$/.test(c)))
+    !/^(?:III|VIII|XIII|XVIII)$/i.test(cleanSub) &&
+    /([a-zA-Z\u00C0-\u1EF9])\1\1/i.test(cleanSub)
+  ) {
+    return { isError: true, reason: "gibberish" };
+  }
+
+  // 3b. Valid uppercase/dotted/consonant-only acronyms and chemical formulas (including on Vietnamese targets)
+  const compactUpperSub = cleanSub === cleanSub.toUpperCase() ? cleanSub.replace(/[.\s]+/g, "") : "";
+  if (
+    (/^[A-Z0-9]{2,5}$/.test(cleanSub) &&
+      (targetCandidates.length === 0 ||
+        targetCandidates.every((c) => /^[A-Z0-9\s-]+$/.test(c)))) ||
+    /^tp\.?\s*hcm$/i.test(cleanSub) ||
+    (cleanSub === cleanSub.toUpperCase() &&
+      (KNOWN_VALID_ACRONYMS.has(cleanSub) || KNOWN_VALID_ACRONYMS.has(compactUpperSub))) ||
+    DOTTED_ABBR_RE.test(cleanSub) ||
+    (UPPER_CONSONANT_ABBR_RE.test(cleanSub) &&
+      /[BCDĐFGHJKLMNPQRSTVWXZ]/u.test(cleanSub)) ||
+    (CHEMICAL_FORMULA_RE.test(cleanSub) && /\d/.test(cleanSub))
   ) {
     return { isError: false };
   }
@@ -4808,15 +5401,11 @@ export function detectSpellingError(
       /[a-zA-Z\u00C0-\u1EF9]/.test(w) &&
       /\d/.test(w) &&
       !VALID_ALPHA_DIGIT_PATTERN.test(w) &&
+      !CHEMICAL_FORMULA_RE.test(w) &&
       !/^\d+(?:st|nd|rd|th)$/i.test(w)
     ) {
       return { isError: true, reason: "gibberish" };
     }
-  }
-
-  // 3e. 3+ consecutive identical letters (excluding Roman numeral III)
-  if (!/^(?:III|VIII|XIII|XVIII)$/i.test(cleanSub) && /([a-zA-Z\u00C0-\u1EF9])\1\1/i.test(cleanSub)) {
-    return { isError: true, reason: "gibberish" };
   }
 
   // 4. Consonant mash / vowel-less gibberish / 5+ consecutive consonants
@@ -4830,10 +5419,14 @@ export function detectSpellingError(
     return { isError: true, reason: "gibberish" };
   }
 
-  // 4b. Doubled consonant endings on Vietnamese words (e.g. "quann", "nguyenn", "hocc")
-  const hasAwkwardDoubledEnding = subWords.some((w) =>
-    /(?:bb|cc|dd|ff|gg|hh|jj|kk|mm|nn|pp|qq|rr|vv|ww|xx|zz)$/i.test(w)
-  );
+  // 4b. Doubled consonant endings on Vietnamese words (e.g. "quann", "nguyenn", "hocc"), exempting known proper names
+  const hasAwkwardDoubledEnding = subWords.some((w) => {
+    const wClean = w.replace(/[.,!?;:]+$/g, "");
+    if (!wClean || KNOWN_DOUBLED_CONSONANT_NAMES.has(wClean.toLowerCase())) {
+      return false;
+    }
+    return /(?:bb|cc|dd|ff|gg|hh|jj|kk|mm|nn|pp|qq|rr|vv|ww|xx|zz)$/i.test(wClean);
+  });
   if (hasAwkwardDoubledEnding && targetCandidates.length === 0) {
     return { isError: true, reason: "distance" };
   }
@@ -4841,8 +5434,7 @@ export function detectSpellingError(
   if (targetCandidates.length === 0) return { isError: false };
 
   const normSub = removeVietnameseAccents(cleanSub);
-  let bestDist = Infinity;
-  let bestTargetLen = 0;
+  let hasCloseTypo = false;
 
   for (const cand of targetCandidates) {
     const normCand = removeVietnameseAccents(cand);
@@ -4850,16 +5442,15 @@ export function detectSpellingError(
       return { isError: true, reason: "diacritic" };
     }
     const dist = computeLevenshteinDistance(normSub, normCand);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestTargetLen = normCand.length;
+    const isWithinThreshold =
+      (dist > 0 && dist <= 2 && normCand.length >= 4) ||
+      (dist === 1 && normCand.length === 3);
+    if (isWithinThreshold && !isDistinctRealAnswerPair(normSub, normCand)) {
+      hasCloseTypo = true;
     }
   }
 
-  if (
-    (bestDist > 0 && bestDist <= 2 && bestTargetLen >= 4) ||
-    (bestDist === 1 && bestTargetLen === 3)
-  ) {
+  if (hasCloseTypo) {
     return { isError: true, reason: "distance" };
   }
 
@@ -5215,6 +5806,7 @@ export function playTestMCVoices(onEnd?: () => void): void {
     role: "khanh_vy",
     segment: "intro_greeting",
     onEnd: () => {
+      clearActivePauseTimer();
       activePauseTimer = setTimeout(() => {
         activePauseTimer = null;
         speakOlympiaTTS(line2, {

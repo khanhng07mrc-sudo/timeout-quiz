@@ -6,6 +6,7 @@ import {
   validateAndNormalizeTtsInput,
   buildEdgeSsml,
   synthesizeEdgeTtsStream,
+  detectTtsLanguage,
   resetTtsCacheForTesting,
   populateTtsCacheForTesting,
   TtsValidationError,
@@ -27,6 +28,7 @@ import {
   getContestantSpokenName,
   generateBuzzerCallout,
   resetBuzzerTurnState,
+  getLastBuzzedContestant,
   detectSpellingError,
   normalizeAnswerForGrouping,
   groupContestantAnswers,
@@ -40,12 +42,18 @@ import {
   speakOlympiaTTS,
   speakOlympiaTTSAsync,
   speakDualMcScriptAsync,
+  speakRoundIntroTTS,
   smoothStopOlympiaTTS,
   cancelTTS,
   cancelQuestionTTS,
   getActivePlaybackSegment,
   cancelBuzzerInterrupt,
   handleBuzzerInterrupt,
+  resetOlympiaTtsSession,
+  unlockOlympiaTTS,
+  pauseOlympiaTTS,
+  resumeOlympiaTTS,
+  isOlympiaTtsPaused,
   setTtsEnabled,
   getTtsEngineMode,
   getTtsEngineStatus,
@@ -68,6 +76,7 @@ import {
   buildKhoiDongTurnExplanations,
   buildLobbyGreetingScript,
   buildOpeningDuoScript,
+  buildEntranceOpeningBridge,
   buildContestantIntroStepSegment,
   buildContestantIntroContinuousScript,
   buildPostIntroBreatherScript,
@@ -1628,4 +1637,450 @@ test("TTS R5: Turn & round bridging builders produce alternating Vietnamese MC l
     assert.equal(aborted, true, "cancelTTS aborts breather speech when explicitly requested");
     await p;
   });
+});
+
+test("TTS R1.4: queueAfterActive chains DualMC scripts & speakRoundIntroTTS in strict FIFO without cancelling, and aborts on cancelTTS", async () => {
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken, autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    let synthCancelCount = 0;
+    const synth = (globalThis as any).window.speechSynthesis;
+    const origCancel = synth.cancel;
+    synth.cancel = () => {
+      synthCancelCount++;
+      return origCancel();
+    };
+
+    // 1. speakRoundIntroTTS returns Promise<boolean> and queues cleanly into KhoiDong segIdx=0
+    const introPromise = speakRoundIntroTTS("khoiDong", { engine: "webspeech" });
+    assert.equal(spoken.length, 1, "Non-queued speakRoundIntroTTS must still invoke speechSynthesis.speak synchronously");
+    assert.equal(synthCancelCount, 1, "Initial non-queued call triggered cancelPlaybackOnly");
+
+    const kd0 = buildKhoiDongTurnBridgeSegment({
+      segKind: "solo",
+      segIdx: 0,
+      seatId: 0,
+      name: "Minh Quân",
+    });
+    assert.ok(!/bàn phím chuông|bấm chuông/i.test(kd0.text), "Khởi Động solo segIdx=0 must never mention buzzers");
+    assert.ok(kd0.text.includes("Minh Quân"));
+
+    const queuedKd0Promise = speakDualMcScriptAsync([kd0], {
+      engine: "webspeech",
+      queueAfterActive: true,
+    });
+    const queuedThirdPromise = speakOlympiaTTSAsync("Lời dẫn thứ ba", {
+      engine: "webspeech",
+      queueAfterActive: true,
+    });
+
+    // Neither queued call has cancelled or interrupted the active intro yet
+    assert.equal(spoken.length, 1);
+    assert.equal(synthCancelCount, 1, "Queued calls must NOT call speechSynthesis.cancel");
+
+    // Finish segment 1 -> segment 2 fires
+    controls.lastUtterance().onend();
+    const introResult = await introPromise;
+    assert.equal(introResult, true);
+    await new Promise((r) => setTimeout(r, 5));
+    assert.equal(spoken.length, 2);
+    assert.ok(spoken[1].text.includes("Minh Quân"));
+
+    // Finish segment 2 -> segment 3 fires
+    controls.lastUtterance().onend();
+    const kd0Result = await queuedKd0Promise;
+    assert.equal(kd0Result, true);
+    await new Promise((r) => setTimeout(r, 5));
+    assert.equal(spoken.length, 3);
+    assert.equal(spoken[2].text, "Lời dẫn thứ ba");
+
+    controls.lastUtterance().onend();
+    assert.equal(await queuedThirdPromise, true);
+
+    // 2. cancelTTS() aborts pending queued continuation
+    const pActive = speakOlympiaTTSAsync("Đang phát", { engine: "webspeech" });
+    const pQueuedAborted = speakDualMcScriptAsync([kd0], {
+      engine: "webspeech",
+      queueAfterActive: true,
+    });
+    const prevCount = spoken.length;
+    cancelTTS();
+    assert.equal(await pActive, false);
+    assert.equal(await pQueuedAborted, false);
+    assert.equal(spoken.length, prevCount, "Aborted queued script must never speak");
+
+    // 3. Unknown round intro returns Promise.resolve(false)
+    assert.equal(await speakRoundIntroTTS("nonExistentRound"), false);
+
+    // 4. speakRoundIntroTTS itself supports queueAfterActive: true without cancelling active playback
+    const firstActive = speakOlympiaTTSAsync("Lời dẫn trước", { engine: "webspeech" });
+    const queuedIntro = speakRoundIntroTTS("veDich", {
+      engine: "webspeech",
+      queueAfterActive: true,
+    });
+    const countBeforeEnd = spoken.length;
+    controls.lastUtterance().onend();
+    assert.equal(await firstActive, true);
+    await new Promise((r) => setTimeout(r, 5));
+    assert.equal(spoken.length, countBeforeEnd + 1);
+    controls.lastUtterance().onend();
+    assert.equal(await queuedIntro, true);
+  });
+});
+
+test("TTS R1.4: speakDualMcScriptAsync resolves false promptly when cancelled, reset, stopped, or interrupted during pauseAfterMs", async () => {
+  const raceTimeout = <T,>(promise: Promise<T>, label: string): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), 250)
+      ),
+    ]);
+
+  const twoSegScript = [
+    { role: "khanh_vy" as const, kind: "greeting" as const, text: "Câu đầu tiên", pauseAfterMs: 5000 },
+    { role: "ngoc_huy" as const, kind: "hype" as const, text: "Câu thứ hai", pauseAfterMs: 0 },
+  ];
+
+  // 1. cancelTTS() during pauseAfterMs
+  await withMockBrowserEnv({ autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    const p = speakDualMcScriptAsync(twoSegScript, { engine: "webspeech" });
+    controls.lastUtterance().onend();
+    await new Promise((r) => setTimeout(r, 15));
+    cancelTTS();
+    assert.equal(await raceTimeout(p, "cancelTTS during pauseAfterMs"), false);
+  });
+
+  // 2. resetOlympiaTtsSession() during pauseAfterMs
+  await withMockBrowserEnv({ autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    const p = speakDualMcScriptAsync(twoSegScript, { engine: "webspeech" });
+    controls.lastUtterance().onend();
+    await new Promise((r) => setTimeout(r, 15));
+    resetOlympiaTtsSession();
+    assert.equal(await raceTimeout(p, "resetOlympiaTtsSession during pauseAfterMs"), false);
+  });
+
+  // 3. smoothStopOlympiaTTS() during pauseAfterMs
+  await withMockBrowserEnv({ autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    const p = speakDualMcScriptAsync(twoSegScript, { engine: "webspeech" });
+    controls.lastUtterance().onend();
+    await new Promise((r) => setTimeout(r, 15));
+    smoothStopOlympiaTTS();
+    assert.equal(await raceTimeout(p, "smoothStopOlympiaTTS during pauseAfterMs"), false);
+  });
+
+  // 4. Non-queued speakOlympiaTTSAsync() interrupting during pauseAfterMs
+  const spoken: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken, autoFireEnd: false }, async (controls) => {
+    setTtsEnabled(true);
+    const p1 = speakDualMcScriptAsync(twoSegScript, { engine: "webspeech" });
+    controls.lastUtterance().onend();
+    await new Promise((r) => setTimeout(r, 15));
+    const p2 = speakOlympiaTTSAsync("Ngắt lời ngay", { engine: "webspeech" });
+    assert.equal(await raceTimeout(p1, "non-queued speakOlympiaTTSAsync interrupt during pauseAfterMs"), false);
+    controls.lastUtterance().onend();
+    assert.equal(await p2, true);
+    assert.equal(spoken.filter((s) => s.text === "Câu thứ hai").length, 0);
+  });
+});
+
+test("TTS R1.4: buildEntranceOpeningBridge, buildKhoiDongTurnBridgeSegment (segIdx=0), and buildVeDichBridgeSegment (pre_stage vs on_stage)", () => {
+  const seats = [
+    { id: 0, name: "An", school: "THPT A", score: 0 },
+    { id: 1, name: "Bình", school: "THPT B", score: 0 },
+  ];
+  const entranceBridge = buildEntranceOpeningBridge(seats);
+  assert.ok(entranceBridge !== null);
+  assert.equal(entranceBridge.role, "ngoc_huy");
+  assert.ok(entranceBridge.text.includes("2 nhà leo núi"));
+  assert.equal(buildEntranceOpeningBridge([]), null);
+
+  // buildContestantIntroStepSegment(seats, 0) remains preserved
+  const step0 = buildContestantIntroStepSegment(seats, 0)!;
+  assert.equal(step0.pauseAfterMs, 0);
+  assert.equal(step0.role, "khanh_vy");
+  assert.ok(step0.text.startsWith("Ở vị trí số 1"));
+
+  // KhoiDong segIdx === 0 variants
+  const kdSolo0 = buildKhoiDongTurnBridgeSegment({ segKind: "solo", segIdx: 0, seatId: 0, name: "An" });
+  assert.equal(kdSolo0.role, "ngoc_huy");
+  assert.ok(kdSolo0.text.includes("thí sinh đầu tiên") && kdSolo0.text.includes("An"));
+  assert.ok(!/bàn phím chuông|bấm chuông/i.test(kdSolo0.text));
+
+  const kdShared0 = buildKhoiDongTurnBridgeSegment({ segKind: "shared", segIdx: 0, seatCount: 4 });
+  assert.ok(kdShared0.text.includes("Khởi Động chung đầu tiên") && kdShared0.text.includes("4"));
+
+  const kdTurn0 = buildKhoiDongTurnBridgeSegment({ segKind: "turn", segIdx: 0, seatCount: 4 });
+  assert.ok(kdTurn0.text.includes("Khởi Động đầu tiên") && kdTurn0.text.includes("4"));
+
+  // VeDich pre_stage vs on_stage
+  const vdPre0 = buildVeDichBridgeSegment({
+    kind: "pre_stage",
+    seatId: 0,
+    name: "Gia Khánh",
+    score: 150,
+    turnIdx: 0,
+    totalTurns: 4,
+  });
+  assert.ok(vdPre0.text.includes("thí sinh đầu tiên") && vdPre0.text.includes("Gia Khánh") && vdPre0.text.includes("150 điểm"));
+
+  const vdPre1 = buildVeDichBridgeSegment({
+    kind: "pre_stage",
+    seatId: 1,
+    name: "Minh Anh",
+    score: 180,
+    turnIdx: 1,
+    totalTurns: 4,
+  });
+  assert.ok(vdPre1.text.includes("thí sinh tiếp theo") && vdPre1.text.includes("Minh Anh"));
+
+  const vdOnStage0 = buildVeDichBridgeSegment({
+    kind: "on_stage",
+    seatId: 0,
+    name: "Gia Khánh",
+    score: 150,
+    turnIdx: 0,
+    totalTurns: 4,
+  });
+  assert.ok(vdOnStage0.text.includes("Gia Khánh") && vdOnStage0.text.includes("150 điểm"));
+});
+
+test("TTS R3.4 Core: resetOlympiaTtsSession, >600ms server fetch tolerance, suspended AudioContext fallback, single-shot unlock & Web Speech watchdog", async () => {
+  // 1. Server fetch >600ms succeeds on default engine without premature timeout
+  await withMockBrowserEnv(
+    { withAudioContext: true, origin: "http://localhost:3000" },
+    async () => {
+      resetOlympiaTtsSession();
+      configureTtsTransport({
+        fetchImpl: (async (_url: string, init?: RequestInit) => {
+          await new Promise<void>((resolve, reject) => {
+            const t = setTimeout(resolve, 650);
+            init?.signal?.addEventListener("abort", () => {
+              clearTimeout(t);
+              reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+            });
+          });
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          } as unknown as Response;
+        }) as unknown as typeof fetch,
+      });
+
+      const ok = await speakOlympiaTTSAsync("Kiểm tra độ trễ server 650ms", { role: "khanh_vy" });
+      assert.equal(ok, true, "Default engine must tolerate >600ms server TTS responses");
+      assert.equal(getTtsEngineMode(), "server");
+    }
+  );
+
+  // 2. Suspended AudioContext (where resume() leaves state === 'suspended') falls through to HTMLAudioElement
+  let htmlAudioPlayed = false;
+  await withMockBrowserEnv(
+    {
+      withAudioContext: true,
+      withHtmlAudio: true,
+      origin: "http://localhost:3000",
+    },
+    async () => {
+      resetOlympiaTtsSession();
+      (globalThis as any).window.AudioContext = class SuspendedAudioContext {
+        state = "suspended";
+        async resume() {
+          // Remains suspended (simulates unclicked iframe #2)
+        }
+        async decodeAudioData() {
+          throw new Error("should not decode suspended context");
+        }
+      };
+      const OrigAudio = (globalThis as any).window.Audio;
+      (globalThis as any).window.Audio = class TrackedHtmlAudio extends OrigAudio {
+        play() {
+          htmlAudioPlayed = true;
+          return super.play();
+        }
+      };
+      (globalThis as any).Audio = (globalThis as any).window.Audio;
+
+      configureTtsTransport({
+        fetchImpl: (async () =>
+          ({
+            ok: true,
+            status: 200,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          }) as unknown as Response) as unknown as typeof fetch,
+      });
+
+      const ok = await speakOlympiaTTSAsync("Phát qua HTMLAudio", { role: "ngoc_huy" });
+      assert.equal(ok, true);
+      assert.equal(htmlAudioPlayed, true, "Must fall through to HTMLAudioElement when AudioContext stays suspended");
+    }
+  );
+
+  // 3. Single-shot unlockOlympiaTTS & resetOlympiaTtsSession resets all session state
+  const spokenUnlock: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken: spokenUnlock }, async () => {
+    resetOlympiaTtsSession();
+    unlockOlympiaTTS();
+    unlockOlympiaTTS();
+    unlockOlympiaTTS();
+    assert.equal(spokenUnlock.length, 1, "Repeated unlock clicks must only speak one silent utterance per session");
+
+    // Simulate dirty session state
+    pauseOlympiaTTS();
+    assert.equal(isOlympiaTtsPaused(), true);
+    handleBuzzerInterrupt("Thí sinh An", { readingHost: "khanh_vy" });
+    cancelBuzzerInterrupt();
+    assert.equal(getLastBuzzedContestant(), "An");
+
+    resetOlympiaTtsSession();
+    assert.equal(isOlympiaTtsPaused(), false);
+    assert.equal(getTtsEngineMode(), "server");
+    assert.equal(getTtsEngineStatus().serverCooldownUntil, 0);
+    assert.equal(getLastBuzzedContestant(), null);
+
+    // After session reset, unlock works once more for the new run
+    (globalThis as any).window.speechSynthesis.speaking = false;
+    unlockOlympiaTTS();
+    assert.equal(spokenUnlock.length, 2, "New run after resetOlympiaTtsSession can unlock once cleanly");
+  });
+
+  // 4. Web Speech resumes accidentally paused speechSynthesis (when !isOlympiaTtsPaused) & watchdog settles stuck utterance
+  const spokenWatchdog: Array<{ text: string; pitch: number; rate: number; lang: string }> = [];
+  await withMockBrowserEnv({ spoken: spokenWatchdog, autoFireEnd: false }, async () => {
+    resetOlympiaTtsSession();
+    let resumeCalls = 0;
+    (globalThis as any).window.speechSynthesis.paused = true;
+    (globalThis as any).window.speechSynthesis.resume = () => {
+      resumeCalls++;
+      (globalThis as any).window.speechSynthesis.paused = false;
+    };
+
+    const p = speakOlympiaTTSAsync("Ngắn", { engine: "webspeech", role: "khanh_vy" });
+    assert.equal(resumeCalls, 1, "Must resume paused speechSynthesis when host did not pause TTS");
+    const result = await p;
+    assert.equal(result, true, "Web Speech watchdog must settle stuck utterance when onend never fires");
+  });
+});
+
+test("TTS R4.1–R4.3: getContestantSpokenName, normalizeVietnameseTTS, and false-English protection", () => {
+  // R4.1: Protect standalone TS. and dotted initials while still stripping title prefix
+  assert.equal(getContestantSpokenName("TS."), "TS.");
+  assert.equal(getContestantSpokenName("TS"), "TS");
+  assert.equal(getContestantSpokenName("TS.A"), "TS.A");
+  assert.equal(getContestantSpokenName("T.S.A"), "T.S.A");
+  assert.equal(getContestantSpokenName("TS1"), "TS1");
+  assert.equal(getContestantSpokenName("TS. Phạm Quốc"), "Phạm Quốc");
+  assert.equal(getContestantSpokenName("Ghế 1: Trần Văn Nam"), "Trần Văn Nam");
+
+  // R4.2: Vietnamese TTS pronunciation for dotted initials & abbreviations
+  assert.equal(normalizeVietnameseTTS("N.V.A"), "En-nờ Vê A");
+  assert.equal(normalizeVietnameseTTS("H.A"), "Hát A");
+  assert.equal(normalizeVietnameseTTS("T.S"), "Tê Ét");
+  assert.equal(normalizeVietnameseTTS("Đ.T.M"), "Đê Tê Em-mờ");
+  assert.equal(normalizeVietnameseTTS("L.H.P"), "E-lờ Hát Pê");
+  assert.equal(normalizeVietnameseTTS("T.S.A"), "Tê Ét A");
+  assert.equal(normalizeVietnameseTTS("TS.A"), "Tê Ét A");
+  assert.equal(normalizeVietnameseTTS("bạn TS."), "bạn Tê Ét");
+  assert.equal(normalizeVietnameseTTS("TS. Ngô Bảo Châu"), "Tiến sĩ Ngô Bảo Châu");
+  assert.equal(normalizeVietnameseTTS("ĐTV"), "Đê Tê Vê");
+  assert.equal(normalizeVietnameseTTS("NBTV"), "En-nờ Bê Tê Vê");
+  assert.equal(normalizeVietnameseTTS("QRT"), "Quy E-rờ Tê");
+  assert.equal(normalizeVietnameseTTS("PTNK"), "Phổ thông Năng khiếu");
+  assert.equal(normalizeVietnameseTTS("KHTN"), "Khoa học Tự nhiên");
+  assert.equal(normalizeVietnameseTTS("XHNV"), "Xã hội Nhân văn");
+  assert.equal(normalizeVietnameseTTS("BKHN"), "Bách khoa Hà Nội");
+  assert.equal(normalizeVietnameseTTS("CNTT"), "Công nghệ thông tin");
+  assert.equal(normalizeVietnameseTTS("TPHCM"), "Thành phố Hồ Chí Minh");
+  assert.equal(normalizeVietnameseTTS("TP. HCM"), "Thành phố Hồ Chí Minh");
+  assert.equal(normalizeVietnameseTTS("UBND"), "Ủy ban nhân dân");
+  assert.equal(normalizeVietnameseTTS("ĐH"), "Đại học");
+  assert.equal(normalizeVietnameseTTS("CĐ"), "Cao đẳng");
+  assert.equal(normalizeVietnameseTTS("ĐHQG"), "Đại học Quốc gia");
+  assert.equal(normalizeVietnameseTTS("THPT"), "Trung học phổ thông");
+
+  // R4.3: Block false English voice classification in client & server detectors while keeping real English
+  for (const viToken of [
+    "N.V.A",
+    "H.A",
+    "Đ.T.M",
+    "N.V.B.D",
+    "TS.",
+    "TS.A",
+    "TS.A.",
+    "TS.B.",
+    "TS.B. TS.D.",
+    "ĐTV",
+    "NBTV",
+    "QRT",
+    "PTNK",
+    "KHTN",
+    "THPT",
+    "ĐH",
+    "TPHCM",
+    "PTNK NBTV",
+    "Bạn N.V.B đến từ PTNK",
+  ]) {
+    assert.equal(detectTextLanguage(viToken), "vi", `Client detectTextLanguage('${viToken}') must be 'vi'`);
+    assert.equal(detectTtsLanguage(viToken), "vi", `Server detectTtsLanguage('${viToken}') must be 'vi'`);
+    const segs = segmentMixedLanguageText(viToken);
+    assert.ok(segs.every((s) => s.lang === "vi"), `segmentMixedLanguageText('${viToken}') must stay 'vi'`);
+  }
+
+  assert.equal(detectTextLanguage("WHAT IS THE CAPITAL?"), "en");
+  assert.equal(detectTtsLanguage("WHAT IS THE CAPITAL?"), "en");
+});
+
+test("TTS R4.4: detectSpellingError exempts abbreviations, chemical formulas, doubled-consonant names & distinct Vietnamese answers", () => {
+  // Valid abbreviations even when targetAnswer is regular Vietnamese
+  for (const abbr of ["THPT", "TPHCM", "TP.HCM", "TP. HCM", "Tp.HCM", "Tp. HCM", "ĐTV", "KHTN", "PTNK", "QRT", "T.P.H.C.M"]) {
+    assert.equal(
+      detectSpellingError(abbr, "Trung học phổ thông").isError,
+      false,
+      `Abbreviation '${abbr}' must not be flagged as spelling error`
+    );
+  }
+  assert.equal(detectSpellingError("Tp.HCM", "Thành phố Hồ Chí Minh").isError, false);
+  assert.equal(detectSpellingError("Tp. HCM", "Thành phố Hồ Chí Minh").isError, false);
+  assert.equal(detectSpellingError("UNESCO", "Tổ chức Giáo dục").isError, false);
+  assert.equal(detectSpellingError("ASEAN", "Hiệp hội các quốc gia Đông Nam Á").isError, false);
+
+  // Chemical formulas (including parenthesized, hydrated & sibling formula differences)
+  for (const formula of ["Ca(OH)2", "Fe(OH)3", "Al2(SO4)3", "(NH4)2SO4", "MgCl2", "CaCO3", "CO2", "CuSO4.5H2O", "CuSO4·5H2O"]) {
+    assert.equal(
+      detectSpellingError(formula, "Canxi hiđroxit").isError,
+      false,
+      `Chemical formula '${formula}' must not be flagged`
+    );
+  }
+  assert.equal(detectSpellingError("CuSO4.5H2O", "Đồng(II) sunfat ngậm nước").isError, false);
+  assert.equal(detectSpellingError("Fe(OH)3", "Fe(OH)2").isError, false);
+
+  // Known doubled-consonant proper names when targetAnswer is omitted
+  for (const proper of ["Gauss", "Glenn", "Planck", "Higgs", "Mann", "Watt", "Bell", "Cross"]) {
+    assert.equal(detectSpellingError(proper).isError, false, `'${proper}' must not be flagged`);
+  }
+
+  // Distinct valid Vietnamese answers must not be flagged by Levenshtein distance
+  assert.equal(detectSpellingError("Hà Nam", "Hà Nội").isError, false);
+  assert.equal(detectSpellingError("Quảng Nam", "Quảng Ngãi").isError, false);
+  assert.equal(detectSpellingError("Sông Mã", "Sông Đà").isError, false);
+  assert.equal(detectSpellingError("Nam Định", "Nam Đàn").isError, false);
+
+  // Real typos & gibberish must still be caught
+  assert.deepEqual(detectSpellingError("QUAN HO", "QUAN HỌ"), { isError: true, reason: "diacritic" });
+  assert.deepEqual(detectSpellingError("PARISS", "PARIS"), { isError: true, reason: "distance" });
+  assert.deepEqual(detectSpellingError("HUEE", "Huế"), { isError: true, reason: "distance" });
+  assert.deepEqual(detectSpellingError("Hà Nộii", "Hà Nội"), { isError: true, reason: "distance" });
+  assert.equal(detectSpellingError("Qu4ng", "Quang hợp").isError, true);
+  assert.equal(detectSpellingError("sdkjfh", "Quang hợp").isError, true);
+  assert.equal(detectSpellingError("SDKJFH", "Quang hợp").isError, true);
+  assert.equal(detectSpellingError("QWRT", "Quang hợp").isError, true);
+  assert.equal(detectSpellingError("QWRTY", "Quang hợp").isError, true);
+  assert.equal(detectSpellingError("Ha.Noi", "Hà Nội").isError, true);
+  assert.equal(detectSpellingError("KKK", "Quang hợp").isError, true);
+  assert.equal(detectSpellingError("quann").isError, true);
 });

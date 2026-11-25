@@ -111,8 +111,9 @@ export default function PlayerPad({
   });
 
   useEffect(() => {
-    prewarmBuzzerSounds(join?.audioSeason || "O26");
-  }, [join?.audioSeason]);
+    if (isSandboxMode || !join?.audioSeason) return;
+    prewarmBuzzerSounds(join.audioSeason);
+  }, [isSandboxMode, join?.audioSeason]);
 
   // Responsive ticker during Khởi Động buzzer lock countdown (optimized 200ms interval to prevent lag)
   const [, setUnlockTick] = useState(0);

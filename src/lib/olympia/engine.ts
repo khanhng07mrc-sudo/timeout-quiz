@@ -1519,7 +1519,20 @@ export class OlympiaGame {
         return OK;
       }
       case "rightScreen:setMode": {
-        st.rightScreenMode = (a.mode as any) || "auto";
+        const VALID_RIGHT_SCREEN_MODES = new Set([
+          "auto",
+          "roundTitle",
+          "logo",
+          "question",
+          "scoreboard",
+          "roundGraphics",
+          "camera",
+        ]);
+        const modeRaw = a.mode == null || a.mode === "" ? "auto" : String(a.mode);
+        if (!VALID_RIGHT_SCREEN_MODES.has(modeRaw)) {
+          return fail("Chế độ màn hình phải không hợp lệ");
+        }
+        st.rightScreenMode = modeRaw as OlympiaState["rightScreenMode"];
         return OK;
       }
       case "score:set": {

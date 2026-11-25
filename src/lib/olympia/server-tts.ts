@@ -362,7 +362,8 @@ const VIETNAMESE_DIACRITIC_RE =
 const UNACCENTED_VI_KEYWORDS_RE =
   /\b(?:xin moi|chinh xac|dap an|cau hoi|khoi dong|ve dich|tang toc|chuong ngai vat|thi sinh|diem|chao mung|ket thuc|vong nguyet que)\b/i;
 
-const OLYMPIA_ACRONYM_RE = /^(?:VTV|VTV3|THPT|THCS|CNV|VCNV|MC|TS\d+|O\d{2}(?:-\d{2})?)$/i;
+const OLYMPIA_ACRONYM_RE =
+  /^(?:VTV|VTV3|THPT|THCS|CNV|VCNV|MC|TS\d+|O\d{2}(?:-\d{2})?|PTNK|KHTN|KHXH|XHNV|BKHN|CNTT|UBND|TPHCM|TP|VN|TS|ĐTV|DTV|NBTV|QRT|ĐH|DH|CĐ|CD|ĐHQG|ĐHBK|ĐHSP|HBC|LHP|NTMK|HTV|THVL|BTV|PTV|GDP|GNP|WTO|UNESCO|ASEAN|WHO|DNA|RNA|ATP|CO2|H2O|CH4|SO2|HTTP|HTTPS|HTML|CSS|CPU|RAM|URL|USB)$/i;
 
 export function detectTtsLanguage(text: string): TtsLang {
   const trimmed = text.trim();
@@ -370,9 +371,18 @@ export function detectTtsLanguage(text: string): TtsLang {
   if (VIETNAMESE_DIACRITIC_RE.test(trimmed)) return "vi";
   if (UNACCENTED_VI_KEYWORDS_RE.test(trimmed)) return "vi";
 
-  const words = trimmed.match(/[A-Za-z0-9-]+/g) || [];
+  // Strip dotted initial sequences (e.g. N.V.A, H.A, T.S, Đ.T.M, TS.A, TS.) before scanning English candidate words
+  const withoutDottedInitials = trimmed.replace(
+    /(?<![\p{L}\p{N}])(?:[A-ZĂÂĐÊÔƠƯ]{1,2}\.)+[A-ZĂÂĐÊÔƠƯ]?\.?(?![\p{L}\p{N}])/gu,
+    " "
+  );
+
+  const words = withoutDottedInitials.match(/[A-Za-z0-9-]+/g) || [];
   const englishCandidateWords = words.filter(
-    (w) => /[A-Za-z]{2,}/.test(w) && !OLYMPIA_ACRONYM_RE.test(w)
+    (w) =>
+      /[A-Za-z]{2,}/.test(w) &&
+      !OLYMPIA_ACRONYM_RE.test(w) &&
+      !/^[BCDFGHJKLMNPQRSTVWXZ]{2,6}$/.test(w)
   );
   if (englishCandidateWords.length > 0) {
     return "en";

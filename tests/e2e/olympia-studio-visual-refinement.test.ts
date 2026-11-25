@@ -563,21 +563,34 @@ test("R9.1: AudienceAmphitheater cyclorama arc narrowed to 48 deg (0.83775804 ra
   );
 });
 
-test("R9.2: Camera controller and auto-director default to CUT without forced CAM 14 sweep, standby lock, or CAM 29 glide", () => {
+test("R9.2: Camera controller and auto-director support CAM 3 coaxial, standby orbit, and Khởi Động CAM 14 -> CAM 10 CUT -> 2.5s zoom", () => {
   assert.ok(
     studioSceneContent.includes('useState<"CUT" | "MORPH">("CUT")'),
     "OlympiaStudio3DScene must default transitionMode to CUT"
   );
   assert.ok(
     !cameraControllerContent.includes("standbyExitedAtRef") &&
-    !cameraControllerContent.includes("glideStartRef") &&
-    !cameraControllerContent.includes("OLYMPIA_CAM_PRESETS[14]"),
-    "CameraController must not keep standbyExitedAtRef, glideStartRef, or CAM 14 forced sweep"
+    !cameraControllerContent.includes("glideStartRef"),
+    "CameraController must not keep standbyExitedAtRef or glideStartRef"
   );
   assert.ok(
-    !useOlympiaCameraContent.includes("camAngle: 14") &&
     !useOlympiaCameraContent.includes("segDoneElapsed < 2.5 ? 29 : 1"),
-    "useOlympiaCamera must CUT directly instead of CAM 14 sweep or CAM 29->1 morph"
+    "useOlympiaCamera must CUT directly instead of CAM 29->1 morph"
+  );
+  assert.ok(
+    cameraControllerContent.includes("pos: [1.40, 1.44, -3.17]") &&
+    cameraControllerContent.includes("target: [2.02, 1.28, -5.95]"),
+    "CameraController CAM 3 must be calibrated to coaxial straight frontal [1.40, 1.44, -3.17] -> [2.02, 1.28, -5.95]"
+  );
+  assert.ok(
+    cameraControllerContent.includes("THREE.MathUtils.lerp(0.49, 0.0, smoothT)"),
+    "CameraController post-intro standby must orbit +28 deg (+0.49 rad) -> 0 deg"
+  );
+  assert.ok(
+    cameraControllerContent.includes("OLYMPIA_CAM_PRESETS[14]") &&
+    cameraControllerContent.includes("kdZoomActiveRef") &&
+    useOlympiaCameraContent.includes("camAngle: 14"),
+    "Khởi Động must run CAM 14 sweep -> CAM 10 CUT -> 2.5s Lượt Riêng zoom"
   );
 });
 
@@ -624,6 +637,44 @@ test("R9.5: DisplayScreen wires post-intro breather, in-round bridging lines, an
     displayScreenContent.includes("buildVeDichBridgeSegment") &&
     displayScreenContent.includes("cancelQuestionTTS()"),
     "DisplayScreen must wire all bridging TTS scripts and guard question cancellation"
+  );
+});
+
+test("R9.6: Right LED Screen supports all 7 modes, uniform 0.2s FIFO delay, and live WebGLRenderTarget delayed camera feed", () => {
+  const hostConsoleContent = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/HostConsole.tsx"),
+    "utf-8"
+  );
+  const typesContent = fs.readFileSync(
+    path.join(rootDir, "src/lib/olympia/types.ts"),
+    "utf-8"
+  );
+
+  for (const m of ["auto", "roundTitle", "logo", "question", "scoreboard", "roundGraphics", "camera"]) {
+    assert.ok(hostConsoleContent.includes(`{ id: "${m}",`), `HostConsole must expose mode "${m}"`);
+    assert.ok(typesContent.includes(`"${m}"`), `types.ts must include mode "${m}"`);
+  }
+
+  assert.ok(
+    centralLedWallContent.includes("RIGHT_SCREEN_DELAY_MS = 200") &&
+    centralLedWallContent.includes("rightDelayQueueRef") &&
+    centralLedWallContent.includes("rightNeonMat"),
+    "CentralLedWall must implement uniform 200ms FIFO delay queue and delayed bezel material"
+  );
+  assert.ok(
+    centralLedWallContent.includes("resolveRightScreenDisplayMode") &&
+    centralLedWallContent.includes("renderRightRoundStatusGraphicsToCanvas") &&
+    centralLedWallContent.includes("renderRightScoreboardToCanvas") &&
+    centralLedWallContent.includes("renderOlympiaLogoCardToCanvas"),
+    "CentralLedWall must implement all Right Screen display modes and dynamic auto/question fallback"
+  );
+  assert.ok(
+    centralLedWallContent.includes("new THREE.WebGLRenderTarget") &&
+    centralLedWallContent.includes("gl.render(scene, camera)") &&
+    centralLedWallContent.includes("rightScreenMatRef") &&
+    centralLedWallContent.includes("disposeCameraRing") &&
+    centralLedWallContent.includes('{ w: 256, h: 144, intervalMs: 70, slots: 4 }'),
+    "CentralLedWall camera mode must use lazy WebGLRenderTarget ring buffer with recursion guard, LIGHT throttling, and disposal"
   );
 });
 

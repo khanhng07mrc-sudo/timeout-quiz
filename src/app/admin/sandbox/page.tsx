@@ -45,6 +45,7 @@ import {
   setTtsEnabled,
   speakTTS,
   cancelTTS,
+  resetOlympiaTtsSession,
   playTestMCVoices,
 } from "@/lib/olympia/tts";
 
@@ -670,6 +671,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     return () => {
       sock.disconnect();
       olympiaSocketRef.current = null;
+      setOlympiaState(null);
     };
   }, [effectiveActiveMode, code, olympiaHostKey]);
 
@@ -6948,6 +6950,16 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     return () => window.removeEventListener("message", handlePlayerAction);
   }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode, processOfflineWager]);
 
+  const stopAndResetSandboxTts = useCallback(() => {
+    try {
+      displayIframeRef.current?.contentWindow?.postMessage({ type: "TTS_STOP", reset: true }, "*");
+    } catch {}
+    try {
+      cancelTTS();
+      resetOlympiaTtsSession();
+    } catch {}
+  }, []);
+
   const forwardUnlock = useCallback(() => {
     try {
       unlockOlympiaTTS();
@@ -6999,6 +7011,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
   // ── 1-Click Launch with 3D Hologram Transition (110% Screen Wipe) ──────────
   const handleLaunchOffline = useCallback(() => {
+    stopAndResetSandboxTts();
+    setOlympiaState(null);
     const meta = AVAILABLE_MODES.find((m) => m.mode === selectedMode) || AVAILABLE_MODES[0];
     setLaunchingMeta(meta);
     setLaunchSourceRect(getModeIconRect(selectedMode));
@@ -7018,9 +7032,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         setIsLaunchReady(true);
       }
     }, 120);
-  }, [selectedMode, selectedBankId, startOfflineSandbox, saveSandboxSession]);
+  }, [selectedMode, selectedBankId, startOfflineSandbox, saveSandboxSession, stopAndResetSandboxTts]);
 
   const handleLaunchSandbox = async (targetMode?: GameMode) => {
+    stopAndResetSandboxTts();
+    setOlympiaState(null);
     const modeToUse = targetMode || selectedMode;
     const meta = AVAILABLE_MODES.find((m) => m.mode === modeToUse) || AVAILABLE_MODES[0];
     setLaunchingMeta(meta);
@@ -7109,6 +7125,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         setIntermission(null);
         setAdminQuestionData(null);
         adminQuestionDataRef.current = null;
+        setOlympiaState(null);
         setCode(data.code);
         setIsOfflineSandbox(false);
         setSelectedMode(data.mode || modeToUse);
@@ -7171,6 +7188,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     e.preventDefault();
     if (inputCode.trim().length === 6) {
       const clean = inputCode.trim();
+      stopAndResetSandboxTts();
+      setOlympiaState(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
@@ -7189,6 +7208,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   };
 
   const handleExitSandboxRoom = useCallback(() => {
+    stopAndResetSandboxTts();
+    setOlympiaState(null);
     prevScoresRef.current.clear();
     prevPlayerScoresRef.current.clear();
     if (adminSocketRef.current) {
@@ -7210,7 +7231,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     adminQuestionDataRef.current = null;
     setIsOfflineSandbox(false);
     syncLocalSandboxRoomsState();
-  }, [clearSandboxSession, syncLocalSandboxRoomsState]);
+  }, [clearSandboxSession, syncLocalSandboxRoomsState, stopAndResetSandboxTts]);
 
   const handleDeleteSandboxRoom = useCallback(
     async (targetCode?: string, skipConfirm?: boolean) => {
@@ -7218,6 +7239,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       if (!codeToDelete) return;
       if (!skipConfirm && !window.confirm(`Xóa hoàn toàn phòng Sandbox "${codeToDelete}" khỏi máy và máy chủ?`)) {
         return;
+      }
+
+      if (codeToDelete === code) {
+        stopAndResetSandboxTts();
+        setOlympiaState(null);
       }
 
       if (codeToDelete !== "OFFLINE" && !codeToDelete.startsWith("OFFLINE")) {
@@ -7243,7 +7269,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       }
       addLog(`🗑️ Đã xóa phòng Sandbox: ${codeToDelete}`);
     },
-    [code, removeSandboxRoomFromLocal, handleExitSandboxRoom, syncLocalSandboxRoomsState, addLog]
+    [code, removeSandboxRoomFromLocal, handleExitSandboxRoom, syncLocalSandboxRoomsState, addLog, stopAndResetSandboxTts]
   );
 
   const handleDeleteAllLocalSandboxRooms = useCallback(async () => {
@@ -12318,6 +12344,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 onPointerDownCapture={forwardUnlock}
               >
                 <ScaledDisplayFrame
+                  key={code}
                   iframeRef={displayIframeRef}
                   src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1&ruleset=${olympiaRulesetId}&season=${RULESETS[olympiaRulesetId as RulesetId]?.audioSeason || "O26"}`}
                   title="Display Viewport"
@@ -12458,7 +12485,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               </a>
             </div>
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <HostConsole code={code} hostKey={olympiaHostKey} isSandbox={true} />
+              <HostConsole key={code} code={code} hostKey={olympiaHostKey} isSandbox={true} />
             </div>
           </div>
         </div>
@@ -12555,6 +12582,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   onPointerDownCapture={forwardUnlock}
                 >
                   <iframe
+                    key={code}
                     ref={displayIframeRef}
                     src={`/display/${code}?sandbox=1`}
                     title="Display Viewport"

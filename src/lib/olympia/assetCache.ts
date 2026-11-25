@@ -26,86 +26,220 @@ export const INTRO_VIDEO_PATHS: Record<string, string> = INTRO_WEBM_PATHS;
 
 // In-memory Blob URL cache for instantaneous 0ms synchronous access
 const memoryBlobUrls = new Map<string, string>();
-let preloadInitiated = false;
+const inFlightBlobLoads = new Map<string, Promise<string | null>>();
+let activePreloadPromise: Promise<void> | null = null;
+let preloadCompleted = false;
+
+function isAbortError(err: unknown): boolean {
+  return Boolean(
+    err &&
+      typeof err === "object" &&
+      ("name" in err ? (err as { name?: string }).name === "AbortError" : false)
+  );
+}
+
+function waitYieldAbortable(ms: number, signal?: AbortSignal): Promise<boolean> {
+  if (signal?.aborted) return Promise.resolve(false);
+  return new Promise<boolean>((resolve) => {
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+    let settled = false;
+
+    const cleanup = () => {
+      if (timerId !== null) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      if (idleId !== null && typeof window !== "undefined" && typeof (window as any).cancelIdleCallback === "function") {
+        try {
+          (window as any).cancelIdleCallback(idleId);
+        } catch {}
+        idleId = null;
+      }
+      if (signal) {
+        signal.removeEventListener("abort", onAbort);
+      }
+    };
+
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(ok);
+    };
+
+    const onAbort = () => finish(false);
+    if (signal) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    timerId = setTimeout(() => {
+      timerId = null;
+      if (signal?.aborted) {
+        finish(false);
+        return;
+      }
+      if (typeof window !== "undefined" && typeof (window as any).requestIdleCallback === "function") {
+        idleId = (window as any).requestIdleCallback(
+          () => {
+            idleId = null;
+            finish(!signal?.aborted);
+          },
+          { timeout: 800 }
+        );
+      } else {
+        finish(true);
+      }
+    }, Math.max(0, ms));
+  });
+}
 
 /**
- * Fetch a single media URL and store as a local blob URL
+ * Fetch a single media URL and store as a local blob URL (deduplicated in-flight)
  */
-async function cacheAndCreateBlobUrl(path: string): Promise<string | null> {
+async function cacheAndCreateBlobUrl(path: string, signal?: AbortSignal): Promise<string | null> {
   if (typeof window === "undefined") return null;
+  if (signal?.aborted) return null;
 
-  try {
-    let response: Response | undefined;
+  const existingBlob = memoryBlobUrls.get(path);
+  if (existingBlob) return existingBlob;
 
-    // 1. Check browser CacheStorage first
-    if ("caches" in window) {
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        const matched = await cache.match(path);
-        if (matched) {
-          response = matched;
-        } else {
-          // Fetch and store in CacheStorage
-          const netRes = await fetch(path, { cache: "force-cache" });
-          if (netRes.ok) {
-            await cache.put(path, netRes.clone());
-            response = netRes;
+  const inFlight = inFlightBlobLoads.get(path);
+  if (inFlight) return inFlight;
+
+  const task = (async (): Promise<string | null> => {
+    try {
+      if (signal?.aborted) return null;
+      let response: Response | undefined;
+
+      // 1. Check browser CacheStorage first
+      if ("caches" in window) {
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          const matched = await cache.match(path);
+          if (matched) {
+            response = matched;
+          } else {
+            if (signal?.aborted) return null;
+            // Fetch and store in CacheStorage
+            const netRes = await fetch(path, { cache: "force-cache", signal });
+            if (netRes.ok) {
+              await cache.put(path, netRes.clone());
+              response = netRes;
+            }
           }
+        } catch (err) {
+          if (isAbortError(err) || signal?.aborted) return null;
+          // CacheStorage might fail on private browsing or quota limits
         }
-      } catch {
-        // CacheStorage might fail on private browsing or quota limits
       }
+
+      // 2. Direct fetch fallback if cache API unavailable
+      if (!response) {
+        if (signal?.aborted) return null;
+        const netRes = await fetch(path, { cache: "force-cache", signal });
+        if (netRes.ok) response = netRes;
+      }
+
+      if (!response || signal?.aborted) return null;
+
+      const blob = await response.blob();
+      if (signal?.aborted) return null;
+      const blobUrl = URL.createObjectURL(blob);
+      memoryBlobUrls.set(path, blobUrl);
+      return blobUrl;
+    } catch (err) {
+      if (isAbortError(err) || signal?.aborted) {
+        return null;
+      }
+      console.warn(`[OlympiaAssetCache] Failed to preload asset ${path}:`, err);
+      return null;
+    } finally {
+      inFlightBlobLoads.delete(path);
     }
+  })();
 
-    // 2. Direct fetch fallback if cache API unavailable
-    if (!response) {
-      const netRes = await fetch(path, { cache: "force-cache" });
-      if (netRes.ok) response = netRes;
-    }
-
-    if (!response) return null;
-
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    memoryBlobUrls.set(path, blobUrl);
-    return blobUrl;
-  } catch (err) {
-    console.warn(`[OlympiaAssetCache] Failed to preload asset ${path}:`, err);
-    return null;
-  }
+  inFlightBlobLoads.set(path, task);
+  return task;
 }
 
 /**
  * Preload round intro videos into local memory sequentially for the preferred format.
  * Prevents bandwidth exhaustion from downloading 8 full-HD videos simultaneously.
  */
-export async function preloadOlympiaIntroVideos(): Promise<void> {
-  if (typeof window === "undefined" || preloadInitiated) return;
-  preloadInitiated = true;
+export async function preloadOlympiaIntroVideos(options?: {
+  signal?: AbortSignal;
+  yieldMs?: number;
+}): Promise<void> {
+  if (typeof window === "undefined" || preloadCompleted) return;
+  if (options?.signal?.aborted) return;
+  if (activePreloadPromise) return activePreloadPromise;
 
-  try {
-    const testVideo = document.createElement("video");
-    const canPlayWebm = testVideo.canPlayType && testVideo.canPlayType('video/webm; codecs="vp9, opus"') !== "";
-    const primaryFormat: "webm" | "mp4" = canPlayWebm ? "webm" : "mp4";
-    const primaryEntries = primaryFormat === "webm" ? Object.entries(INTRO_WEBM_PATHS) : Object.entries(INTRO_MP4_PATHS);
+  const yieldMs = options?.yieldMs ?? 450;
 
-    // Load sequentially in game round progression order (khoiDong -> vcnv -> tangToc -> veDich)
-    const roundOrder = ["khoiDong", "vcnv", "tangToc", "veDich"];
-    primaryEntries.sort(([a], [b]) => roundOrder.indexOf(a) - roundOrder.indexOf(b));
+  let run: Promise<void> | null = null;
+  run = (async () => {
+    try {
+      const testVideo = document.createElement("video");
+      const canPlayWebm = testVideo.canPlayType && testVideo.canPlayType('video/webm; codecs="vp9, opus"') !== "";
+      const primaryFormat: "webm" | "mp4" = canPlayWebm ? "webm" : "mp4";
+      const primaryEntries = primaryFormat === "webm" ? Object.entries(INTRO_WEBM_PATHS) : Object.entries(INTRO_MP4_PATHS);
 
-    for (const [round, path] of primaryEntries) {
-      const blobUrl = await cacheAndCreateBlobUrl(path);
-      if (blobUrl) {
-        if (primaryFormat === "webm") {
-          memoryBlobUrls.set(round, blobUrl);
+      // Load sequentially in game round progression order (khoiDong -> vcnv -> tangToc -> veDich)
+      const roundOrder = ["khoiDong", "vcnv", "tangToc", "veDich"];
+      primaryEntries.sort(([a], [b]) => roundOrder.indexOf(a) - roundOrder.indexOf(b));
+
+      let completedAll = true;
+      for (let i = 0; i < primaryEntries.length; i++) {
+        if (options?.signal?.aborted) {
+          completedAll = false;
+          break;
+        }
+        const [round, path] = primaryEntries[i];
+        const roundKey = primaryFormat === "webm" ? round : `${round}:mp4`;
+
+        if (!memoryBlobUrls.has(roundKey) && !memoryBlobUrls.has(path)) {
+          const blobUrl = await cacheAndCreateBlobUrl(path, options?.signal);
+          if (blobUrl) {
+            memoryBlobUrls.set(roundKey, blobUrl);
+          }
         } else {
-          memoryBlobUrls.set(`${round}:mp4`, blobUrl);
+          const existing = memoryBlobUrls.get(path);
+          if (existing && !memoryBlobUrls.has(roundKey)) {
+            memoryBlobUrls.set(roundKey, existing);
+          }
+        }
+
+        if (options?.signal?.aborted) {
+          completedAll = false;
+          break;
+        }
+
+        if (i < primaryEntries.length - 1) {
+          const ok = await waitYieldAbortable(yieldMs, options?.signal);
+          if (!ok) {
+            completedAll = false;
+            break;
+          }
         }
       }
+
+      if (completedAll && !options?.signal?.aborted) {
+        preloadCompleted = true;
+      }
+    } catch (err) {
+      if (!isAbortError(err)) {
+        console.warn("[OlympiaAssetCache] Sequential video preload error:", err);
+      }
+    } finally {
+      if (activePreloadPromise === run) {
+        activePreloadPromise = null;
+      }
     }
-  } catch (err) {
-    console.warn("[OlympiaAssetCache] Sequential video preload error:", err);
-  }
+  })();
+
+  activePreloadPromise = run;
+  return run;
 }
 
 /**

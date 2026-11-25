@@ -543,7 +543,13 @@ export function useOlympiaCameraState(
     }
 
     // 1.2. Host manual camera override (pinned until next gameplay transition or "TỰ ĐỘNG")
-    if (state.studioCameraManual && state.studioCamera != null) {
+    // Exception: Khởi Động kd:start sweep (startCooldownUntil active) always overrides manual camera
+    // so the low stage-floor sweep and orbit always play regardless of pinned camera angle.
+    const kdStartActive =
+      state.currentRound === "khoiDong" &&
+      state.khoiDong?.startCooldownUntil != null &&
+      getNow() < state.khoiDong.startCooldownUntil + 2500;
+    if (state.studioCameraManual && state.studioCamera != null && !kdStartActive) {
       return {
         camAngle: state.studioCamera,
         transitionMode: "CUT",
@@ -787,19 +793,42 @@ export function useOlympiaCameraState(
         }
       }
 
-      // 3.6. Khi nhấn Kết thúc lượt (ở lượt riêng, hoặc O13 - O21):
-      // - Giai đoạn 1 (0.0s -> 2.5s): Chuyển sang đúng camera thí sinh đó ở góc rộng (CAM 18: 0.75x -> 1.25x, hiện đủ cả người lẫn bảng điểm)
-      // - Giai đoạn 2 (>= 2.5s): CUT ngay sang toàn cảnh CAM 1 (không morph)
+      // 3.6. R4 — Khi nhấn Kết thúc lượt (lượt riêng O13–O21, Khởi Động Riêng O24+):
+      // Lượt Riêng (isSolo): Zoom cinematic 0.75x → 1.25x (CAM 18) trong 3.0s, ẩn overlay 2D,
+      //   sau 3.0s CUT sang toàn cảnh CAM 1.
+      // Lượt Chung: Giữ toàn cảnh bục thí sinh CAM 10 rồi CUT CAM 1 ngay.
       if (kd.phase === "segmentDone") {
-        const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-        if (segDoneElapsed < 2.5) {
-          const pushIn = Math.min(1.0, segDoneElapsed / 2.5);
-          return {
-            camAngle: 18, // Preset 18: Wide framing showing both contestant body & podium scoreboard
-            transitionMode: "CUT",
-            isOverlayHidden: false,
-            pushInProgress: pushIn, // 0.0 -> 1.0 (zoom up to 1.25x)
-          };
+        if (isSolo) {
+          const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
+          if (segDoneElapsed < 3.0) {
+            // Phase 1 (0.0s -> 0.6s): Switch to wide_with_podium framing at 0.75x (push=0), hold
+            // Phase 2 (0.6s -> 2.4s): Smooth ease-in zoom from 0.75x to 1.25x (push: 0 -> 1.0)
+            // Phase 3 (2.4s -> 3.0s): Hold at 1.25x
+            const holdEnd = 0.6;
+            const zoomEnd = 2.4;
+            let pushIn = 0.0;
+            if (segDoneElapsed > holdEnd) {
+              const t = Math.min(1.0, (segDoneElapsed - holdEnd) / (zoomEnd - holdEnd));
+              pushIn = t * t * (3 - 2 * t); // smoothstep 0 -> 1.0
+            }
+            return {
+              camAngle: 18, // Preset 18: wide_with_podium (0.75x -> 1.25x showing contestant + podium scoreboard)
+              transitionMode: "CUT",
+              isOverlayHidden: pushIn > 0.05, // Hide 2D overlays during zoom so scoreboard reads cleanly
+              pushInProgress: pushIn,
+            };
+          }
+        } else {
+          // Lượt Chung: giữ toàn cảnh bục thí sinh ngắn (< 1.0s) rồi CUT CAM 1
+          const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
+          if (segDoneElapsed < 1.0) {
+            return {
+              camAngle: 10,
+              transitionMode: "CUT",
+              isOverlayHidden: false,
+              pushInProgress: 0,
+            };
+          }
         }
         return {
           camAngle: 1,

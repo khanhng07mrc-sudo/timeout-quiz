@@ -321,8 +321,8 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     label: "Bục MC & Cổng Lục Giác",
     // Coaxial direct eye-level frontal angle along MC desk normal, framing full MC desk, presenters & Hexagon Portal
     // Legacy baseline: pos: [2.30, 1.26, -3.94], target: [3.12, 1.02, -7.16]
-    pos: [1.40, 1.44, -3.17],
-    target: [2.02, 1.28, -5.95],
+    pos: [1.40, 1.52, -3.17],
+    target: [2.02, 1.36, -5.95],
     fov: 40,
   },
   4: {
@@ -687,7 +687,10 @@ export function CameraController({
       }
     }
 
-    // 0b. Khởi Động 3.5s -> 6.0s (Lượt Riêng): 0ms CUT to CAM 10 at 3.5s, then smooth 2.5s zoom/pan to targetContestantCam
+    // 0b. Khởi Động 3.5s -> 6.0s (Lượt Riêng): 0ms CUT to CAM 10 at 3.5s, then smooth 2.5s CURVED ORBIT to targetContestantCam
+    // The orbit follows a nonlinear arc (circular interpolation via slerp on a horizontal arc around
+    // the stage center), giving the feeling of a crane/dolly swinging around the contestant arc rather
+    // than a cheap linear cross-stage slide.
     if (!isContestantCam || isManualCamera) {
       kdZoomActiveRef.current = null;
     } else if (prevCamAngleRef.current === 14 && camAngle !== 14 && kdStartCooldownUntil) {
@@ -705,12 +708,31 @@ export function CameraController({
         const cam10 = getWidePodiumsCameraPreset(effectiveTotalSeats);
         const zoomElapsed = Math.max(0, (now - kdStartCooldownUntil) / 1000);
         const tZoom = Math.min(1.0, zoomElapsed / 2.5);
+        // Nonlinear smoothstep for orbit arc (feels like a curved dolly sweep)
         const smoothZoom = tZoom * tZoom * (3 - 2 * tZoom);
 
-        _sweepStartPos.set(...cam10.pos);
-        _sweepStartTarget.set(...cam10.target);
-        _curPos.lerpVectors(_sweepStartPos, targetPos, smoothZoom);
-        _curTarget.lerpVectors(_sweepStartTarget, targetLookAt, smoothZoom);
+        // Circular arc interpolation: rotate camera position around stage vertical axis
+        // Start: CAM 10 position (wide all-podiums), End: target contestant cam position
+        // Midpoint arc is elevated slightly (+0.3m) to give cinematic crane feel
+        const startPos = new THREE.Vector3(...cam10.pos);
+        const endPos = targetPos.clone();
+        const startTarget = new THREE.Vector3(...cam10.target);
+        const endTarget = targetLookAt.clone();
+
+        // Arc center: midpoint of start and end, projected to XZ plane
+        const arcMidPos = startPos.clone().lerp(endPos, 0.5);
+        // Add cinematic arc lift: raise the midpoint 0.4m above the lerp path
+        const arcLiftedMidPos = arcMidPos.clone();
+        arcLiftedMidPos.y += 0.4 * Math.sin(Math.PI * smoothZoom);
+
+        // Quadratic bezier: P(t) = (1-t)^2 * P0 + 2*(1-t)*t * P1 + t^2 * P2
+        const oneMinusT = 1.0 - smoothZoom;
+        _curPos.set(
+          oneMinusT * oneMinusT * startPos.x + 2 * oneMinusT * smoothZoom * arcLiftedMidPos.x + smoothZoom * smoothZoom * endPos.x,
+          oneMinusT * oneMinusT * startPos.y + 2 * oneMinusT * smoothZoom * arcLiftedMidPos.y + smoothZoom * smoothZoom * endPos.y,
+          oneMinusT * oneMinusT * startPos.z + 2 * oneMinusT * smoothZoom * arcLiftedMidPos.z + smoothZoom * smoothZoom * endPos.z,
+        );
+        _curTarget.lerpVectors(startTarget, endTarget, smoothZoom);
 
         currentPos.current.copy(_curPos);
         currentTarget.current.copy(_curTarget);

@@ -41,6 +41,7 @@ import {
   cancelQuestionTTS,
   resetOlympiaTtsSession,
   speakSmartQuestion,
+  prefetchOlympiaTtsAudio,
   smoothStopOlympiaTTS,
   speakOlympiaResult,
   speakRoundIntroTTS,
@@ -1431,6 +1432,20 @@ export default function DisplayScreen({ code }: { code: string }) {
     } else if (!currentQ && lastQuestionRef.current) {
       lastQuestionRef.current = "";
       cancelQuestionTTS();
+    }
+
+    // Pre-warm upcoming Khởi Động pre-loaded question before host reveals it so Q1 plays with 0ms delay
+    if (
+      state.currentRound === "khoiDong" &&
+      state.khoiDong?.current?.q &&
+      !state.khoiDong.questionRevealed
+    ) {
+      prefetchOlympiaTtsAudio(state.khoiDong.current.q, {
+        season: effectiveAudioSeason,
+        round: "khoiDong",
+        seatId: state.khoiDong.segments?.[state.khoiDong.segIdx ?? 0]?.seat,
+        segIdx: state.khoiDong.segIdx,
+      });
     }
   }, [
     ttsActive,

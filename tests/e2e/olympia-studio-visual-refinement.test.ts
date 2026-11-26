@@ -594,7 +594,7 @@ test("R9.2: Camera controller and auto-director support CAM 3 coaxial, standby o
   );
 });
 
-test("R9.3: O22-O26 1_KhoiDong/open_question matches fandom O9 balanced track while O13-21 stays untouched", () => {
+test("R9.3: O22-O26 1_KhoiDong/open_question matches authentic Olympia 26 track (69688040) while O13-21 stays untouched", () => {
   const { createHash } = require("crypto");
   const md5 = (rel: string) =>
     createHash("md5").update(fs.readFileSync(path.join(rootDir, rel))).digest("hex");
@@ -605,18 +605,20 @@ test("R9.3: O22-O26 1_KhoiDong/open_question matches fandom O9 balanced track wh
     "O13-21 open_question.mp3 must remain byte-identical"
   );
   const o22Hash = md5("public/olympia-audio/O22/1_KhoiDong/open_question.mp3");
-  for (const s of ["O23", "O24-25", "O26"]) {
-    assert.equal(
-      md5(`public/olympia-audio/${s}/1_KhoiDong/open_question.mp3`),
-      o22Hash,
-      `${s} open_question.mp3 must match O22 open_question.mp3`
-    );
-  }
-  assert.notEqual(
+  assert.equal(
     o22Hash,
-    "7286d058ebd129664adaea00416b6535",
-    "O22-O26 open_question.mp3 must be replaced and distinct from O13-21"
+    "696880403e8ee55a12d52b900fd60422",
+    "O22 open_question.mp3 must match authentic D:\\Olympia 26\\Audio source"
   );
+  for (const s of ["O23", "O24-25", "O26"]) {
+    for (const suffix of ["", "_left", "_right"]) {
+      assert.equal(
+        md5(`public/olympia-audio/${s}/1_KhoiDong/open_question${suffix}.mp3`),
+        o22Hash,
+        `${s} open_question${suffix}.mp3 must match authentic O22 open_question.mp3`
+      );
+    }
+  }
 });
 
 test("R9.4: Audio panner preserves Stereo on 'both' and duplicates target channel cleanly in hooks.ts & audio-channel.ts", () => {

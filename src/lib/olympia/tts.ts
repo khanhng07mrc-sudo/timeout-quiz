@@ -1698,6 +1698,8 @@ let sharedAudioContext: AudioContext | null = null;
 const ttsChannelGraphMap = new WeakMap<AudioContext, ChannelRoutingGraph>();
 const ttsHtmlMediaSourceMap = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
 let ttsChannelListenersBound = false;
+const clientTtsPrefetchCache = new Map<string, ArrayBuffer>();
+const clientTtsPrefetchInFlight = new Map<string, Promise<ArrayBuffer | null>>();
 
 function ensureTtsChannelListeners(): void {
   if (ttsChannelListenersBound || typeof window === "undefined") return;
@@ -2035,6 +2037,8 @@ export function resetOlympiaTtsSession(): void {
   }
   resetTtsServerFallback();
   resetBuzzerTurnState();
+  clientTtsPrefetchCache.clear();
+  clientTtsPrefetchInFlight.clear();
   lastHypeFiller = null;
   lastStealPrompt = null;
 }
@@ -2633,6 +2637,22 @@ async function fetchServerTtsAudio(
       payload.voice = effectiveVoice;
     }
 
+    const payloadKey = JSON.stringify(payload);
+    const cachedBuf = clientTtsPrefetchCache.get(payloadKey);
+    if (cachedBuf) {
+      return cachedBuf;
+    }
+    const inFlight = clientTtsPrefetchInFlight.get(payloadKey);
+    if (inFlight) {
+      const awaitedBuf = await inFlight;
+      if (epoch !== playbackEpoch) {
+        throw new Error("aborted_epoch");
+      }
+      if (awaitedBuf) {
+        return awaitedBuf;
+      }
+    }
+
     const res = await fetchFn(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3156,17 +3176,97 @@ export function speakOlympiaTTS(text: string, options?: SpeakTTSOptions): void {
   void speakOlympiaTTSAsync(text, options);
 }
 
-export const speakSmartQuestion = (
+export function speakSmartQuestion(
   questionText: string,
   options?: SpeakTTSOptions
-) => {
+): void {
   const shouldQueue = options?.queueAfterActive ?? hasPendingIntroOrBridgeSpeech();
   speakOlympiaTTS(questionText, {
     ...options,
     segment: "question",
     queueAfterActive: shouldQueue,
   });
-};
+}
+
+export function prefetchOlympiaTtsAudio(
+  text: string,
+  options?: SpeakTTSOptions
+): void {
+  if (typeof window === "undefined" || !ttsEnabled || !text?.trim()) return;
+  if (!shouldAttemptServerTts(options)) return;
+  const fetchFn = transportConfig.fetchImpl || globalThis.fetch;
+  if (typeof fetchFn !== "function") return;
+  const endpoint = transportConfig.endpoint || DEFAULT_ENDPOINT;
+
+  const segments = prepareLanguageSegments(text, options);
+  if (segments.length === 0) return;
+
+  const role = resolveMCRole(options);
+  const totalWordCount = segments
+    .map((s) => s.text)
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const rate = getSeasonReadingRate(options?.season, totalWordCount, {
+    segment: options?.segment ?? "question",
+    baseRate: options?.baseRate,
+    speedCategory: options?.speedCategory,
+    round: options?.round,
+  } as any);
+
+  const customCfg =
+    options?.voiceConfig ||
+    activeCustomTtsScripts?.mcVoiceConfig?.[role] ||
+    (role === "khanh_vy"
+      ? activeCustomTtsScripts?.mcVoiceConfig?.khanhVy
+      : activeCustomTtsScripts?.mcVoiceConfig?.ngocHuy);
+  const effectivePitch = options?.pitch ?? customCfg?.pitch;
+  const effectiveVoice =
+    options?.voice ??
+    customCfg?.voiceName ??
+    (customCfg?.voiceURI && /^[a-zA-Z0-9_-]+$/.test(customCfg.voiceURI) && /Neural/i.test(customCfg.voiceURI)
+      ? customCfg.voiceURI
+      : undefined);
+
+  for (const seg of segments) {
+    const payload: Record<string, unknown> = {
+      text: seg.text,
+      role,
+      lang: seg.lang,
+      rate,
+    };
+    if (effectivePitch !== undefined && effectivePitch !== null) {
+      payload.pitch = effectivePitch;
+    }
+    if (effectiveVoice) {
+      payload.voice = effectiveVoice;
+    }
+    const payloadKey = JSON.stringify(payload);
+    if (clientTtsPrefetchCache.has(payloadKey) || clientTtsPrefetchInFlight.has(payloadKey)) {
+      continue;
+    }
+    const p = fetchFn(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payloadKey,
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const buf = await res.arrayBuffer();
+        if (clientTtsPrefetchCache.size >= 48) {
+          const oldestKey = clientTtsPrefetchCache.keys().next().value;
+          if (oldestKey) clientTtsPrefetchCache.delete(oldestKey);
+        }
+        clientTtsPrefetchCache.set(payloadKey, buf);
+        return buf;
+      })
+      .catch(() => null)
+      .finally(() => {
+        clientTtsPrefetchInFlight.delete(payloadKey);
+      });
+    clientTtsPrefetchInFlight.set(payloadKey, p);
+  }
+}
 
 /**
  * Plays a sequence of DualMcScriptSegments in order with pauses between segments.

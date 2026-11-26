@@ -151,8 +151,8 @@ export function getContestantCameraPreset(
   const effPx = +(px + 0.22).toFixed(3);
 
   if (framing === "wide_with_podium") {
-    // 0.75x - 0.8x wide framing showing full contestant body + glowing podium scoreboard
-    // Camera backed up to 2.45m, elevated slightly to 1.52m, target at desk center Y = 1.05m
+    // 0.75x (53.3° FOV) wide framing showing full contestant body + glowing podium scoreboard;
+    // 1.25x (32.0° FOV) tightens maximally onto contestant upper body & head.
     const dist = 2.45;
     const camX = +(effPx + dist * nx).toFixed(3);
     const camY = 1.52;
@@ -162,7 +162,7 @@ export function getContestantCameraPreset(
       label: `Cận Cảnh TS ${clampedSeat + 1} (Toàn Thân & Bảng Điểm)`,
       pos: [camX, camY, camZ],
       target: [effPx, 1.05, +pz.toFixed(3)],
-      fov: 44, // 0.75x wider FOV so both head and scoreboard fit comfortably
+      fov: 40,
     };
   }
 
@@ -265,15 +265,15 @@ export function getWideStageCameraPreset(totalSeats: number = 4): CameraPreset {
 }
 
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
-  // Centered Direct Arc Shot facing all contestant podiums cleanly without left/right edge clipping,
-  // preserving monotonic depth recession across all seats for 4, 6, and 7-8 contestants.
+  // Straight-on perpendicular bisector shot (midPhi = 0.346 rad, inward normal [0.941, 0, 0.339])
+  // facing directly into all contestants' faces at arc midpoint [-6.13, 1.22, -2.79] with >= 15% NDC margins.
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   if (count >= 7) {
     return {
       id: 10,
       label: "Toàn Cảnh Bục Thí Sinh",
-      pos: [-0.15, 2.35, 6.20],
-      target: [-5.50, 1.25, -2.20],
+      pos: [2.77, 2.35, 0.42],
+      target: [-6.13, 1.25, -2.79],
       fov: 52,
     };
   }
@@ -281,16 +281,16 @@ export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset
     return {
       id: 10,
       label: "Toàn Cảnh Bục Thí Sinh",
-      pos: [0.00, 2.20, 5.30],
-      target: [-5.15, 1.25, -2.15],
+      pos: [1.21, 2.25, -0.15],
+      target: [-6.13, 1.25, -2.79],
       fov: 46,
     };
   }
   return {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
-    pos: [-0.20, 2.05, 4.70],
-    target: [-5.40, 1.25, -2.50],
+    pos: [0.08, 2.15, -0.55],
+    target: [-6.13, 1.25, -2.79],
     fov: 40,
   };
 }

@@ -459,23 +459,18 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
     }
   });
 
-  runTest(3, "M3.3: CAM 10 frames 7 podiums in deep raking broadcast perspective with zero clipping", () => {
+  runTest(3, "M3.3: CAM 10 frames 7 podiums straight-on along arc bisector with zero clipping", () => {
     const cam = getWidePodiumsCameraPreset(7);
-    let prevZ = 0;
     for (let s = 0; s < 7; s++) {
       const pos = getContestantPodiumWorldPos(s, 7, 1.25);
       const ndc = projectToNDC(pos, cam.pos, cam.target, cam.fov);
       assert.ok(ndc.zDist > 0, "Podium must be in front of camera");
-      assert.ok(ndc.zDist > prevZ, "Podiums must recede down the line with increasing depth");
-      prevZ = ndc.zDist;
-      if (s > 0) {
-        assert.ok(Math.abs(ndc.x) <= 0.85, `Podium ${s} NDC X ${ndc.x} must be within [-0.85, 0.85]`);
-      }
+      assert.ok(Math.abs(ndc.x) <= 0.85, `Podium ${s} NDC X ${ndc.x} must be within [-0.85, 0.85]`);
       assert.ok(Math.abs(ndc.y) <= 0.85, `Podium ${s} NDC Y ${ndc.y} must be within [-0.85, 0.85]`);
     }
   });
 
-  runTest(3, "M3.4: CAM 10 frames 8 podiums in deep raking broadcast perspective down the line of podiums", () => {
+  runTest(3, "M3.4: CAM 10 frames 8 podiums straight-on symmetrically with all corners in safe zone", () => {
     const cam = getWidePodiumsCameraPreset(8);
     const arc = getContestantArcParams(8);
     const halfW = 1.20 / 2; // 0.60m width
@@ -495,7 +490,6 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
       [+halfW, plinthH, +halfD],
     ];
 
-    let prevZ = 0;
     for (let s = 0; s < 8; s++) {
       const frac = s / 7;
       const phi = arc.startPhi + frac * (arc.endPhi - arc.startPhi);
@@ -508,8 +502,6 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
       const centerPos = getContestantPodiumWorldPos(s, 8, 1.25);
       const centerNDC = projectToNDC(centerPos, cam.pos, cam.target, cam.fov);
       assert.ok(centerNDC.zDist > 0, `Podium ${s} must be in front of camera`);
-      assert.ok(centerNDC.zDist >= prevZ - 0.05, `Podium ${s} must recede into depth (zDist=${centerNDC.zDist.toFixed(2)}m >= prev=${prevZ.toFixed(2)}m)`);
-      prevZ = centerNDC.zDist;
 
       for (let c = 0; c < localCorners.length; c++) {
         const [lx, ly, lz] = localCorners[c];

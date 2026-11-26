@@ -381,6 +381,14 @@ export function useOlympiaCameraState(
     wasIntroOrEntranceRef.current = active;
   }, [state?.introTimer, state?.entranceState?.active, state?.banner]);
 
+  // Synchronously update phase entered timestamp on Frame 0 so segmentDone 0.75x->1.25x zoom
+  // never computes a stale elapsed time from the previous phase.
+  const curPhaseSync = state?.khoiDong?.phase || state?.veDich?.phase || "";
+  if (curPhaseSync && curPhaseSync !== lastPhaseRef.current) {
+    lastPhaseRef.current = curPhaseSync;
+    phaseEnteredAtRef.current = getNow();
+  }
+
   useEffect(() => {
     const curPhase = state?.khoiDong?.phase || state?.veDich?.phase || "";
     if (curPhase && curPhase !== lastPhaseRef.current) {

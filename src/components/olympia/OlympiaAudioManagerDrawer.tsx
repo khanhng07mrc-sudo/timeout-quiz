@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
 import { speakHostStealCall, cancelTTS, isTtsEnabled, playTestMCVoices, unlockOlympiaTTS } from "@/lib/olympia/tts";
 import { applyChannelRoutingGraph, createChannelRoutingGraph, type ChannelRoutingGraph } from "@/lib/olympia/audio-channel";
+import { withOlympiaAudioVersion } from "./hooks";
 
 interface SoundItem {
   id: string; // e.g. "1_KhoiDong/start_round"
@@ -391,7 +392,7 @@ export default function OlympiaAudioManagerDrawer({
     // Always load the base stereo file. Dual-mono channel routing (left/right/both)
     // is performed dynamically in real time via connectPanner (WebAudio ChannelSplitter/Merger),
     // ensuring switching channels mid-playback seamlessly re-routes without reloading or restarting.
-    const url = `/olympia-audio/${folder}/${id}.mp3`;
+    const url = withOlympiaAudioVersion(`/olympia-audio/${folder}/${id}.mp3`);
 
     const ctx = getAudioContext();
     if (ctx && ctx.state === "suspended") {

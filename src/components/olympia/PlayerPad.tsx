@@ -8,6 +8,16 @@ import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds } from "./hooks";
 import { MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 import { BoundedText } from "./Vtv3BroadcastGraphics";
 
+export function getIntegerCountdownSeconds(remainingMs: number): number {
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) return 0;
+  return Math.ceil(remainingMs / 1000);
+}
+
+export function formatBuzzerUnlockCountdownLabel(remainingMs: number): string {
+  const sec = getIntegerCountdownSeconds(remainingMs);
+  return sec > 0 ? `MỞ SAU ${sec}s` : "BẤM CHUÔNG";
+}
+
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
 
 function PlayerPadCountdown({
@@ -115,24 +125,31 @@ export default function PlayerPad({
     prewarmBuzzerSounds(join.audioSeason);
   }, [isSandboxMode, join?.audioSeason]);
 
-  // Responsive ticker during Khởi Động buzzer lock countdown (optimized 200ms interval to prevent lag)
+  // Integer-aligned ticker during Khởi Động buzzer lock countdown (renders only on whole-second boundaries + unlockAt)
   const [, setUnlockTick] = useState(0);
   useEffect(() => {
     const unlockAt = state?.khoiDong?.buzzUnlockAt;
     if (!unlockAt) return;
-    const now = serverNow();
-    if (now >= unlockAt) return;
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
 
-    const id = setInterval(() => {
-      const curNow = serverNow();
-      setUnlockTick((t) => t + 1);
-      if (curNow >= unlockAt) {
-        clearInterval(id);
-      }
-    }, 200);
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const remainingMs = Math.max(0, unlockAt - serverNow());
+      if (remainingMs <= 0) return;
+      const modMs = remainingMs % 1000;
+      const waitMs = (modMs === 0 ? Math.min(1000, remainingMs) : modMs) + 15;
+      timerId = setTimeout(() => {
+        if (cancelled) return;
+        setUnlockTick((t) => t + 1);
+        scheduleNext();
+      }, waitMs);
+    };
 
+    scheduleNext();
     return () => {
-      clearInterval(id);
+      cancelled = true;
+      if (timerId !== null) clearTimeout(timerId);
     };
   }, [state?.khoiDong?.buzzUnlockAt, serverNow]);
 
@@ -1468,7 +1485,7 @@ function InteractionZone({
           : locked
           ? "ĐÃ KHÓA CÂU NÀY"
           : isCountingDownUnlock
-          ? `MỞ SAU ${(unlockRemainingMs / 1000).toFixed(1)}s`
+          ? formatBuzzerUnlockCountdownLabel(unlockRemainingMs)
           : "BẤM CHUÔNG";
 
       const subLabel =

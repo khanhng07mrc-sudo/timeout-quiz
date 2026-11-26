@@ -724,11 +724,45 @@ export type TtsCommandAction =
   | "custom"
   | "stop";
 
+export type McVoiceCloneProvider = "local_profile" | "elevenlabs" | "fish_audio" | "custom_http";
+
+export interface McVoiceCloneConfig {
+  enabled: boolean;
+  provider: McVoiceCloneProvider;
+  profileId?: string;
+  voiceId?: string;
+  sampleUrl?: string;
+  sampleName?: string;
+  endpointUrl?: string;
+  apiKey?: string;
+  targetPitchHz?: number;
+  pitchRatio?: number;
+  updatedAt?: number;
+}
+
+export interface SavedVoiceProfile {
+  id: string;
+  name: string;
+  roleHint?: "khanh_vy" | "ngoc_huy";
+  provider: McVoiceCloneProvider;
+  voiceId?: string;
+  sampleUrl?: string;
+  sampleName?: string;
+  endpointUrl?: string;
+  hasApiKey?: boolean;
+  targetPitchHz?: number;
+  pitchRatio?: number;
+  durationMs?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface McVoiceCustomization {
   pitch?: number;
   rate?: number;
   voiceURI?: string;
   voiceName?: string;
+  clone?: McVoiceCloneConfig;
 }
 
 export interface CustomTtsScriptConfig {

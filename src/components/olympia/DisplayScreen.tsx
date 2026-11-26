@@ -45,6 +45,7 @@ import {
   smoothStopOlympiaTTS,
   speakOlympiaResult,
   speakRoundIntroTTS,
+  formatFullOlympiaAnswer,
   summarizeOlympiaAnswer,
   handleBuzzerInterrupt,
   scheduleDramaticStealCall,
@@ -1450,7 +1451,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         });
       }
       if (state.khoiDong.current?.a && state.khoiDong.questionRevealed) {
-        const cleanAns = summarizeOlympiaAnswer(state.khoiDong.current.a);
+        const cleanAns = formatFullOlympiaAnswer(state.khoiDong.current.a);
         if (cleanAns) {
           prefetchOlympiaTtsAudio(cleanAns, {
             season: effectiveAudioSeason,

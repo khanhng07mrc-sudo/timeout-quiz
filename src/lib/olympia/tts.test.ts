@@ -1,21 +1,46 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import test from "node:test";
+import { GET as GET_TTS, POST as POST_TTS } from "../../app/api/olympia/tts/route";
 import {
+  DEFAULT_SERVER_TTS_RATE,
+  MIN_SERVER_TTS_RATE,
+  MAX_SERVER_TTS_RATE,
+  normalizeTtsRate,
+  mapRateToProsody,
+  buildAtempoFilterChain,
   normalizePitch,
   validateAndNormalizeTtsInput,
   buildEdgeSsml,
+  synthesizeEdgeTts,
   synthesizeEdgeTtsStream,
   splitTextForGoogleTts,
   synthesizeGoogleTranslateTts,
   detectTtsLanguage,
   resetTtsCacheForTesting,
   populateTtsCacheForTesting,
+  isFfmpegDspAvailable,
+  setFfmpegAvailabilityForTesting,
+  resetFfmpegAvailabilityForTesting,
+  forceEdgeDegradedForTesting,
+  applyRoleDspToWavBuffer,
+  parseWavBuffer,
+  encodeWavBuffer,
+  estimateF0HzFromPcm,
+  resolveSafeVoiceFile,
+  getTtsCacheKeysForTesting,
+  isValidMp3Buffer,
+  isValidAudioBuffer,
+  detectAudioContentType,
+  stripId3Metadata,
   TtsValidationError,
 } from "./server-tts";
 import {
   normalizeVietnameseTTS,
+  formatFullOlympiaAnswer,
   summarizeOlympiaAnswer,
+  generateGradingCallout,
   getSeasonReadingRate,
   getTtsBaseRate,
   setTtsBaseRate,
@@ -2434,4 +2459,738 @@ test("TTS: splitTextForGoogleTts splits long sentences <= maxChars & synthesizeG
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+// ============================================================================
+// Milestone 1 Upgrade Tests: Server Rate 1.20, VPS Male/Female DSP & Voice Clone
+// ============================================================================
+
+function createSineWavBuffer(freqHz: number, durationSec: number, sampleRate = 24000): Buffer {
+  const count = Math.round(sampleRate * durationSec);
+  const samples = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    samples[i] = 0.6 * Math.sin((2 * Math.PI * freqHz * i) / sampleRate);
+  }
+  return encodeWavBuffer(samples, sampleRate);
+}
+
+function encodeWavToMp3InMemory(wavBuf: Buffer): Buffer {
+  const res = spawnSync(
+    process.env.FFMPEG_PATH || "ffmpeg",
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "wav",
+      "-i",
+      "pipe:0",
+      "-c:a",
+      "libmp3lame",
+      "-ar",
+      "24000",
+      "-ac",
+      "1",
+      "-b:a",
+      "64k",
+      "-write_xing",
+      "0",
+      "-id3v2_version",
+      "0",
+      "-f",
+      "mp3",
+      "pipe:1",
+    ],
+    { input: wavBuf }
+  );
+  if (res.status !== 0 || !res.stdout || res.stdout.length === 0) {
+    throw new Error(`ffmpeg wav->mp3 failed: ${res.stderr?.toString("utf8")}`);
+  }
+  return Buffer.from(res.stdout);
+}
+
+function decodeMp3ToMono16kPcmInMemory(mp3Buf: Buffer): Float32Array {
+  const res = spawnSync(
+    process.env.FFMPEG_PATH || "ffmpeg",
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "mp3",
+      "-i",
+      "pipe:0",
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      "-f",
+      "f32le",
+      "pipe:1",
+    ],
+    { input: mp3Buf }
+  );
+  if (res.status !== 0 || !res.stdout || res.stdout.length === 0) {
+    throw new Error(`ffmpeg mp3->pcm failed: ${res.stderr?.toString("utf8")}`);
+  }
+  const buf = Buffer.from(res.stdout);
+  const count = Math.floor(buf.byteLength / 4);
+  const pcm = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pcm[i] = buf.readFloatLE(i * 4);
+  }
+  return pcm;
+}
+
+test("TTS M1 R1-Server: default rate 1.20, clamping [0.5, 2.0], role defaulting, and buildAtempoFilterChain", () => {
+  assert.equal(DEFAULT_SERVER_TTS_RATE, 1.2);
+  assert.equal(MIN_SERVER_TTS_RATE, 0.5);
+  assert.equal(MAX_SERVER_TTS_RATE, 2.0);
+
+  assert.equal(normalizeTtsRate(undefined), 1.2);
+  assert.equal(normalizeTtsRate(null), 1.2);
+  assert.equal(normalizeTtsRate(0.1), 0.5);
+  assert.equal(normalizeTtsRate(5.0), 2.0);
+  assert.equal(normalizeTtsRate(1.35), 1.35);
+
+  assert.throws(() => normalizeTtsRate(NaN), TtsValidationError);
+  assert.throws(() => normalizeTtsRate(Infinity), TtsValidationError);
+  assert.throws(() => normalizeTtsRate("1.2" as unknown as number), TtsValidationError);
+
+  assert.equal(mapRateToProsody(undefined), "+20%");
+  assert.equal(mapRateToProsody(0.1), "-50%");
+  assert.equal(mapRateToProsody(5.0), "+100%");
+  assert.equal(mapRateToProsody(1.0), "+0%");
+
+  const defaulted = validateAndNormalizeTtsInput({ text: "Xin chào Olympia!" });
+  assert.equal(defaulted.role, "khanh_vy");
+  assert.equal(defaulted.rate, 1.2);
+  assert.equal(defaulted.rateStr, "+20%");
+
+  assert.throws(
+    () => validateAndNormalizeTtsInput({ text: "Xin chào", role: "invalid_mc" }),
+    TtsValidationError
+  );
+
+  const fastStages = buildAtempoFilterChain(2.857);
+  assert.ok(fastStages.length >= 2);
+  let fastProduct = 1;
+  for (const st of fastStages) {
+    const val = Number(st.replace("atempo=", ""));
+    assert.ok(val >= 0.5 && val <= 2.0, `atempo stage out of bounds: ${st}`);
+    fastProduct *= val;
+  }
+  assert.ok(Math.abs(fastProduct - 2.857) < 0.01);
+
+  const slowStages = buildAtempoFilterChain(0.35);
+  assert.ok(slowStages.length >= 2);
+  let slowProduct = 1;
+  for (const st of slowStages) {
+    const val = Number(st.replace("atempo=", ""));
+    assert.ok(val >= 0.5 && val <= 2.0, `atempo stage out of bounds: ${st}`);
+    slowProduct *= val;
+  }
+  assert.ok(Math.abs(slowProduct - 0.35) < 0.01);
+});
+
+test("TTS M1 R1/R2 VPS Google fallback: real in-memory ffmpeg male/female F0 separation, rate enforcement, and 0 disk writes", async () => {
+  const ffmpegAvailable = await isFfmpegDspAvailable();
+  if (!ffmpegAvailable) {
+    return;
+  }
+
+  const synthWav = createSineWavBuffer(210, 0.6, 24000);
+  const synthMp3 = encodeWavToMp3InMemory(synthWav);
+  // Prepend a synthetic ID3v2 header to ensure stripId3Metadata strips it cleanly
+  const id3Header = Buffer.from([0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00]);
+  const googleChunkWithId3 = Buffer.concat([id3Header, synthMp3]);
+  assert.equal(stripId3Metadata(googleChunkWithId3).byteLength, synthMp3.byteLength);
+
+  let writeCalls = 0;
+  const origWriteFile = fs.writeFile;
+  const origWriteFileSync = fs.writeFileSync;
+  const origPromisesWriteFile = fs.promises.writeFile;
+  const origCreateWriteStream = fs.createWriteStream;
+  const origFetch = globalThis.fetch;
+
+  try {
+    (fs as any).writeFile = () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+    (fs as any).writeFileSync = () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+    (fs.promises as any).writeFile = async () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+    (fs as any).createWriteStream = () => {
+      writeCalls++;
+      throw new Error("Disallowed disk write");
+    };
+
+    resetTtsCacheForTesting();
+    forceEdgeDegradedForTesting();
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          googleChunkWithId3.buffer.slice(
+            googleChunkWithId3.byteOffset,
+            googleChunkWithId3.byteOffset + googleChunkWithId3.byteLength
+          ),
+      }) as unknown as Response) as typeof fetch;
+
+    const kv = await synthesizeEdgeTts({
+      text: "Câu hỏi khởi động số 1.",
+      role: "khanh_vy",
+      lang: "vi",
+      rate: 1.2,
+    });
+    const nh = await synthesizeEdgeTts({
+      text: "Câu hỏi khởi động số 1.",
+      role: "ngoc_huy",
+      lang: "vi",
+      rate: 1.2,
+    });
+
+    assert.equal(kv.engine, "google-translate-tts-dsp");
+    assert.equal(nh.engine, "google-translate-tts-dsp");
+    assert.equal(kv.voice, "google-vi-female-dsp");
+    assert.equal(nh.voice, "google-vi-male-dsp");
+    assert.notEqual(kv.voice, nh.voice);
+    assert.equal(isValidMp3Buffer(kv.audio), true);
+    assert.equal(isValidMp3Buffer(nh.audio), true);
+    assert.equal(kv.audio.equals(nh.audio), false);
+
+    const kvPcm = decodeMp3ToMono16kPcmInMemory(kv.audio);
+    const nhPcm = decodeMp3ToMono16kPcmInMemory(nh.audio);
+    const kvF0 = estimateF0HzFromPcm(kvPcm, 16000);
+    const nhF0 = estimateF0HzFromPcm(nhPcm, 16000);
+    assert.ok(kvF0 !== null && nhF0 !== null, "Expected detectable F0 on processed outputs");
+    assert.ok(nhF0! >= 100 && nhF0! <= 155, `Expected ngoc_huy F0 in male range 100-155 Hz, got ${nhF0}`);
+    assert.ok(kvF0! >= 195 && kvF0! <= 245, `Expected khanh_vy F0 in female range 195-245 Hz, got ${kvF0}`);
+    assert.ok(nhF0! < kvF0! - 50, `Expected clear male/female F0 separation: nh=${nhF0}, kv=${kvF0}`);
+
+    const slowNh = await synthesizeEdgeTts({
+      text: "Kiểm tra tốc độ phát.",
+      role: "ngoc_huy",
+      lang: "vi",
+      rate: 0.75,
+    });
+    const fastNh = await synthesizeEdgeTts({
+      text: "Kiểm tra tốc độ phát.",
+      role: "ngoc_huy",
+      lang: "vi",
+      rate: 1.5,
+    });
+    const slowPcm = decodeMp3ToMono16kPcmInMemory(slowNh.audio);
+    const fastPcm = decodeMp3ToMono16kPcmInMemory(fastNh.audio);
+    const durationRatio = fastPcm.length / slowPcm.length;
+    assert.ok(
+      durationRatio >= 0.4 && durationRatio <= 0.62,
+      `Expected rate 1.50 to be ~0.5x duration of rate 0.75, got ${durationRatio.toFixed(3)}`
+    );
+
+    assert.equal(writeCalls, 0, "Zero disk writes allowed during Google+DSP synthesis");
+  } finally {
+    fs.writeFile = origWriteFile;
+    fs.writeFileSync = origWriteFileSync;
+    fs.promises.writeFile = origPromisesWriteFile;
+    fs.createWriteStream = origCreateWriteStream;
+    globalThis.fetch = origFetch;
+    resetTtsCacheForTesting();
+  }
+});
+
+test("TTS M1 R2: Pure-TS WAV DSP pitch/tempo transform and no-ffmpeg graceful fallback", async () => {
+  const baseWav = createSineWavBuffer(210, 0.5, 24000);
+  const kvWav = applyRoleDspToWavBuffer(baseWav, { role: "khanh_vy", rate: 1.2 });
+  const nhWav = applyRoleDspToWavBuffer(baseWav, { role: "ngoc_huy", rate: 1.2 });
+
+  assert.equal(detectAudioContentType(kvWav), "audio/wav");
+  assert.equal(detectAudioContentType(nhWav), "audio/wav");
+  assert.equal(isValidAudioBuffer(kvWav), true);
+
+  const kvParsed = parseWavBuffer(kvWav);
+  const nhParsed = parseWavBuffer(nhWav);
+  const kvF0 = estimateF0HzFromPcm(kvParsed.samples, kvParsed.sampleRate);
+  const nhF0 = estimateF0HzFromPcm(nhParsed.samples, nhParsed.sampleRate);
+  assert.ok(kvF0 !== null && nhF0 !== null);
+  assert.ok(nhF0! >= 100 && nhF0! <= 155, `Expected pure-TS ngoc_huy F0 100-155 Hz, got ${nhF0}`);
+  assert.ok(kvF0! >= 195 && kvF0! <= 245, `Expected pure-TS khanh_vy F0 195-245 Hz, got ${kvF0}`);
+  assert.ok(nhF0! < kvF0! - 50);
+
+  const slowWav = parseWavBuffer(applyRoleDspToWavBuffer(baseWav, { role: "ngoc_huy", rate: 0.75 }));
+  const fastWav = parseWavBuffer(applyRoleDspToWavBuffer(baseWav, { role: "ngoc_huy", rate: 1.5 }));
+  const wavRatio = fastWav.samples.length / slowWav.samples.length;
+  assert.ok(wavRatio >= 0.42 && wavRatio <= 0.58, `Expected pure-TS WAV ratio ~0.5, got ${wavRatio}`);
+
+  // No-ffmpeg graceful fallback on POST /api/olympia/tts
+  const origFetch = globalThis.fetch;
+  const fakeGoogleMp3 = Buffer.from([0xff, 0xfb, 0x90, 0x64, ...new Array(80).fill(0x11)]);
+  try {
+    resetTtsCacheForTesting();
+    setFfmpegAvailabilityForTesting(false);
+    forceEdgeDegradedForTesting();
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          fakeGoogleMp3.buffer.slice(fakeGoogleMp3.byteOffset, fakeGoogleMp3.byteOffset + fakeGoogleMp3.byteLength),
+      }) as unknown as Response) as typeof fetch;
+
+    const kvRes = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Chào bạn", role: "khanh_vy", lang: "vi" }),
+      }) as any
+    );
+    const nhRes = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Chào bạn", role: "ngoc_huy", lang: "vi" }),
+      }) as any
+    );
+
+    assert.equal(kvRes.status, 200);
+    assert.equal(nhRes.status, 200);
+    assert.equal(kvRes.headers.get("X-TTS-Engine"), "google-translate-tts");
+    assert.equal(nhRes.headers.get("X-TTS-Engine"), "google-translate-tts");
+    assert.equal(kvRes.headers.get("X-TTS-Voice"), "google-vi-female-raw");
+    assert.equal(nhRes.headers.get("X-TTS-Voice"), "google-vi-male-raw");
+    assert.notEqual(kvRes.headers.get("X-TTS-Voice"), nhRes.headers.get("X-TTS-Voice"));
+    assert.ok((kvRes.headers.get("X-TTS-Fallback-Reason") || "").includes("ffmpeg-unavailable"));
+    const kvBytes = Buffer.from(await kvRes.arrayBuffer());
+    assert.equal(isValidMp3Buffer(kvBytes), true);
+  } finally {
+    globalThis.fetch = origFetch;
+    resetFfmpegAvailabilityForTesting();
+    resetTtsCacheForTesting();
+  }
+});
+
+test("TTS M1 R2/R3: Cache isolation by role/clone, POST diagnostic headers & GET capabilities", async () => {
+  const origFetch = globalThis.fetch;
+  const fakeMp3 = Buffer.from([0xff, 0xfb, 0x90, 0x64, ...new Array(96).fill(0x22)]);
+
+  try {
+    resetTtsCacheForTesting();
+    const getRes = await GET_TTS();
+    assert.equal(getRes.status, 200);
+    const getJson = (await getRes.json()) as {
+      status: string;
+      defaultRate: number;
+      capabilities: { dspAvailable: boolean; cloneProviders: string[] };
+    };
+    assert.equal(getJson.status, "ok");
+    assert.equal(getJson.defaultRate, 1.2);
+    assert.equal(typeof getJson.capabilities.dspAvailable, "boolean");
+    for (const p of ["local_profile", "elevenlabs", "fish_audio", "custom_http"]) {
+      assert.ok(getJson.capabilities.cloneProviders.includes(p));
+    }
+
+    setFfmpegAvailabilityForTesting(false);
+    forceEdgeDegradedForTesting();
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          fakeMp3.buffer.slice(fakeMp3.byteOffset, fakeMp3.byteOffset + fakeMp3.byteLength),
+      }) as unknown as Response) as typeof fetch;
+
+    const r1 = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Xin mời thí sinh", role: "khanh_vy", lang: "vi", rate: 1.2 }),
+      }) as any
+    );
+    assert.equal(r1.status, 200);
+    assert.equal(r1.headers.get("X-TTS-Cache"), "miss");
+    assert.equal(r1.headers.get("X-TTS-Role"), "khanh_vy");
+    assert.equal(r1.headers.get("X-TTS-Clone-Used"), "false");
+
+    const r2 = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Xin mời thí sinh", role: "ngoc_huy", lang: "vi", rate: 1.2 }),
+      }) as any
+    );
+    assert.equal(r2.status, 200);
+    assert.equal(r2.headers.get("X-TTS-Cache"), "miss");
+    assert.equal(r2.headers.get("X-TTS-Role"), "ngoc_huy");
+    assert.notEqual(r1.headers.get("X-TTS-Voice"), r2.headers.get("X-TTS-Voice"));
+
+    const r3 = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Xin mời thí sinh", role: "ngoc_huy", lang: "vi", rate: 1.2 }),
+      }) as any
+    );
+    assert.equal(r3.status, 200);
+    assert.equal(r3.headers.get("X-TTS-Cache"), "hit");
+
+    const r4 = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Xin mời thí sinh",
+          role: "ngoc_huy",
+          lang: "vi",
+          rate: 1.2,
+          clone: { enabled: true, provider: "elevenlabs", voiceId: "el_demo", apiKey: "sk_demo" },
+        }),
+      }) as any
+    );
+    assert.equal(r4.status, 200);
+    assert.equal(r4.headers.get("X-TTS-Cache"), "miss");
+    assert.equal(r4.headers.get("X-TTS-Clone-Used"), "true");
+  } finally {
+    globalThis.fetch = origFetch;
+    resetFfmpegAvailabilityForTesting();
+    resetTtsCacheForTesting();
+  }
+});
+
+test("TTS M1 R3-Core: voice clone providers, path-traversal rejection, auto-fallback & zero apiKey leakage", async () => {
+  // Path traversal checks
+  assert.equal(resolveSafeVoiceFile("../secret.wav"), null);
+  assert.equal(resolveSafeVoiceFile("/uploads/olympia-voices/../../etc/passwd"), null);
+  assert.equal(resolveSafeVoiceFile("sub/sample.wav"), null);
+  assert.equal(resolveSafeVoiceFile("bad\0name.wav"), null);
+  assert.equal(resolveSafeVoiceFile("profiles.json"), null);
+  assert.ok(resolveSafeVoiceFile("/uploads/olympia-voices/sample_01.wav")?.endsWith("sample_01.wav"));
+
+  const origFetch = globalThis.fetch;
+  const secretKey = "sk_super_secret_m1_token_999";
+  const validMp3Stub = Buffer.from([0xff, 0xfb, 0x90, 0x64, ...new Array(120).fill(0x33)]);
+  const validWavStub = createSineWavBuffer(180, 0.1, 16000);
+
+  try {
+    // 1. ElevenLabs success
+    resetTtsCacheForTesting();
+    let lastUrl = "";
+    let lastHeaders: Record<string, string> = {};
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      lastUrl = String(url);
+      lastHeaders = (init?.headers ?? {}) as Record<string, string>;
+      return {
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+      } as unknown as Response;
+    }) as typeof fetch;
+
+    const elRes = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Chào mừng quý vị",
+          role: "khanh_vy",
+          lang: "vi",
+          clone: { enabled: true, provider: "elevenlabs", voiceId: "el_v1", apiKey: secretKey },
+        }),
+      }) as any
+    );
+    assert.equal(elRes.status, 200);
+    assert.ok(lastUrl.includes("api.elevenlabs.io/v1/text-to-speech/el_v1"));
+    assert.equal(lastHeaders["xi-api-key"], secretKey);
+    assert.equal(elRes.headers.get("X-TTS-Clone-Used"), "true");
+    assert.equal(elRes.headers.get("X-TTS-Engine"), "voice-clone-elevenlabs");
+    assert.equal(elRes.headers.get("X-TTS-Voice"), "clone-el_v1");
+
+    // 2. Fish Audio & Custom HTTP success
+    resetTtsCacheForTesting();
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      lastUrl = String(url);
+      const outBuf = lastUrl.includes("fish.audio") ? validMp3Stub : validWavStub;
+      return {
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          outBuf.buffer.slice(outBuf.byteOffset, outBuf.byteOffset + outBuf.byteLength),
+      } as unknown as Response;
+    }) as typeof fetch;
+
+    const fishRes = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Chào mừng quý vị",
+          role: "ngoc_huy",
+          lang: "vi",
+          clone: { enabled: true, provider: "fish_audio", voiceId: "fish_v1", apiKey: secretKey },
+        }),
+      }) as any
+    );
+    assert.equal(fishRes.status, 200);
+    assert.ok(lastUrl.includes("api.fish.audio/v1/tts"));
+    assert.equal(fishRes.headers.get("X-TTS-Clone-Used"), "true");
+    assert.equal(fishRes.headers.get("X-TTS-Engine"), "voice-clone-fish_audio");
+
+    const customRes = await POST_TTS(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Custom endpoint test",
+          role: "ngoc_huy",
+          lang: "en",
+          clone: {
+            enabled: true,
+            provider: "custom_http",
+            endpointUrl: "https://clone.example.com/tts",
+            voiceId: "cust_1",
+            apiKey: secretKey,
+          },
+        }),
+      }) as any
+    );
+    assert.equal(customRes.status, 200);
+    assert.equal(customRes.headers.get("Content-Type"), "audio/wav");
+    assert.equal(customRes.headers.get("X-TTS-Clone-Used"), "true");
+    assert.equal(customRes.headers.get("X-TTS-Engine"), "voice-clone-custom_http");
+
+    // 3. local_profile success when ffmpeg is available
+    if (await isFfmpegDspAvailable()) {
+      resetTtsCacheForTesting();
+      forceEdgeDegradedForTesting();
+      const realMp3 = encodeWavToMp3InMemory(createSineWavBuffer(210, 0.4, 24000));
+      globalThis.fetch = (async () =>
+        ({
+          ok: true,
+          status: 200,
+          arrayBuffer: async () =>
+            realMp3.buffer.slice(realMp3.byteOffset, realMp3.byteOffset + realMp3.byteLength),
+        }) as unknown as Response) as typeof fetch;
+
+      const localRes = await POST_TTS(
+        new Request("http://localhost:3000/api/olympia/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: "Kiểm tra local profile",
+            role: "ngoc_huy",
+            lang: "vi",
+            clone: { enabled: true, provider: "local_profile", profileId: "prof_1", targetPitchHz: 135 },
+          }),
+        }) as any
+      );
+      assert.equal(localRes.status, 200);
+      assert.equal(localRes.headers.get("X-TTS-Clone-Used"), "true");
+      assert.equal(localRes.headers.get("X-TTS-Engine"), "voice-clone-local_profile");
+      assert.equal(localRes.headers.get("X-TTS-Voice"), "clone-prof_1");
+    }
+
+    // 4. Auto-fallback scenarios + zero apiKey leakage
+    const fallbackScenarios: Array<{
+      name: string;
+      clone: Record<string, unknown>;
+      fetchImpl: typeof fetch;
+    }> = [
+      {
+        name: "missing apiKey",
+        clone: { enabled: true, provider: "elevenlabs", voiceId: "el_v1" },
+        fetchImpl: (async () =>
+          ({
+            ok: true,
+            status: 200,
+            arrayBuffer: async () =>
+              validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+          }) as unknown as Response) as typeof fetch,
+      },
+      {
+        name: "upstream 500",
+        clone: { enabled: true, provider: "elevenlabs", voiceId: "el_v1", apiKey: secretKey },
+        fetchImpl: (async (url: string | URL | Request) => {
+          if (String(url).includes("elevenlabs.io")) {
+            return { ok: false, status: 500, arrayBuffer: async () => new ArrayBuffer(0) } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () =>
+              validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+          } as unknown as Response;
+        }) as typeof fetch,
+      },
+      {
+        name: "secret in thrown error + timeout",
+        clone: { enabled: true, provider: "fish_audio", voiceId: "fish_v1", apiKey: secretKey },
+        fetchImpl: (async (url: string | URL | Request) => {
+          if (String(url).includes("fish.audio")) {
+            throw new Error(`Request failed with Bearer ${secretKey}`);
+          }
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () =>
+              validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+          } as unknown as Response;
+        }) as typeof fetch,
+      },
+      {
+        name: "invalid clone audio buffer",
+        clone: { enabled: true, provider: "custom_http", endpointUrl: "https://clone.example.com/tts", apiKey: secretKey },
+        fetchImpl: (async (url: string | URL | Request) => {
+          if (String(url).includes("clone.example.com")) {
+            const bad = Buffer.from("not-valid-audio-payload-at-all");
+            return {
+              ok: true,
+              status: 200,
+              arrayBuffer: async () => bad.buffer.slice(bad.byteOffset, bad.byteOffset + bad.byteLength),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () =>
+              validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+          } as unknown as Response;
+        }) as typeof fetch,
+      },
+      {
+        name: "blocked metadata endpoint",
+        clone: { enabled: true, provider: "custom_http", endpointUrl: "http://169.254.169.254/latest/meta-data", apiKey: secretKey },
+        fetchImpl: (async () =>
+          ({
+            ok: true,
+            status: 200,
+            arrayBuffer: async () =>
+              validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+          }) as unknown as Response) as typeof fetch,
+      },
+      {
+        name: "local_profile traversal sampleUrl",
+        clone: { enabled: true, provider: "local_profile", sampleUrl: "/uploads/olympia-voices/../../etc/passwd" },
+        fetchImpl: (async () =>
+          ({
+            ok: true,
+            status: 200,
+            arrayBuffer: async () =>
+              validMp3Stub.buffer.slice(validMp3Stub.byteOffset, validMp3Stub.byteOffset + validMp3Stub.byteLength),
+          }) as unknown as Response) as typeof fetch,
+      },
+    ];
+
+    for (const sc of fallbackScenarios) {
+      resetTtsCacheForTesting();
+      setFfmpegAvailabilityForTesting(false);
+      forceEdgeDegradedForTesting();
+      globalThis.fetch = sc.fetchImpl;
+
+      const fbRes = await POST_TTS(
+        new Request("http://localhost:3000/api/olympia/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: `Fallback test ${sc.name}`,
+            role: "ngoc_huy",
+            lang: "vi",
+            clone: sc.clone,
+          }),
+        }) as any
+      );
+      assert.equal(fbRes.status, 200, `Scenario "${sc.name}" should auto-fallback with HTTP 200`);
+      assert.equal(fbRes.headers.get("X-TTS-Clone-Used"), "false", `Scenario "${sc.name}" cloneUsed must be false`);
+      assert.ok((fbRes.headers.get("X-TTS-Fallback-Reason") || "").length > 0, `Scenario "${sc.name}" must report fallback reason`);
+
+      const headerDump = JSON.stringify(Object.fromEntries(fbRes.headers.entries()));
+      assert.equal(headerDump.includes(secretKey), false, "apiKey must NEVER appear in response headers");
+      for (const cacheKey of getTtsCacheKeysForTesting()) {
+        assert.equal(cacheKey.includes(secretKey), false, "apiKey must NEVER appear in cache keys");
+      }
+    }
+  } finally {
+    globalThis.fetch = origFetch;
+    resetFfmpegAvailabilityForTesting();
+    resetTtsCacheForTesting();
+  }
+});
+
+test("TTS: formatFullOlympiaAnswer preserves full Khởi Động meaning while deduplicating redundant parenthetical aliases", () => {
+  const fullClauseAnswer =
+    "Đáp án: Vận tốc tăng 2 lần, động năng tăng 4 lần (vì động năng tỉ lệ thuận với bình phương vận tốc) (10 điểm)";
+  const formatted = formatFullOlympiaAnswer(fullClauseAnswer);
+  assert.ok(formatted.includes("Vận tốc tăng 2 lần"), "Must keep first clause");
+  assert.ok(formatted.includes("động năng tăng 4 lần"), "Must NOT truncate after comma");
+  assert.ok(
+    formatted.includes("vì động năng tỉ lệ thuận với bình phương vận tốc"),
+    "Must keep explanatory parenthetical text for complete meaning"
+  );
+  assert.equal(formatted.includes("10 điểm"), false, "Must strip point annotation");
+
+  // Redundant chemical formula alias should not stutter twice
+  assert.equal(formatFullOlympiaAnswer("Nước (H2O)"), "Nước");
+
+  // generateGradingCallout for round='khoiDong' uses full answer instead of 8-word truncation
+  const kdWrong = generateGradingCallout(false, fullClauseAnswer, {
+    round: "khoiDong",
+    deterministic: true,
+  });
+  assert.ok(kdWrong.text.includes("động năng tăng 4 lần"), "Khởi Động wrong callout must speak full answer");
+  assert.ok(kdWrong.text.includes("tỉ lệ thuận với bình phương vận tốc"));
+
+  // Non-Khởi Động rounds retain concise summarizeOlympiaAnswer behavior
+  const vcnvWrong = generateGradingCallout(false, "Đây là một câu trả lời rất dài và giải thích nhiều, vế phụ đằng sau", {
+    round: "vcnv",
+    deterministic: true,
+  });
+  assert.equal(vcnvWrong.text.includes("vế phụ đằng sau"), false, "Non-Khởi Động callout remains concise");
+});
+
+test("Olympia Audio & PlayerPad: O26-O27 open_question cache-busts via olympia-audio-v2 and buzzer countdown uses integer seconds only", async () => {
+  const {
+    OLYMPIA_AUDIO_CACHE_NAME,
+    OLYMPIA_AUDIO_ASSET_VERSION,
+    withOlympiaAudioVersion,
+    isPriorityInstantCue,
+  } = await import("../../components/olympia/hooks");
+  const {
+    getIntegerCountdownSeconds,
+    formatBuzzerUnlockCountdownLabel,
+  } = await import("../../components/olympia/PlayerPad");
+
+  assert.equal(OLYMPIA_AUDIO_CACHE_NAME, "olympia-audio-v2");
+  const versioned = withOlympiaAudioVersion("/olympia-audio/O26/1_KhoiDong/open_question.mp3");
+  assert.equal(versioned, `/olympia-audio/O26/1_KhoiDong/open_question.mp3?v=${OLYMPIA_AUDIO_ASSET_VERSION}`);
+  assert.equal(withOlympiaAudioVersion(versioned), versioned, "Must not double-append ?v=");
+  assert.equal(isPriorityInstantCue(withOlympiaAudioVersion("/olympia-audio/O26/1_KhoiDong/bell_ring.mp3")), true);
+  assert.equal(isPriorityInstantCue(versioned), false);
+
+  const hooksSrc = fs.readFileSync(new URL("../../components/olympia/hooks.ts", import.meta.url), "utf8");
+  const drawerSrc = fs.readFileSync(
+    new URL("../../components/olympia/OlympiaAudioManagerDrawer.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.ok(hooksSrc.includes('caches.delete("olympia-audio-v1")'), "hooks.ts must evict stale olympia-audio-v1 CacheStorage");
+  assert.ok(drawerSrc.includes("withOlympiaAudioVersion"), "Audio Manager drawer must version audio URLs");
+
+  // Integer buzzer unlock countdown checks (no decimals, reduced re-render contract)
+  assert.equal(getIntegerCountdownSeconds(5000), 5);
+  assert.equal(getIntegerCountdownSeconds(4100), 5);
+  assert.equal(getIntegerCountdownSeconds(4000), 4);
+  assert.equal(getIntegerCountdownSeconds(100), 1);
+  assert.equal(getIntegerCountdownSeconds(0), 0);
+  assert.equal(formatBuzzerUnlockCountdownLabel(4100), "MỞ SAU 5s");
+  assert.equal(formatBuzzerUnlockCountdownLabel(1000), "MỞ SAU 1s");
+  assert.equal(formatBuzzerUnlockCountdownLabel(0), "BẤM CHUÔNG");
+
+  const padSrc = fs.readFileSync(new URL("../../components/olympia/PlayerPad.tsx", import.meta.url), "utf8");
+  assert.equal(padSrc.includes("unlockRemainingMs / 1000).toFixed(1)"), false, "PlayerPad must not show decimal seconds for buzzer unlock");
+  assert.equal(padSrc.includes("}, 200)"), false, "PlayerPad must not poll every 200ms during unlock countdown");
 });

@@ -582,6 +582,38 @@ const BOUNDARY_CONJUNCTIONS = new Set([
 ]);
 
 /**
+ * Full Answer Normalization for Khởi Động:
+ * - Preserves full multi-clause meaning (> 8 words, commas, semicolons, meaningful parentheticals)
+ * - Strips markdown, leading "Đáp án:" / "Kết quả:" labels, and score/letter-count tags like "(10 điểm)"
+ * - Converts meaningful parentheticals `(text)` into comma-joined phrases so TTS reads the complete essence
+ */
+export function formatFullOlympiaAnswer(rawAnswer: string): string {
+  if (!rawAnswer) return "";
+  let a = rawAnswer.trim();
+
+  a = a.replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").trim();
+  a = a.replace(/^(đáp án|kết quả|từ khóa|câu trả lời)(\s+(đúng\s+)?là)?\s*[:=]?\s*/i, "").trim();
+  a = a.replace(/\(\s*\d+\s*(điểm|chữ cái|ký tự|giây)\s*\)/gi, "").trim();
+
+  // Preserve explanatory/meaningful parentheticals cleanly as spoken comma clauses,
+  // skipping parenthetical aliases whose normalized speech repeats the immediately preceding phrase (e.g. "Nước (H2O)")
+  a = a.replace(/\s*\(([^()]+)\)\s*/g, (_match, inner: string, offset: number, fullStr: string) => {
+    const innerText = String(inner || "").trim();
+    if (!innerText) return " ";
+    const normInner = normalizeVietnameseTTS(innerText).toLowerCase();
+    const before = String(fullStr).slice(0, offset).trim();
+    const normBefore = normalizeVietnameseTTS(before).toLowerCase();
+    if (normInner && normBefore.endsWith(normInner)) {
+      return " ";
+    }
+    return `, ${innerText} `;
+  });
+  a = a.replace(/\s+/g, " ").replace(/,\s*,+/g, ",").replace(/^,\s*|[,;:\-–—]+$/g, "").trim();
+
+  return normalizeVietnameseTTS(a);
+}
+
+/**
  * Summarize raw database answer for concise spoken vocalization:
  * - Strips answer prefixes ("Đáp án:", "Kết quả:")
  * - Strips letter/point count annotations and clarifying parentheticals
@@ -3465,7 +3497,10 @@ export function generateGradingCallout(
   rng: () => number = Math.random
 ): GradingCalloutResult {
   const custom = activeCustomTtsScripts;
-  const cleanAnswer = answer ? summarizeOlympiaAnswer(answer) || answer.trim() : "";
+  const isKhoiDong = options?.round === "khoiDong";
+  const cleanAnswer = answer
+    ? (isKhoiDong ? formatFullOlympiaAnswer(answer) : summarizeOlympiaAnswer(answer)) || answer.trim()
+    : "";
   const resolvedRole = resolveMCRole({ ...options, segment: "result" });
 
   if (isCorrect) {

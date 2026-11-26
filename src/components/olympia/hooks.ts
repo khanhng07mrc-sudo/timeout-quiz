@@ -12,9 +12,20 @@ import {
   type ChannelRoutingGraph,
 } from "@/lib/olympia/audio-channel";
 
+export const OLYMPIA_AUDIO_CACHE_NAME = "olympia-audio-v2";
+export const OLYMPIA_AUDIO_ASSET_VERSION = "20261126b";
+
+export function withOlympiaAudioVersion(url: string): string {
+  if (!url || !url.startsWith("/olympia-audio/")) return url;
+  if (url.includes("?v=")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}v=${OLYMPIA_AUDIO_ASSET_VERSION}`;
+}
+
 export function isPriorityInstantCue(sound?: string): boolean {
   if (!sound) return false;
-  return /(?:^|\/)(?:bell_ring|correct|wrong|hope_star|star_of_hope)(?:\.mp3)?$/.test(sound);
+  const clean = sound.split("?")[0];
+  return /(?:^|\/)(?:bell_ring|correct|wrong|hope_star|star_of_hope)(?:\.mp3)?$/.test(clean);
 }
 
 type FastCueListener = (cue: NonNullable<OlympiaState["cue"]>, state: OlympiaState) => void;
@@ -532,12 +543,15 @@ export function getPrewarmBuzzerUrls(season: string = "O26"): string[] {
       `/olympia-audio/${effectiveSeason}/3_TangToc/tick_40s.mp3`
     );
   }
-  return Array.from(new Set(rawList));
+  return Array.from(new Set(rawList.map(withOlympiaAudioVersion)));
 }
+
+let staleAudioCachePruned = false;
 
 function prewarmSfx(url: string): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
-  const existing = prewarmInFlight.get(url);
+  const versionedUrl = withOlympiaAudioVersion(url);
+  const existing = prewarmInFlight.get(versionedUrl);
   if (existing) return existing;
 
   const task = (async () => {
@@ -547,8 +561,12 @@ function prewarmSfx(url: string): Promise<void> {
 
       if ("caches" in window) {
         try {
-          cache = await caches.open("olympia-audio-v1");
-          const matched = await cache.match(url);
+          if (!staleAudioCachePruned) {
+            staleAudioCachePruned = true;
+            void caches.delete("olympia-audio-v1").catch(() => {});
+          }
+          cache = await caches.open(OLYMPIA_AUDIO_CACHE_NAME);
+          const matched = await cache.match(versionedUrl);
           if (matched && matched.ok) {
             response = matched;
           }
@@ -556,46 +574,46 @@ function prewarmSfx(url: string): Promise<void> {
       }
 
       if (!response) {
-        const netRes = await fetch(url);
+        const netRes = await fetch(versionedUrl);
         if (!netRes.ok) return;
         if (cache) {
           try {
-            await cache.put(url, netRes.clone());
+            await cache.put(versionedUrl, netRes.clone());
           } catch {}
         }
         response = netRes;
       }
 
-      if (isPriorityInstantCue(url) && !ramSfxBufferCache.has(url) && !ramSfxFetchPending.has(url)) {
-        ramSfxFetchPending.add(url);
+      if (isPriorityInstantCue(versionedUrl) && !ramSfxBufferCache.has(versionedUrl) && !ramSfxFetchPending.has(versionedUrl)) {
+        ramSfxFetchPending.add(versionedUrl);
         try {
           const buf = await response.arrayBuffer();
           const ctx = getSharedDecodeAudioContext();
           if (ctx) {
             const decoded = await ctx.decodeAudioData(buf);
             if (decoded) {
-              ramSfxBufferCache.set(url, decoded);
+              ramSfxBufferCache.set(versionedUrl, decoded);
             }
           }
         } catch {} finally {
-          ramSfxFetchPending.delete(url);
+          ramSfxFetchPending.delete(versionedUrl);
         }
       }
 
-      if (!sfxAudioCache.has(url)) {
+      if (!sfxAudioCache.has(versionedUrl)) {
         try {
-          const a = new Audio(url);
+          const a = new Audio(versionedUrl);
           a.preload = "auto";
-          sfxAudioCache.set(url, a);
+          sfxAudioCache.set(versionedUrl, a);
         } catch {}
       }
-      prewarmedUrlSet.add(url);
+      prewarmedUrlSet.add(versionedUrl);
     } catch {} finally {
-      prewarmInFlight.delete(url);
+      prewarmInFlight.delete(versionedUrl);
     }
   })();
 
-  prewarmInFlight.set(url, task);
+  prewarmInFlight.set(versionedUrl, task);
   return task;
 }
 
@@ -1313,8 +1331,8 @@ export function useOlympiaAudio(
       }
 
       const season = resolvedSeason;
-      const primaryUrl = `/olympia-audio/${season}/${cue.sound}.mp3`;
-      const fallbackUrl = `/olympia-audio/O26/${cue.sound}.mp3`;
+      const primaryUrl = withOlympiaAudioVersion(`/olympia-audio/${season}/${cue.sound}.mp3`);
+      const fallbackUrl = withOlympiaAudioVersion(`/olympia-audio/O26/${cue.sound}.mp3`);
       const activePan =
         (typeof window !== "undefined"
           ? (localStorage.getItem("olympia_audio_channel") as any)
@@ -1486,11 +1504,11 @@ export function useOlympiaAudio(
       // Always load the base stereo file so channel switches never restart playback.
       let soundUrl: string;
       if (cue.sound.startsWith("/") || cue.sound.startsWith("http")) {
-        soundUrl = cue.sound;
+        soundUrl = withOlympiaAudioVersion(cue.sound);
       } else if (/^O(?:13-21|22|23|24-25|26)\//.test(cue.sound)) {
-        soundUrl = `/olympia-audio/${cue.sound.replace(/\.mp3$/, "")}.mp3`;
+        soundUrl = withOlympiaAudioVersion(`/olympia-audio/${cue.sound.replace(/\.mp3$/, "")}.mp3`);
       } else {
-        soundUrl = `/olympia-audio/${s}/${cue.sound.replace(/\.mp3$/, "")}.mp3`;
+        soundUrl = withOlympiaAudioVersion(`/olympia-audio/${s}/${cue.sound.replace(/\.mp3$/, "")}.mp3`);
       }
 
       let a: HTMLAudioElement;
@@ -1526,7 +1544,7 @@ export function useOlympiaAudio(
           play("O26", false);
         } else if (/tick_(?:10|40)s/.test(cue.sound)) {
           const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
-          const alt = new Audio(`/olympia-audio/${s}/${altSound}.mp3`);
+          const alt = new Audio(withOlympiaAudioVersion(`/olympia-audio/${s}/${altSound}.mp3`));
           registerActive(alt);
           if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
           else {
@@ -1552,7 +1570,7 @@ export function useOlympiaAudio(
       if (cue.bgmSound) {
         const bgmTrack = cue.bgmSound;
         // Always load base stereo file; channel routing via WebAudio panner only
-        const bgmUrl = `/olympia-audio/${season}/${bgmTrack}.mp3`;
+        const bgmUrl = withOlympiaAudioVersion(`/olympia-audio/${season}/${bgmTrack}.mp3`);
 
         const bgmAudio = new Audio(bgmUrl);
         bgmAudio.loop = isLoopingBgm(bgmTrack);

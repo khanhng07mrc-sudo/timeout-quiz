@@ -438,6 +438,7 @@ interface CameraControllerProps {
   ptzZoom?: number;
   ptzPanX?: number;
   ptzPanY?: number;
+  livePtzRef?: React.MutableRefObject<Record<number, { yaw: number; pitch: number; zoom: number; panX: number; panY: number }>>;
   introStartedAt?: number | null;
   roundIntroDoneAt?: number | null;
   kdStartCooldownUntil?: number | null;
@@ -516,6 +517,7 @@ export function CameraController({
   ptzZoom = 1.0,
   ptzPanX = 0,
   ptzPanY = 0,
+  livePtzRef,
   introStartedAt = null,
   roundIntroDoneAt = null,
   kdStartCooldownUntil = null,
@@ -632,6 +634,13 @@ export function CameraController({
   }, [camAngle, activeSeat, transitionMode, targetPos, targetLookAt, targetPreset.fov, isPostIntroStandby, pushInProgress, camera, effectiveTotalSeats, isContestantCam, isManualCamera, kdStartCooldownUntil]);
 
   useFrame((_, delta) => {
+    const livePtz = livePtzRef?.current?.[camAngle];
+    const effYaw = livePtz ? livePtz.yaw : ptzYaw;
+    const effPitch = livePtz ? livePtz.pitch : ptzPitch;
+    const effZoom = livePtz ? livePtz.zoom : ptzZoom;
+    const effPanX = livePtz ? livePtz.panX : ptzPanX;
+    const effPanY = livePtz ? livePtz.panY : ptzPanY;
+
     // Smooth push-in zoom:
     // Track Khởi Động active question and cleanly manage zoom-in lifecycle:
     const isKdActive = qIdx != null && qIdx >= 0 && Boolean(questionRevealed);
@@ -831,7 +840,7 @@ export function CameraController({
       }
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
-      const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
+      const opticalFov = calculatedFov / Math.max(0.25, effZoom);
       // Optical zoom: For CAM 18 (Score Summary) and CAM 31 (Podium Close), zoom from 0.75x (wide) to 1.25x (close)
       const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
       const isDynamicZoomCam = camAngle === 18 || camAngle === 31;
@@ -983,18 +992,18 @@ export function CameraController({
     _finalPos.copy(currentPos.current);
     _finalTarget.copy(currentTarget.current);
 
-    const hasOrbit = ptzYaw !== 0 || ptzPitch !== 0 || ptzZoom !== 1.0;
-    const hasPan = ptzPanX !== 0 || ptzPanY !== 0;
+    const hasOrbit = effYaw !== 0 || effPitch !== 0 || effZoom !== 1.0;
+    const hasPan = effPanX !== 0 || effPanY !== 0;
 
     if (hasOrbit) {
       _offset.copy(_finalPos).sub(currentTarget.current);
       // Orbit around target
-      _offset.applyAxisAngle(_axisY, ptzYaw);
-      _right.copy(_axisX).applyAxisAngle(_axisY, ptzYaw);
-      _offset.applyAxisAngle(_right, ptzPitch);
+      _offset.applyAxisAngle(_axisY, effYaw);
+      _right.copy(_axisX).applyAxisAngle(_axisY, effYaw);
+      _offset.applyAxisAngle(_right, effPitch);
 
       // Apply Zoom scaling (FOV zoom or distance reduction)
-      _offset.multiplyScalar(1.0 / ptzZoom);
+      _offset.multiplyScalar(1.0 / effZoom);
       _finalPos.copy(currentTarget.current).add(_offset);
     }
 
@@ -1003,8 +1012,8 @@ export function CameraController({
       _panRight.crossVectors(_panForward, _axisY).normalize();
       _panUp.crossVectors(_panRight, _panForward).normalize();
       _panOffset.set(0, 0, 0)
-        .addScaledVector(_panRight, ptzPanX)
-        .addScaledVector(_panUp, ptzPanY);
+        .addScaledVector(_panRight, effPanX)
+        .addScaledVector(_panUp, effPanY);
       _finalPos.add(_panOffset);
       _finalTarget.add(_panOffset);
     }
@@ -1012,8 +1021,8 @@ export function CameraController({
     camera.position.copy(_finalPos);
     camera.lookAt(_finalTarget);
 
-    if (ptzZoom !== lastZoomRef.current) {
-      lastZoomRef.current = ptzZoom;
+    if (effZoom !== lastZoomRef.current) {
+      lastZoomRef.current = effZoom;
       camera.updateProjectionMatrix();
     }
   });

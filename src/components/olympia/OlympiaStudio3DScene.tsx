@@ -180,6 +180,13 @@ export function OlympiaStudio3DScene({
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const touchStartDistRef = useRef<number>(0);
   const touchStartCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const livePtzRef = useRef<Record<number, StudioCameraPTZ>>({});
+  const effectiveCamRef = useRef<number>(effectiveCam);
+  effectiveCamRef.current = effectiveCam;
+  const serverPtzRef = useRef<Record<number, StudioCameraPTZ> | undefined>(state?.studioCameraPtz);
+  serverPtzRef.current = state?.studioCameraPtz;
+  const lastPtzEmitAtRef = useRef<number>(0);
+  const ptzFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (activeCamera && activeCamera !== internalCam) {
@@ -189,9 +196,18 @@ export function OlympiaStudio3DScene({
 
   useEffect(() => {
     if (!state?.studioCameraPtz) {
+      livePtzRef.current = {};
       setPtzPerCam({});
+    } else if (!isDraggingRef.current) {
+      livePtzRef.current = { ...state.studioCameraPtz, ...livePtzRef.current };
     }
   }, [state?.studioCameraPtz]);
+
+  useEffect(() => {
+    return () => {
+      if (ptzFlushTimerRef.current) clearTimeout(ptzFlushTimerRef.current);
+    };
+  }, []);
 
   const handleSelectCam = (camId: number) => {
     setInternalCam(camId);
@@ -202,32 +218,58 @@ export function OlympiaStudio3DScene({
     setQuality((prev) => (prev === "HIGH" ? "MEDIUM" : prev === "MEDIUM" ? "LIGHT" : "HIGH"));
   };
 
+  const flushPTZToStateAndServer = useCallback((cam: number, ptz: StudioCameraPTZ) => {
+    lastPtzEmitAtRef.current = performance.now();
+    setPtzPerCam((prevMap) => ({ ...prevMap, [cam]: ptz }));
+    if (typeof window !== "undefined") {
+      (window as any).__OLYMPIA_CALL__?.("studio:camera:ptz", {
+        cam,
+        ptz,
+      });
+    }
+  }, []);
+
   const updateCurrentPTZ = useCallback(
     (updater: (prev: StudioCameraPTZ) => StudioCameraPTZ) => {
-      setPtzPerCam((prevMap) => {
-        const prev = state?.studioCameraPtz?.[effectiveCam] ?? prevMap[effectiveCam] ?? DEFAULT_PTZ;
-        const next = updater(prev);
-        if (typeof window !== "undefined") {
-          (window as any).__OLYMPIA_CALL__?.("studio:camera:ptz", {
-            cam: effectiveCam,
-            ptz: next,
-          });
+      const cam = effectiveCamRef.current;
+      const prev = livePtzRef.current[cam] ?? serverPtzRef.current?.[cam] ?? DEFAULT_PTZ;
+      const next = updater(prev);
+      livePtzRef.current[cam] = next;
+
+      const now = performance.now();
+      if (now - lastPtzEmitAtRef.current >= 120) {
+        if (ptzFlushTimerRef.current) {
+          clearTimeout(ptzFlushTimerRef.current);
+          ptzFlushTimerRef.current = null;
         }
-        return { ...prevMap, [effectiveCam]: next };
-      });
+        flushPTZToStateAndServer(cam, next);
+      } else {
+        if (ptzFlushTimerRef.current) clearTimeout(ptzFlushTimerRef.current);
+        ptzFlushTimerRef.current = setTimeout(() => {
+          ptzFlushTimerRef.current = null;
+          const latest = livePtzRef.current[cam];
+          if (latest) flushPTZToStateAndServer(cam, latest);
+        }, 140);
+      }
     },
-    [effectiveCam, state?.studioCameraPtz]
+    [flushPTZToStateAndServer]
   );
 
   const resetPTZ = useCallback(
     (all?: boolean) => {
+      if (ptzFlushTimerRef.current) {
+        clearTimeout(ptzFlushTimerRef.current);
+        ptzFlushTimerRef.current = null;
+      }
       if (all) {
+        livePtzRef.current = {};
         setPtzPerCam({});
         if (typeof window !== "undefined") {
           (window as any).__OLYMPIA_CALL__?.("studio:camera:reset", { all: true });
           (window as any).__OLYMPIA_CALL__?.("studio:camera:auto");
         }
       } else {
+        delete livePtzRef.current[effectiveCam];
         setPtzPerCam((prev) => {
           const next = { ...prev };
           delete next[effectiveCam];
@@ -262,7 +304,8 @@ export function OlympiaStudio3DScene({
       lastMousePosRef.current = { x: e.clientX, y: e.clientY };
 
       if (dragModeRef.current === "pan") {
-        const panFactor = 0.005 * (1.0 / ptzZoom);
+        const curZoom = livePtzRef.current[effectiveCamRef.current]?.zoom ?? 1.0;
+        const panFactor = 0.005 * (1.0 / curZoom);
         updateCurrentPTZ((prev) => ({
           ...prev,
           panX: prev.panX - dx * panFactor,
@@ -278,7 +321,17 @@ export function OlympiaStudio3DScene({
     };
 
     const handleGlobalPointerUp = () => {
+      if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
+      const cam = effectiveCamRef.current;
+      const latest = livePtzRef.current[cam];
+      if (latest) {
+        if (ptzFlushTimerRef.current) {
+          clearTimeout(ptzFlushTimerRef.current);
+          ptzFlushTimerRef.current = null;
+        }
+        flushPTZToStateAndServer(cam, latest);
+      }
     };
 
     window.addEventListener("pointermove", handleGlobalPointerMove, { passive: true });
@@ -287,34 +340,7 @@ export function OlympiaStudio3DScene({
       window.removeEventListener("pointermove", handleGlobalPointerMove);
       window.removeEventListener("pointerup", handleGlobalPointerUp);
     };
-  }, [allowPTZ, ptzZoom, updateCurrentPTZ]);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!allowPTZ || !isDraggingRef.current) return;
-      const dx = e.clientX - lastMousePosRef.current.x;
-      const dy = e.clientY - lastMousePosRef.current.y;
-      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-
-      if (dragModeRef.current === "pan") {
-        // Pan horizontally & vertically scaled inversely with zoom
-        const panFactor = 0.005 * (1.0 / ptzZoom);
-        updateCurrentPTZ((prev) => ({
-          ...prev,
-          panX: prev.panX - dx * panFactor,
-          panY: prev.panY + dy * panFactor,
-        }));
-      } else {
-        // Orbit rotate yaw & pitch
-        updateCurrentPTZ((prev) => ({
-          ...prev,
-          yaw: prev.yaw - dx * 0.0035,
-          pitch: Math.max(-0.65, Math.min(0.65, prev.pitch - dy * 0.0035)),
-        }));
-      }
-    },
-    [allowPTZ, ptzZoom, updateCurrentPTZ]
-  );
+  }, [allowPTZ, updateCurrentPTZ, flushPTZToStateAndServer]);
 
   const handleMouseUp = useCallback(() => {
     isDraggingRef.current = false;
@@ -414,7 +440,6 @@ export function OlympiaStudio3DScene({
       className={`relative w-full h-full overflow-hidden select-none bg-[#020510] pointer-events-auto ${className}`}
       style={{ touchAction: "none" }}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
@@ -456,6 +481,7 @@ export function OlympiaStudio3DScene({
           ptzZoom={ptzZoom}
           ptzPanX={ptzPanX}
           ptzPanY={ptzPanY}
+          livePtzRef={livePtzRef}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           roundIntroDoneAt={state?.roundIntroDoneAt ?? null}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}

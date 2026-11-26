@@ -48,6 +48,12 @@ export function createChannelRoutingGraph(
   destination?: AudioNode
 ): ChannelRoutingGraph {
   const splitter = ctx.createChannelSplitter(2);
+  // Ensure 1-channel mono sources (e.g., Edge TTS MP3) upmix to both L & R before splitting
+  try {
+    splitter.channelCount = 2;
+    splitter.channelCountMode = "explicit";
+    splitter.channelInterpretation = "speakers";
+  } catch {}
   const merger = ctx.createChannelMerger(2);
   const gainL_to_L = ctx.createGain();
   const gainL_to_R = ctx.createGain();

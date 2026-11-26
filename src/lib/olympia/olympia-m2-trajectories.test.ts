@@ -568,7 +568,7 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     // 4. Khởi Động holds MC intro 2.8s and segmentDone 2.5s
     const camSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/useOlympiaCamera.ts"), "utf-8");
     assert.ok(camSrc.includes("introElapsed < 2.8"), "Khởi Động intro holds MC zoom-in for 2.8s");
-    assert.ok(camSrc.includes("segDoneElapsed < 3.0"), "Khởi Động segmentDone holds contestant 0.75x->1.25x zoom for 3.0s");
+    assert.ok(camSrc.includes("segDoneElapsed < 1.5"), "Khởi Động segmentDone zooms 0.75x->1.25x for 1.5s then cuts to CAM 10 -> CAM 1");
   });
 
   console.log("\n================================================================================");

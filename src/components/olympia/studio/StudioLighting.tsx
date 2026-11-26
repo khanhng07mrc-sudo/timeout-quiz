@@ -32,6 +32,7 @@ interface StudioLightingProps {
   isEntranceActive?: boolean;
   kdStartCooldownUntil?: number | null;
   currentRound?: string | null;
+  ptzYaw?: number;
 }
 
 const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
@@ -2715,6 +2716,8 @@ export function AudienceAmphitheater({
   liveFactor = 1.0,
   camAngle = 1,
   isEntranceActive = false,
+  introStartedAt = null,
+  ptzYaw = 0,
 }: {
   audienceFadeProgress?: number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
@@ -2722,25 +2725,23 @@ export function AudienceAmphitheater({
   camAngle?: number;
   isEntranceActive?: boolean;
   introStartedAt?: number | null;
+  ptzYaw?: number;
 }) {
   const rowCount = 7;
   const seatsPerRow = 16; // 8 on Left wing, 8 on Right wing, tightly packed shoulder-to-shoulder (Image 2)
   const stepCount = 14;   // 14 steps along the central aisle
 
   // Camera angles facing audience / khán đài / entrance portal:
-  // CAM 11: Cận cảnh cửa trái chào sân
-  // CAM 12: Cận cảnh cửa phải chào sân
-  // CAM 13: Đứng yên bục giữa tạo dáng nhìn ra khán đài
-  // CAM 19: Phía trước bám theo bước xuống cầu thang
-  // CAM 20: Khán đài toàn cảnh
-  // When camera faces stage/podiums, we skip the 672 audience meshes, cutting ~670 draw calls per frame
+  // CAM 11, 12, 13, 19, 20, Entrance, Opening Intro sweep (introStartedAt), or manual PTZ orbit
   const isAudienceFacing =
     camAngle === 11 ||
     camAngle === 12 ||
     camAngle === 13 ||
     camAngle === 19 ||
     camAngle === 20 ||
-    isEntranceActive;
+    isEntranceActive ||
+    Boolean(introStartedAt) ||
+    Math.abs(ptzYaw) > 0.05;
 
   const [aiBackdropTex, setAiBackdropTex] = React.useState<THREE.Texture | null>(null);
   const [quizorraLogoTex, setQuizorraLogoTex] = React.useState<THREE.Texture | null>(null);
@@ -3713,6 +3714,7 @@ export function StudioLighting({
   isEntranceActive = false,
   kdStartCooldownUntil = null,
   currentRound = null,
+  ptzYaw = 0,
 }: StudioLightingProps) {
   const { scene } = useThree();
   if (typeof window !== "undefined") {
@@ -4158,6 +4160,7 @@ export function StudioLighting({
         camAngle={camAngle}
         isEntranceActive={isEntranceActive}
         introStartedAt={introStartedAt}
+        ptzYaw={ptzYaw}
       />
       <BroadcastCameras
         camAngle={camAngle}

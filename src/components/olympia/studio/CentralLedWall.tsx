@@ -1563,6 +1563,49 @@ export function resolveRightScreenDisplayMode(
     return "scoreboard";
   }
   if (state?.currentRound) {
+    // Initially when entering any round, and between turns in Khởi Động / Tăng Tốc / Về Đích,
+    // default the Right LED Screen to the Round Title card instead of immediately jumping to roundGraphics.
+    if (state.currentRound === "khoiDong") {
+      const kd = state.khoiDong;
+      if (
+        !kd ||
+        !kd.started ||
+        kd.phase === "intro" ||
+        kd.phase === "idle" ||
+        kd.phase === "segmentDone" ||
+        ((kd.qIdx ?? -1) < 0 && !kd.questionRevealed)
+      ) {
+        return "roundTitle";
+      }
+    } else if (state.currentRound === "vcnv") {
+      const v = state.vcnv;
+      const anyRowTouched = Boolean(v?.rows?.some((r) => r.opened || r.wrong));
+      if (
+        !v ||
+        (v.phase === "grid" &&
+          (v.currentRow ?? -1) < 0 &&
+          !v.answersRevealed &&
+          (!v.bells || v.bells.length === 0) &&
+          !anyRowTouched)
+      ) {
+        return "roundTitle";
+      }
+    } else if (state.currentRound === "tangToc") {
+      const tt = state.tangToc;
+      if (!tt || tt.phase === "idle") {
+        return "roundTitle";
+      }
+    } else if (state.currentRound === "veDich") {
+      const vd = state.veDich;
+      if (!vd || vd.phase === "idle" || vd.phase === "seatDone") {
+        return "roundTitle";
+      }
+    } else if (state.currentRound === "cauHoiPhu") {
+      const chp = state.cauHoiPhu;
+      if (!chp || chp.phase === "idle" || chp.qIdx < 0) {
+        return "roundTitle";
+      }
+    }
     return "roundGraphics";
   }
   return "roundTitle";

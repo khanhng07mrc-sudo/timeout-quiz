@@ -794,23 +794,17 @@ export function useOlympiaCameraState(
       }
 
       // 3.6. R4 — Khi nhấn Kết thúc lượt (lượt riêng O13–O21, Khởi Động Riêng O24+):
-      // Lượt Riêng (isSolo): Zoom cinematic 0.75x → 1.25x (CAM 18) trong 3.0s, ẩn overlay 2D,
-      //   sau 3.0s CUT sang toàn cảnh CAM 1.
-      // Lượt Chung: Giữ toàn cảnh bục thí sinh CAM 10 rồi CUT CAM 1 ngay.
+      // Lượt Riêng (isSolo):
+      // - 0.0s -> 1.5s: Zoom cinematic 0.75x → 1.25x (CAM 18) ở bục thí sinh trong 1.5s đầu
+      // - 1.5s -> 1.75s: CUT ngay về cảnh toàn bộ bục thí sinh (CAM 10)
+      // - >= 1.75s: Dốc mượt (MORPH) từ CAM 10 về toàn cảnh trường quay (CAM 1)
+      // Lượt Chung: Giữ toàn cảnh bục thí sinh CAM 10 rồi CUT CAM 1.
       if (kd.phase === "segmentDone") {
+        const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
         if (isSolo) {
-          const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-          if (segDoneElapsed < 3.0) {
-            // Phase 1 (0.0s -> 0.6s): Switch to wide_with_podium framing at 0.75x (push=0), hold
-            // Phase 2 (0.6s -> 2.4s): Smooth ease-in zoom from 0.75x to 1.25x (push: 0 -> 1.0)
-            // Phase 3 (2.4s -> 3.0s): Hold at 1.25x
-            const holdEnd = 0.6;
-            const zoomEnd = 2.4;
-            let pushIn = 0.0;
-            if (segDoneElapsed > holdEnd) {
-              const t = Math.min(1.0, (segDoneElapsed - holdEnd) / (zoomEnd - holdEnd));
-              pushIn = t * t * (3 - 2 * t); // smoothstep 0 -> 1.0
-            }
+          if (segDoneElapsed < 1.5) {
+            const t = Math.min(1.0, segDoneElapsed / 1.5);
+            const pushIn = t * t * (3 - 2 * t); // smoothstep 0 -> 1.0 (0.75x -> 1.25x) in 1.5s
             return {
               camAngle: 18, // Preset 18: wide_with_podium (0.75x -> 1.25x showing contestant + podium scoreboard)
               transitionMode: "CUT",
@@ -818,9 +812,22 @@ export function useOlympiaCameraState(
               pushInProgress: pushIn,
             };
           }
+          if (segDoneElapsed < 1.75) {
+            return {
+              camAngle: 10, // Cắt ngay về toàn bộ bục thí sinh
+              transitionMode: "CUT",
+              isOverlayHidden: false,
+              pushInProgress: 0,
+            };
+          }
+          return {
+            camAngle: 1, // Dốc mượt từ toàn bộ bục thí sinh (CAM 10) về toàn cảnh trường quay (CAM 1)
+            transitionMode: "MORPH",
+            isOverlayHidden: false,
+            pushInProgress: 0,
+          };
         } else {
           // Lượt Chung: giữ toàn cảnh bục thí sinh ngắn (< 1.0s) rồi CUT CAM 1
-          const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
           if (segDoneElapsed < 1.0) {
             return {
               camAngle: 10,

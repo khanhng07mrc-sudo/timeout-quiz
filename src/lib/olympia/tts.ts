@@ -2798,7 +2798,7 @@ async function playAudioBufferWithHtmlAudio(
     audio.volume = getOlympiaTtsVolume();
     activeHtmlAudioRef = audio;
     const ctx = getOrCreateAudioContext();
-    if (ctx && typeof ctx.createMediaElementSource === "function") {
+    if (ctx && ctx.state === "running" && typeof ctx.createMediaElementSource === "function") {
       let mediaSource = ttsHtmlMediaSourceMap.get(audio);
       if (!mediaSource) {
         mediaSource = ctx.createMediaElementSource(audio);

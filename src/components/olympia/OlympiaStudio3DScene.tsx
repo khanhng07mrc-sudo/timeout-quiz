@@ -486,6 +486,7 @@ export function OlympiaStudio3DScene({
           serverNow={serverNow}
           camAngle={effectiveCam}
           ptzZoom={ptzZoom}
+          ptzYaw={ptzYaw}
           pushInProgress={pushInProgress}
           isEntranceActive={Boolean(state?.entranceState?.active)}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}

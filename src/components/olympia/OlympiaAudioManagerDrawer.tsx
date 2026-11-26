@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
 import { speakHostStealCall, cancelTTS, isTtsEnabled, playTestMCVoices, unlockOlympiaTTS } from "@/lib/olympia/tts";
-import { applyChannelRoutingGraph, createChannelRoutingGraph } from "@/lib/olympia/audio-channel";
+import { applyChannelRoutingGraph, createChannelRoutingGraph, type ChannelRoutingGraph } from "@/lib/olympia/audio-channel";
 
 interface SoundItem {
   id: string; // e.g. "1_KhoiDong/start_round"
@@ -263,18 +263,7 @@ export default function OlympiaAudioManagerDrawer({
   const mediaSourceMap = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
   // Persistent WebAudio routing graph per element for uninterrupted, click-free real-time channel switching
   const pannerGraphMap = useRef<
-    WeakMap<
-      HTMLAudioElement,
-      {
-        source: MediaElementAudioSourceNode;
-        splitter: ChannelSplitterNode;
-        merger: ChannelMergerNode;
-        gainL_to_L: GainNode;
-        gainL_to_R: GainNode;
-        gainR_to_L: GainNode;
-        gainR_to_R: GainNode;
-      }
-    >
+    WeakMap<HTMLAudioElement, ChannelRoutingGraph & { source: MediaElementAudioSourceNode }>
   >(new WeakMap());
 
   const getAudioContext = useCallback(() => {
@@ -311,7 +300,7 @@ export default function OlympiaAudioManagerDrawer({
         if (!graph) {
           const source = getOrCreateMediaSource(a, ctx);
           const routing = createChannelRoutingGraph(ctx);
-          source.connect(routing.splitter);
+          source.connect(routing.input);
 
           graph = {
             source,

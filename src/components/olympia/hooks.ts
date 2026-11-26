@@ -699,18 +699,7 @@ export function useOlympiaAudio(
   const mediaSourceMap = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
   // Persistent WebAudio routing graph per element for uninterrupted, click-free real-time channel switching
   const pannerGraphMap = useRef<
-    WeakMap<
-      HTMLAudioElement,
-      {
-        source: MediaElementAudioSourceNode;
-        splitter: ChannelSplitterNode;
-        merger: ChannelMergerNode;
-        gainL_to_L: GainNode;
-        gainL_to_R: GainNode;
-        gainR_to_L: GainNode;
-        gainR_to_R: GainNode;
-      }
-    >
+    WeakMap<HTMLAudioElement, ChannelRoutingGraph & { source: MediaElementAudioSourceNode }>
   >(new WeakMap());
   const pendingCueRef = useRef<(() => void) | null>(null);
   const isAudioUnlockedRef = useRef(false);
@@ -996,7 +985,7 @@ export function useOlympiaAudio(
           }
 
           const routing = createChannelRoutingGraph(ctx);
-          source.connect(routing.splitter);
+          source.connect(routing.input);
 
           graph = {
             source,
@@ -1349,7 +1338,7 @@ export function useOlympiaAudio(
           srcNode.connect(gainNode);
 
           const routing = createChannelRoutingGraph(ctx);
-          gainNode.connect(routing.splitter);
+          gainNode.connect(routing.input);
           applyChannelRoutingGraph(ctx, routing, activePan, 0.005);
           srcNode.start(0);
           return;

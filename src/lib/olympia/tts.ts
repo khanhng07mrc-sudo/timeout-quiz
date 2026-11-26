@@ -534,7 +534,7 @@ export function normalizeVietnameseTTS(rawText: string): string {
       return `${num} phần ${den}`;
     }
   );
-  t = t.replace(/(?:°\s*C|°C|(?<![\p{L}\p{N}])độ\s*C(?![\p{L}\p{N}]))/giu, "độ xê");
+  t = t.replace(/(?:°\s*C|°C|(?<![\p{L}\p{N}])độ\s+C(?![\p{L}\p{N}]))/giu, "độ xê");
   t = t.replace(/%/g, " phần trăm");
   return t.replace(/\s+/g, " ").trim();
 }
@@ -1732,7 +1732,7 @@ function getTtsOutputDestination(ctx: AudioContext): AudioNode {
   const existing = ttsChannelGraphMap.get(ctx);
   if (existing) {
     applyChannelRoutingGraph(ctx, existing, getStoredOlympiaAudioChannel(), 0.015);
-    return existing.splitter;
+    return existing.input;
   }
   if (
     typeof ctx.createChannelSplitter === "function" &&
@@ -1743,7 +1743,7 @@ function getTtsOutputDestination(ctx: AudioContext): AudioNode {
       const graph = createChannelRoutingGraph(ctx);
       ttsChannelGraphMap.set(ctx, graph);
       applyChannelRoutingGraph(ctx, graph, getStoredOlympiaAudioChannel(), 0.015);
-      return graph.splitter;
+      return graph.input;
     } catch {}
   }
   return ctx.destination;
@@ -3031,7 +3031,8 @@ function speakOlympiaTTSNow(
     segment: options?.segment,
     baseRate: options?.baseRate,
     speedCategory: options?.speedCategory,
-  });
+    round: options?.round,
+  } as any);
 
   activePlaybackSegment = options?.segment ?? null;
 

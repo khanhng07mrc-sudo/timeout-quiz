@@ -60,6 +60,9 @@ test("applyChannelRoutingGraph ramps existing GainNodes immediately and resumes 
   };
 
   const graph = createChannelRoutingGraph(mockCtx);
+  assert.equal((graph.input as any).channelCount, 2);
+  assert.equal((graph.input as any).channelCountMode, "explicit");
+  assert.equal((graph.input as any).channelInterpretation, "speakers");
   applyChannelRoutingGraph(mockCtx, graph, "left", 0.015);
   assert.equal(resumed, true);
   assert.deepEqual((graph.gainL_to_L as any).calls.at(-1), { val: 1.0, time: 12.5, ramp: 0.015 });

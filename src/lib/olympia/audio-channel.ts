@@ -8,6 +8,7 @@ export interface ChannelGainMatrix {
 }
 
 export interface ChannelRoutingGraph {
+  input: GainNode;
   splitter: ChannelSplitterNode;
   merger: ChannelMergerNode;
   gainL_to_L: GainNode;
@@ -47,13 +48,16 @@ export function createChannelRoutingGraph(
   ctx: AudioContext,
   destination?: AudioNode
 ): ChannelRoutingGraph {
-  const splitter = ctx.createChannelSplitter(2);
-  // Ensure 1-channel mono sources (e.g., Edge TTS MP3) upmix to both L & R before splitting
+  const input = ctx.createGain();
+  // GainNode cleanly upmixes 1-channel mono sources (e.g., Edge TTS MP3) to 2-channel [mono, mono]
+  // using "speakers" interpretation before entering ChannelSplitterNode (which is always "discrete").
   try {
-    splitter.channelCount = 2;
-    splitter.channelCountMode = "explicit";
-    splitter.channelInterpretation = "speakers";
+    input.channelCount = 2;
+    input.channelCountMode = "explicit";
+    input.channelInterpretation = "speakers";
   } catch {}
+  const splitter = ctx.createChannelSplitter(2);
+  input.connect(splitter);
   const merger = ctx.createChannelMerger(2);
   const gainL_to_L = ctx.createGain();
   const gainL_to_R = ctx.createGain();
@@ -75,6 +79,7 @@ export function createChannelRoutingGraph(
   merger.connect(destination || ctx.destination);
 
   return {
+    input,
     splitter,
     merger,
     gainL_to_L,

@@ -646,7 +646,8 @@ export function useOlympiaCameraState(
 
       // 3.1. Khi nhấn Đúng / Sai:
       // USER REQUIREMENT: "mỗi khi nhấn đúng/sai, hệ thống chuyển sang góc quay thẳng bục MC và chỉ hiện đáp án Khởi động, đồ hoạ câu hỏi tạm gác"
-      if (kd.phase === "result" || kd.lastVerdict != null) {
+      // (Never override segmentDone — end-of-turn 0.75x->1.25x contestant zoom takes priority!)
+      if (kd.phase !== "segmentDone" && (kd.phase === "result" || kd.lastVerdict != null)) {
         return {
           camAngle: 3, // Góc quay thẳng bục MC
           transitionMode: "CUT",

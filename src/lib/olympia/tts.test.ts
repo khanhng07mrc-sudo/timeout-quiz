@@ -2278,3 +2278,9 @@ test("TTS R2: NotAllowedError + suspended AudioContext does not trigger 15s serv
     }
   );
 });
+
+test("TTS: normalizeVietnameseTTS preserves 'độc lập' / 'độc đáo' without turning into 'độ xê'", () => {
+  assert.equal(normalizeVietnameseTTS("Nền độc lập dân tộc"), "Nền độc lập dân tộc");
+  assert.equal(normalizeVietnameseTTS("Ý tưởng độc đáo và cô độc"), "Ý tưởng độc đáo và cô độc");
+  assert.equal(normalizeVietnameseTTS("Nhiệt độ 25°C và 37 độ C"), "Nhiệt độ 25độ xê và 37 độ xê");
+});

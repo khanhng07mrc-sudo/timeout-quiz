@@ -2463,6 +2463,7 @@ export class OlympiaGame {
           kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
+          kd.lastVerdict = null;
           kd.currentBgmTrack = undefined;
           kd.bgm3UsedInTurn = false;
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
@@ -2547,6 +2548,7 @@ export class OlympiaGame {
           kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
+          kd.lastVerdict = null;
           kd.currentBgmTrack = undefined;
           kd.bgm3UsedInTurn = false;
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");

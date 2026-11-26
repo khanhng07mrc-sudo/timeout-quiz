@@ -322,6 +322,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     (
       roomName: string | undefined,
       season: string,
+      seatCount?: number,
       queueAfterActive: boolean = false,
       isRecovery: boolean = false
     ) => {
@@ -329,7 +330,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       openingGreetingSpokenRef.current = true;
       openingDuoNeedsRecoveryRef.current = false;
       openingDuoInFlightRef.current = true;
-      const script = buildOpeningDuoScript({ roomName });
+      const script = buildOpeningDuoScript({ roomName, seatCount });
       void speakDualMcScriptAsync(script, {
         season,
         preferServer: true,
@@ -354,6 +355,7 @@ export default function DisplayScreen({ code }: { code: string }) {
               triggerOpeningDuo(
                 cur.name,
                 latestSeasonRef.current,
+                cur.seats?.length,
                 shouldCancelQueuedEntrance ? false : Boolean(cur.entranceState?.active),
                 true
               );
@@ -400,6 +402,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       triggerOpeningDuo(
         cur.name,
         latestSeasonRef.current,
+        cur.seats?.length,
         shouldCancelQueuedEntrance ? false : entranceActive,
         true
       );
@@ -982,11 +985,12 @@ export default function DisplayScreen({ code }: { code: string }) {
     ) {
       return;
     }
-    triggerOpeningDuo(state.name, effectiveAudioSeason);
+    triggerOpeningDuo(state.name, effectiveAudioSeason, state.seats?.length);
   }, [
     isExplicitMuteParam,
     state?.stage,
     state?.name,
+    state?.seats?.length,
     state?.banner,
     state?.roundIntroDoneAt,
     state?.entranceCompleted,

@@ -2439,16 +2439,18 @@ export function renderDynamicCurvedFormulaCanvas(
   const w = 2048;
   const h = 768;
 
-  // 1. Define Analytical Parallel Polygon Contour Path with Stepped Top & Inward Chevron Notch (<)
+  // 1. Define Analytical Parallel Polygon Contour Path with Stepped Top & Synchronized MC Portal Chevron (<)
+  // Right edge knuckle sits at y=330 (Y=2.72m) with 34.7° upper slant (56px) and 27.5° lower slant (58px)
   // Guarantees strictly parallel inner/outer borders via normal offsetting
   const BASE_CONTOUR_PTS: [number, number][] = [
-    [40, 740],
-    [40, 140],
+    [40, 734],
+    [98, 330],
+    [42, 34],
     [600, 140],
     [720, 35],
-    [2010, 35],
-    [1930, 390],
-    [2010, 740],
+    [2006, 34],
+    [1950, 330],
+    [2008, 734],
   ];
 
   function computeContourOffset(pts: [number, number][], dist: number): [number, number][] {

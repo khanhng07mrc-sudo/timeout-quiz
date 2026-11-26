@@ -75,34 +75,72 @@ async function generateMathScienceVideo() {
     const W = ${WIDTH};
     const H = ${HEIGHT};
 
-    // Cylinder R=8.6m, H=2.4m, 0.76*PI -> 20.533m x 2.4m = 8.555:1 aspect.
-    // Canvas is 2048x768 = 2.667:1 -> 3.208x horizontal stretch on 3D mesh.
-    // Apply X_COMP (~0.33) inside symbol/digit transforms so 3D rendering is undistorted.
-    const CYL_STRETCH = 3.208;
-    const X_COMP = 1 / 3.05;
+    // Cylinder R=8.6m, H=2.4m, 0.815*PI -> 22.0207m x 2.4m (93.003 px/m X vs 320.0 px/m Y).
+    // Canvas is 2048x768 -> 3.4407x horizontal stretch on 3D mesh.
+    // Apply X_COMP (~1/3.4407) inside symbol/digit transforms so 3D rendering is undistorted.
+    const CYL_STRETCH = 3.4407;
+    const X_COMP = 1 / CYL_STRETCH;
 
-    // 3D physical QUIZORRA lightbox sits at theta=1.375*PI -> u_geom=0.4276 -> x_tex ≈ 1172 (0.5724 * W)
+    // 3D physical QUIZORRA lightbox sits at theta=1.375*PI -> u_geom=0.466 -> x_tex ≈ 1094
     const BAY_LEFT = 760;
     const BAY_RIGHT = 1540;
     const WING_TOP_LEFT = 690;
     const WING_TOP_RIGHT = 1610;
 
-    // Stepped perimeter polygon (alpha=0 strictly outside outer neon glow, including corners)
+    // Synchronized MC Portal chevron angles:
+    // MC Portal tier-1 left wing has knuckle at Y = 2.72m -> canvas y_knuckle = (3.75 - 2.72) / 2.4 * 768 = 330px,
+    // upper slant ~34.7° (dx_top = 56px over dy = 296px) and lower slant ~27.5° (dx_bot = 58px over dy = 404px).
+    const KNUCKLE_Y = 330;
+    const BASE_CONTOUR_PTS = [
+      { x: 42, y: 34 },              // Top-left wing tip
+      { x: WING_TOP_LEFT, y: 68 },   // Left step top corner
+      { x: BAY_LEFT, y: 196 },       // Left step bottom corner (central bay)
+      { x: BAY_RIGHT, y: 196 },      // Right step bottom corner (central bay)
+      { x: WING_TOP_RIGHT, y: 68 },  // Right step top corner
+      { x: W - 42, y: 34 },          // Top-right wing tip (56px right of knuckle -> upper portal slope)
+      { x: W - 98, y: KNUCKLE_Y },   // Right inward chevron (<) apex at Y=2.72m
+      { x: W - 40, y: H - 34 },      // Bottom-right corner (58px right of knuckle -> lower portal slope)
+      { x: 40, y: H - 34 },          // Bottom-left corner
+      { x: 98, y: KNUCKLE_Y },       // Left inward chevron (>) apex symmetric
+    ];
+
+    // Stepped perimeter polygon with exact 3D-metric inward normal offsetting (alpha=0 strictly outside outer neon glow)
     function getContourPoints(insetY) {
-      const ix = insetY * 0.48; // horizontal inset scaled for 3.2x cylinder stretch
-      const iy = insetY;
-      return [
-        { x: 40 + ix * 1.35, y: 34 + iy },              // Top-left wing tip
-        { x: WING_TOP_LEFT - ix * 0.4, y: 68 + iy },    // Left step top corner
-        { x: BAY_LEFT - ix * 0.4, y: 196 + iy },        // Left step bottom corner (central bay)
-        { x: BAY_RIGHT + ix * 0.4, y: 196 + iy },       // Right step bottom corner (central bay)
-        { x: WING_TOP_RIGHT + ix * 0.4, y: 68 + iy },   // Right step top corner
-        { x: W - 40 - ix * 1.35, y: 34 + iy },          // Top-right wing tip
-        { x: W - 148 - ix * 0.9, y: H * 0.5 },          // Right inward chevron (<) apex
-        { x: W - 40 - ix * 1.35, y: H - 34 - iy },      // Bottom-right corner
-        { x: 40 + ix * 1.35, y: H - 34 - iy },          // Bottom-left corner
-        { x: 148 + ix * 0.9, y: H * 0.5 },              // Left inward chevron (>) apex
-      ];
+      if (!insetY) return BASE_CONTOUR_PTS;
+      const n = BASE_CONTOUR_PTS.length;
+      const lines = [];
+      for (let i = 0; i < n; i++) {
+        const p1 = BASE_CONTOUR_PTS[i];
+        const p2 = BASE_CONTOUR_PTS[(i + 1) % n];
+        const dx = (p2.x - p1.x) * CYL_STRETCH;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const ux = dx / len;
+        const uy = dy / len;
+        // CW canvas traversal -> inward unit normal is (-uy, ux)
+        const nx = -uy;
+        const ny = ux;
+        lines.push({
+          p: [p1.x * CYL_STRETCH + nx * insetY, p1.y + ny * insetY],
+          dir: [ux, uy],
+        });
+      }
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const L1 = lines[(i - 1 + n) % n];
+        const L2 = lines[i];
+        const det = L1.dir[0] * L2.dir[1] - L1.dir[1] * L2.dir[0];
+        if (Math.abs(det) < 1e-6) {
+          out.push({ x: L2.p[0] / CYL_STRETCH, y: L2.p[1] });
+        } else {
+          const t1 = ((L2.p[0] - L1.p[0]) * L2.dir[1] - (L2.p[1] - L1.p[1]) * L2.dir[0]) / det;
+          out.push({
+            x: (L1.p[0] + t1 * L1.dir[0]) / CYL_STRETCH,
+            y: L1.p[1] + t1 * L1.dir[1],
+          });
+        }
+      }
+      return out;
     }
 
     function tracePoints(targetCtx, pts, scaleX = 1) {

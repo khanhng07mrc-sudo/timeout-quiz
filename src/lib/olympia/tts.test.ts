@@ -78,6 +78,7 @@ import {
   buildAnswerExplanation,
   buildKhoiDongTurnExplanations,
   buildLobbyGreetingScript,
+  parseCompetitionContextForTTS,
   buildOpeningDuoScript,
   buildEntranceOpeningBridge,
   buildContestantIntroStepSegment,
@@ -2283,4 +2284,79 @@ test("TTS: normalizeVietnameseTTS preserves 'độc lập' / 'độc đáo' with
   assert.equal(normalizeVietnameseTTS("Nền độc lập dân tộc"), "Nền độc lập dân tộc");
   assert.equal(normalizeVietnameseTTS("Ý tưởng độc đáo và cô độc"), "Ý tưởng độc đáo và cô độc");
   assert.equal(normalizeVietnameseTTS("Nhiệt độ 25°C và 37 độ C"), "Nhiệt độ 25độ xê và 37 độ xê");
+});
+
+test("TTS: Context-aware Opening Duo greeting handles Sandbox + team counts without repetition & keeps VI-EN voice coherent", async () => {
+  const ctxSandbox = parseCompetitionContextForTTS("[Sandbox] Đường lên đỉnh Olympia (8 Đội)", 8);
+  assert.equal(ctxSandbox.isSandbox, true);
+  assert.equal(ctxSandbox.teamCount, 8);
+  assert.equal(ctxSandbox.isGenericOlympia, true);
+
+  const sandboxOpening = buildOpeningDuoScript({
+    roomName: "[Sandbox] Đường lên đỉnh Olympia (8 Đội)",
+    seatCount: 8,
+    variantIdx: 0,
+  });
+  assert.ok(!sandboxOpening[0].text.includes("[Sandbox]"));
+  assert.ok(sandboxOpening[0].text.includes("cuộc thi Sandbox"));
+  assert.ok(sandboxOpening[0].text.includes("với sự tham gia của 8 đội chơi"));
+  assert.equal(
+    (sandboxOpening[0].text.match(/Đường lên đỉnh Olympia/gi) || []).length,
+    1,
+    "Sandbox Olympia greeting must NOT repeat 'Đường lên đỉnh Olympia' twice"
+  );
+
+  const customSandbox = buildOpeningDuoScript({
+    roomName: "[Sandbox] Classic (6 Đội)",
+    seatCount: 6,
+    variantIdx: 0,
+  });
+  assert.ok(customSandbox[0].text.includes("cuộc thi Sandbox Classic với sự tham gia của 6 đội chơi"));
+
+  const namedOpening = buildOpeningDuoScript({
+    roomName: "Tuần 3 - Tháng 1 - Quý IV",
+    seatCount: 4,
+    variantIdx: 0,
+  });
+  assert.ok(namedOpening[0].text.includes("Tuần 3, Tháng 1, Quý 4"));
+  assert.ok(namedOpening[0].text.includes("với sự tham gia của 4 đội chơi"));
+
+  // Coherent single VI speaker for Vietnamese greeting containing loanword "Sandbox"
+  const segs = segmentMixedLanguageText(sandboxOpening[0].text);
+  assert.equal(segs.length, 1, "Loanword 'Sandbox' inside Vietnamese greeting must NOT trigger mid-sentence EN speaker swap");
+  assert.equal(segs[0].lang, "vi");
+
+  // Server SSML uses matching xml:lang for VI vs EN
+  const viSsml = buildEdgeSsml("Chào mừng", "vi-VN-HoaiMyNeural", "+0%", "+0Hz", "vi");
+  const enSsml = buildEdgeSsml("Welcome", "en-US-JennyNeural", "+0%", "+0Hz", "en");
+  assert.ok(viSsml.includes("xml:lang='vi-VN'"));
+  assert.ok(enSsml.includes("xml:lang='en-US'"));
+
+  // Custom VI voice config must not force a vi-VN voice onto an English segment
+  const sentPayloads: Array<Record<string, unknown>> = [];
+  await withMockBrowserEnv(
+    {
+      withAudioContext: true,
+      origin: "http://localhost:3000",
+    },
+    async () => {
+      configureTtsTransport({
+        fetchImpl: (async (_url: string, init?: RequestInit) => {
+          sentPayloads.push(JSON.parse(String(init?.body || "{}")));
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+          } as unknown as Response;
+        }) as unknown as typeof fetch,
+      });
+      await speakOlympiaTTSAsync("What is the largest planet in our solar system?", {
+        role: "khanh_vy",
+        voiceConfig: { voiceName: "vi-VN-HoaiMyNeural" },
+      });
+      assert.equal(sentPayloads.length, 1);
+      assert.equal(sentPayloads[0].lang, "en");
+      assert.equal(sentPayloads[0].voice, undefined, "Custom vi-VN voice must not override an EN segment");
+    }
+  );
 });

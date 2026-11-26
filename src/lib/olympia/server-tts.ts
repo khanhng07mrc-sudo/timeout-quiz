@@ -503,11 +503,14 @@ export function buildEdgeSsml(
   cleanText: string,
   voice: string,
   rateStr: string,
-  pitch: string
+  pitch: string,
+  lang?: TtsLang
 ): string {
   const escapedText = escapeXml(cleanText);
+  const resolvedXmlLang =
+    lang === "vi" || (lang === undefined && /^vi-/i.test(voice)) ? "vi-VN" : "en-US";
   return (
-    `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>` +
+    `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${resolvedXmlLang}'>` +
     `<voice name='${voice}'>` +
     `<prosody pitch='${pitch}' rate='${rateStr}' volume='+0%'>${escapedText}</prosody>` +
     `</voice></speak>`
@@ -691,7 +694,8 @@ function synthesizeOnce(params: {
     params.cleanText,
     params.voice,
     params.rateStr,
-    params.pitch
+    params.pitch,
+    params.lang
   );
 
   return new Promise<Buffer>((resolve, reject) => {
@@ -936,7 +940,8 @@ function synthesizeStreamOnce(params: {
     params.cleanText,
     params.voice,
     params.rateStr,
-    params.pitch
+    params.pitch,
+    params.lang
   );
 
   return new Promise<ReadableStream<Uint8Array>>((resolve, reject) => {

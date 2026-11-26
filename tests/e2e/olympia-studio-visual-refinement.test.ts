@@ -726,6 +726,21 @@ test("R10.3: Podiums mounts CenterMcDesk and MC presenters at synchronized Y=0.2
   );
 });
 
+test("R10.4: Curved Math Wall right chevron aligns slant angles and Y=2.72m knuckle with MC Portal", () => {
+  const scriptSrc = fs.readFileSync(path.join(rootDir, "scripts/generate-math-science-video.mjs"), "utf8");
+  assert.ok(
+    scriptSrc.includes("const KNUCKLE_Y = 330;") &&
+    scriptSrc.includes("CYL_STRETCH = 3.4407"),
+    "WebM math wall script must use synchronized KNUCKLE_Y=330 (Y=2.72m) and CYL_STRETCH=3.4407"
+  );
+  assert.ok(
+    centralLedWallContent.includes("[2006, 34]") &&
+    centralLedWallContent.includes("[1950, 330]") &&
+    centralLedWallContent.includes("[2008, 734]"),
+    "CentralLedWall fallback contour must align right chevron knuckle & slopes with MC Portal"
+  );
+});
+
 console.log("\n================================================================================");
 console.log(`TOTAL REFINEMENT TESTS: ${passCount + failCount}`);
 console.log(`PASSED: ${passCount}`);

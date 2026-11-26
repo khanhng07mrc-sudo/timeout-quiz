@@ -921,6 +921,33 @@ const PROTECTED_VI_TOKENS = new Set([
   "thvl",
   "btv",
   "ptv",
+  "sandbox",
+  "quizorra",
+  "olympia",
+  "classic",
+  "studio",
+  "online",
+  "offline",
+  "server",
+  "client",
+  "speed",
+  "bonus",
+  "avatar",
+  "camera",
+  "buzzer",
+  "countdown",
+  "bot",
+  "test",
+  "tour",
+  "vip",
+  "pro",
+  "max",
+  "mini",
+  "live",
+  "stream",
+  "show",
+  "game",
+  "quiz",
 ]);
 
 const STRONG_ENGLISH_WORDS = new Set([
@@ -1194,11 +1221,13 @@ export function segmentMixedLanguageText(text: string): LanguageSpeechSegment[] 
       continue;
     }
     const wordOnly = tokens[wordIndices[i]].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+    const academicEnSuffixRe =
+      /(?:tion|sion|ment|ness|ance|ence|able|ible|ious|eous|logy|graphy|metry|sis|ism|ist|ity|ize|ise)$/i;
     const singleLongUnmistakableEn =
-      wordOnly.length >= 6 &&
+      wordOnly.length >= 8 &&
       isStrongEn[i] &&
       !PROTECTED_VI_TOKENS.has(wordOnly.toLowerCase()) &&
-      ENGLISH_ONLY_MORPH_RE.test(wordOnly);
+      academicEnSuffixRe.test(wordOnly);
 
     if (isStrongEn[i]) {
       // Expand run left/right through adjacent neutral English tokens (without crossing Vi diacritics or major clauses)
@@ -2626,12 +2655,19 @@ async function fetchServerTtsAudio(
       payload.pitch = effectivePitch;
     }
 
-    const effectiveVoice =
-      options?.voice ??
+    const customVoiceCandidate =
       customCfg?.voiceName ??
       (customCfg?.voiceURI && /^[a-zA-Z0-9_-]+$/.test(customCfg.voiceURI) && /Neural/i.test(customCfg.voiceURI)
         ? customCfg.voiceURI
         : undefined);
+    const customVoiceMatchesLang =
+      !customVoiceCandidate ||
+      /Multilingual/i.test(customVoiceCandidate) ||
+      (seg.lang === "vi" && /^vi-/i.test(customVoiceCandidate)) ||
+      (seg.lang === "en" && /^en-/i.test(customVoiceCandidate)) ||
+      !/^vi-|^en-/i.test(customVoiceCandidate);
+    const effectiveVoice =
+      options?.voice ?? (customVoiceMatchesLang ? customVoiceCandidate : undefined);
 
     if (effectiveVoice) {
       payload.voice = effectiveVoice;
@@ -3615,21 +3651,71 @@ function joinVietnameseNamesWithVa(names: string[]): string {
   return `${clean.slice(0, -1).join(", ")} và ${clean[clean.length - 1]}`;
 }
 
+export interface ParsedCompetitionContext {
+  raw: string;
+  isSandbox: boolean;
+  teamCount: number | null;
+  competitionName: string;
+  isGenericOlympia: boolean;
+}
+
+export function parseCompetitionContextForTTS(
+  name?: string | null,
+  seatCount?: number
+): ParsedCompetitionContext {
+  let s = (name || "").trim();
+  const isSandbox = /(?:\[\s*sandbox\s*\]|\bsandbox\b)/i.test(s);
+  const teamMatch = s.match(
+    /\(\s*(\d+)\s*đội(?:\s*chơi)?\s*\)|(?<![\p{L}\p{N}])(\d+)\s*đội(?:\s*chơi)?(?![\p{L}\p{N}])/iu
+  );
+  const parsedTeams = teamMatch ? Number(teamMatch[1] || teamMatch[2]) : NaN;
+  const validSeatCount =
+    typeof seatCount === "number" && Number.isFinite(seatCount) && seatCount > 0
+      ? Math.round(seatCount)
+      : null;
+  const teamCount =
+    Number.isFinite(parsedTeams) && parsedTeams > 0 ? parsedTeams : validSeatCount;
+
+  s = s
+    .replace(/\[\s*sandbox\s*\]\s*[-:–—]?\s*/gi, "")
+    .replace(/^sandbox\s*[:\-–—]?\s+/i, "")
+    .replace(/\(\s*\d+\s*đội(?:\s*chơi)?\s*\)/giu, "")
+    .trim();
+  const competitionName = formatCompetitionNameForTTS(s);
+  const normalizedLower = competitionName.toLowerCase();
+  const isGenericOlympia =
+    !competitionName ||
+    /^(?:chương trình\s+)?đường lên đỉnh olympia(?:\s+o?\d{2}(?:-\d{2})?(?:\s+cổ\s+điển)?)?$/i.test(
+      normalizedLower
+    ) ||
+    /^olympia(?:\s+o?\d{2}(?:-\d{2})?)?$/i.test(normalizedLower);
+
+  return {
+    raw: (name || "").trim(),
+    isSandbox,
+    teamCount,
+    competitionName,
+    isGenericOlympia,
+  };
+}
+
 /**
  * Script 1: Short lobby greeting after opening a room.
  */
 export function buildLobbyGreetingScript(options?: {
   roomName?: string;
+  seatCount?: number;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const cleanRoom = (options?.roomName || "").trim();
+  const ctx = parseCompetitionContextForTTS(options?.roomName, options?.seatCount);
+  const cleanRoom = ctx.competitionName;
   const variant = Math.abs(options?.variantIdx ?? 0) % 3;
 
   if (activeCustomTtsScripts?.lobbyGreeting && activeCustomTtsScripts.lobbyGreeting.length > 0) {
     const list = activeCustomTtsScripts.lobbyGreeting;
     const text = interpolateTemplate(list[variant % list.length], {
-      roomName: cleanRoom,
-      tenPhong: cleanRoom,
+      roomName: cleanRoom || (ctx.isSandbox ? "Sandbox" : ""),
+      tenPhong: cleanRoom || (ctx.isSandbox ? "Sandbox" : ""),
     });
     return [
       {
@@ -3659,14 +3745,20 @@ export function buildLobbyGreetingScript(options?: {
   }
 
   if (variant === 2) {
+    const matchDesc = ctx.isSandbox
+      ? `cuộc thi Sandbox${ctx.isGenericOlympia ? " Đường lên đỉnh Olympia" : ` ${cleanRoom}`}${ctx.teamCount ? ` với ${ctx.teamCount} đội chơi` : ""}`
+      : cleanRoom && !ctx.isGenericOlympia
+        ? `trận đấu ${cleanRoom}`
+        : "Đường lên đỉnh Olympia";
     return [
       {
         role: "khanh_vy",
         kind: "greeting",
         pauseAfterMs: 220,
-        text: cleanRoom
-          ? `Sảnh chờ trận đấu ${cleanRoom} đang nóng lên từng giây!`
-          : "Không khí tại sảnh chờ Đường lên đỉnh Olympia đang nóng lên từng giây!",
+        text:
+          ctx.isSandbox || (cleanRoom && !ctx.isGenericOlympia)
+            ? `Sảnh chờ ${matchDesc} đang nóng lên từng giây!`
+            : "Không khí tại sảnh chờ Đường lên đỉnh Olympia đang nóng lên từng giây!",
       },
       {
         role: "ngoc_huy",
@@ -3677,14 +3769,18 @@ export function buildLobbyGreetingScript(options?: {
     ];
   }
 
+  const lobbyGreetingText = ctx.isSandbox
+    ? `Chào mừng các bạn đã có mặt tại sảnh chờ cuộc thi Sandbox${ctx.isGenericOlympia ? " Đường lên đỉnh Olympia" : ` ${cleanRoom}`}${ctx.teamCount ? ` với sự tham gia của ${ctx.teamCount} đội chơi` : ""}!`
+    : cleanRoom && !ctx.isGenericOlympia
+      ? `Chào mừng các bạn đã có mặt tại sảnh chờ trận đấu ${cleanRoom}!`
+      : "Chào mừng các bạn đã có mặt tại sảnh chờ Đường lên đỉnh Olympia!";
+
   return [
     {
       role: "khanh_vy",
       kind: "greeting",
       pauseAfterMs: 250,
-      text: cleanRoom
-        ? `Chào mừng các bạn đã có mặt tại sảnh chờ trận đấu ${cleanRoom}!`
-        : "Chào mừng các bạn đã có mặt tại sảnh chờ Đường lên đỉnh Olympia!",
+      text: lobbyGreetingText,
     },
     {
       role: "ngoc_huy",
@@ -3703,7 +3799,8 @@ export function buildLobbyGreetingScript(options?: {
 export function formatCompetitionNameForTTS(name?: string | null): string {
   if (!name) return "";
   let s = name.trim();
-  // Strip redundant leading words that cause awkward phrasing
+  // Strip redundant leading words and bracket wrappers that cause awkward phrasing
+  s = s.replace(/\[\s*([^\]]+)\s*\]/g, "$1");
   s = s.replace(/^(cuộc\s+thi|trận\s+đấu|trận|phòng)\s+/i, "");
   // Normalize Roman numerals commonly used in Olympia match naming
   s = s.replace(/\bQuý\s+IV\b/gi, "Quý 4")
@@ -3727,24 +3824,30 @@ export function formatCompetitionNameForTTS(name?: string | null): string {
 }
 
 /**
- * Script 2: Official dual-MC opening ceremony with roomName (or natural fallback).
+ * Script 2: Official dual-MC opening ceremony with context-aware phrasing
+ * (Sandbox / official weekly-monthly-final match / custom room / participant count).
  */
 export function buildOpeningDuoScript(options?: {
   roomName?: string;
+  seatCount?: number;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const trimmed = formatCompetitionNameForTTS(options?.roomName);
+  const ctx = parseCompetitionContextForTTS(options?.roomName, options?.seatCount);
+  const trimmed = ctx.competitionName;
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
 
   if (activeCustomTtsScripts?.openingDuo) {
+    const fallbackLabel = ctx.isSandbox
+      ? `Sandbox${ctx.teamCount ? ` (${ctx.teamCount} đội chơi)` : ""}`
+      : trimmed;
     return [
       {
         role: "khanh_vy",
         kind: "greeting",
         pauseAfterMs: 300,
         text: interpolateTemplate(activeCustomTtsScripts.openingDuo.khanhVy, {
-          roomName: trimmed,
-          tenPhong: trimmed,
+          roomName: fallbackLabel,
+          tenPhong: fallbackLabel,
         }),
       },
       {
@@ -3752,11 +3855,40 @@ export function buildOpeningDuoScript(options?: {
         kind: "hype",
         pauseAfterMs: 320,
         text: interpolateTemplate(activeCustomTtsScripts.openingDuo.ngocHuy, {
-          roomName: trimmed,
-          tenPhong: trimmed,
+          roomName: fallbackLabel,
+          tenPhong: fallbackLabel,
         }),
       },
     ];
+  }
+
+  const teamClause = ctx.teamCount ? ` với sự tham gia của ${ctx.teamCount} đội chơi` : "";
+  const guestClause = ctx.teamCount ? ` với sự góp mặt của ${ctx.teamCount} đội chơi` : "";
+  const participantRef = ctx.teamCount ? `${ctx.teamCount} đội chơi` : "các nhà leo núi";
+
+  let khanhVyText: string;
+  if (ctx.isSandbox) {
+    if (ctx.isGenericOlympia) {
+      khanhVyText =
+        variant === 1
+          ? `Xin nồng nhiệt chào đón quý vị khán giả và các bạn đã đến với cuộc thi Sandbox trên đấu trường Đường lên đỉnh Olympia${guestClause}!`
+          : `Chào mừng quý vị khán giả và các bạn đã đến với cuộc thi Sandbox của chương trình Đường lên đỉnh Olympia${teamClause}!`;
+    } else {
+      khanhVyText =
+        variant === 1
+          ? `Xin nồng nhiệt chào đón quý vị khán giả và các bạn đã đến với cuộc thi Sandbox ${trimmed}${guestClause}!`
+          : `Chào mừng quý vị khán giả và các bạn đã đến với cuộc thi Sandbox ${trimmed}${teamClause}!`;
+    }
+  } else if (trimmed && !ctx.isGenericOlympia) {
+    khanhVyText =
+      variant === 1
+        ? `Xin kính chào quý vị khán giả và các bạn học sinh thân mến đang theo dõi trận đấu ${trimmed} của chương trình Đường lên đỉnh Olympia${teamClause}!`
+        : `Khánh Vy xin nồng nhiệt chào đón quý vị khán giả và các bạn học sinh đã đến với trận đấu ${trimmed} của chương trình Đường lên đỉnh Olympia${teamClause}!`;
+  } else {
+    khanhVyText =
+      variant === 1
+        ? `Xin kính chào quý vị khán giả và các bạn học sinh thân mến đang theo dõi chương trình Đường lên đỉnh Olympia${teamClause || " ngày hôm nay"}!`
+        : `Khánh Vy xin nồng nhiệt chào đón quý vị khán giả và các bạn học sinh đã đến với chương trình Đường lên đỉnh Olympia${teamClause || " ngày hôm nay"}!`;
   }
 
   if (variant === 1) {
@@ -3765,15 +3897,13 @@ export function buildOpeningDuoScript(options?: {
         role: "khanh_vy",
         kind: "greeting",
         pauseAfterMs: 300,
-        text: trimmed
-          ? `Xin kính chào quý vị khán giả và các bạn học sinh thân mến đang theo dõi trận đấu ${trimmed} của chương trình Đường lên đỉnh Olympia!`
-          : "Xin kính chào quý vị khán giả và các bạn học sinh thân mến đang theo dõi chương trình Đường lên đỉnh Olympia ngày hôm nay!",
+        text: khanhVyText,
       },
       {
         role: "ngoc_huy",
         kind: "hype",
         pauseAfterMs: 320,
-        text: "Ngọc Huy cùng Khánh Vy rất hân hạnh được đồng hành cùng các bạn trong hành trình chinh phục tri thức đầy hào hứng này! Ngay sau đây, chúng ta hãy cùng chào đón sự xuất hiện của các thí sinh ngày hôm nay!",
+        text: `Ngọc Huy cùng Khánh Vy rất hân hạnh được đồng hành cùng ${participantRef} trong hành trình chinh phục tri thức đầy hào hứng này! Ngay sau đây, chúng ta hãy cùng chào đón sự xuất hiện của các thí sinh ngày hôm nay!`,
       },
     ];
   }
@@ -3783,15 +3913,13 @@ export function buildOpeningDuoScript(options?: {
       role: "khanh_vy",
       kind: "greeting",
       pauseAfterMs: 320,
-      text: trimmed
-        ? `Khánh Vy xin nồng nhiệt chào đón quý vị khán giả và các bạn học sinh đã đến với chương trình Đường lên đỉnh Olympia, trận đấu ${trimmed}!`
-        : "Khánh Vy xin nồng nhiệt chào đón quý vị khán giả và các bạn học sinh đã đến với chương trình Đường lên đỉnh Olympia ngày hôm nay!",
+      text: khanhVyText,
     },
     {
       role: "ngoc_huy",
       kind: "hype",
       pauseAfterMs: 350,
-      text: "Và Ngọc Huy cũng rất vui được đồng hành cùng quý vị trong cuộc tranh tài đầy trí tuệ và kịch tính này! Ngay bây giờ, xin mời chúng ta cùng chào đón sự xuất hiện của các nhà leo núi xuất sắc hôm nay!",
+      text: `Và Ngọc Huy cũng rất vui được đồng hành cùng ${participantRef} trong cuộc tranh tài đầy trí tuệ và kịch tính hôm nay! Ngay bây giờ, xin mời chúng ta cùng chào đón sự xuất hiện của các nhà leo núi xuất sắc!`,
     },
   ];
 }
@@ -4417,8 +4545,14 @@ export function buildPostMatchMcOpeningSegment(options?: {
   seatCount?: number;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const trimmed = formatCompetitionNameForTTS(options?.roomName);
+  const ctx = parseCompetitionContextForTTS(options?.roomName, options?.seatCount);
+  const trimmed = ctx.competitionName;
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
+  const matchLabel = ctx.isSandbox
+    ? `cuộc thi Sandbox${ctx.isGenericOlympia ? "" : ` ${trimmed}`}`
+    : trimmed && !ctx.isGenericOlympia
+      ? `trận đấu ${trimmed}`
+      : "";
 
   if (variant === 1) {
     return [
@@ -4426,8 +4560,8 @@ export function buildPostMatchMcOpeningSegment(options?: {
         role: "khanh_vy",
         kind: "post_match_opening",
         pauseAfterMs: 280,
-        text: trimmed
-          ? `Tất cả các phần thi của trận đấu ${trimmed} đã khép lại! Xin mời quý vị cùng nhìn lại điểm số chung cuộc của từng nhà leo núi.`
+        text: matchLabel
+          ? `Tất cả các phần thi của ${matchLabel} đã khép lại! Xin mời quý vị cùng nhìn lại điểm số chung cuộc của từng nhà leo núi.`
           : "Tất cả các phần thi đã chính thức khép lại! Xin mời quý vị cùng điểm lại thành tích chung cuộc của từng thí sinh.",
       },
       {
@@ -4692,8 +4826,14 @@ export function buildClosingFarewellScript(options?: {
   roomName?: string;
   variantIdx?: number;
 }): DualMcScriptSegment[] {
-  const trimmed = formatCompetitionNameForTTS(options?.roomName);
+  const ctx = parseCompetitionContextForTTS(options?.roomName);
+  const trimmed = ctx.competitionName;
   const variant = Math.abs(options?.variantIdx ?? 0) % 2;
+  const closingPrefix = ctx.isSandbox
+    ? `Cuộc thi Sandbox${ctx.isGenericOlympia ? " của chương trình Đường lên đỉnh Olympia" : ` ${trimmed}`}`
+    : trimmed && !ctx.isGenericOlympia
+      ? `Trận đấu ${trimmed} của chương trình Đường lên đỉnh Olympia`
+      : "Chương trình Đường lên đỉnh Olympia";
 
   if (variant === 1) {
     return [
@@ -4702,9 +4842,7 @@ export function buildClosingFarewellScript(options?: {
         kind: "farewell",
         pauseAfterMs: 300,
         audioTrack: "6_NhacKhac/ending_music",
-        text: trimmed
-          ? `Trận đấu ${trimmed} của chương trình Đường lên đỉnh Olympia xin được khép lại tại đây. Cảm ơn quý vị khán giả, quý thầy cô và gia đình đã luôn dõi theo cổ vũ.`
-          : "Chương trình Đường lên đỉnh Olympia xin được khép lại tại đây. Cảm ơn quý vị khán giả, quý thầy cô và gia đình đã luôn dõi theo cổ vũ.",
+        text: `${closingPrefix} xin được khép lại tại đây. Cảm ơn quý vị khán giả, quý thầy cô và gia đình đã luôn dõi theo cổ vũ.`,
       },
       {
         role: "ngoc_huy",

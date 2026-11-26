@@ -809,12 +809,14 @@ export class OlympiaGame {
       }
     }
 
-    // Auto-advance summary sequence (O27: 1.5s zoom + holdDurationMs per contestant; Graphic: 3.5s per contestant)
+    // Auto-advance summary sequence (O27: 1.5s zoom + holdDurationMs; Graphic: 3.5s for <=4 seats, faster for 5-8 seats)
     if (st.summaryState && st.summaryState.active && st.summaryState.isAuto) {
       const elapsed = now - (st.summaryState.lastAdvanceAt ?? now);
       const isO27 = st.summaryState.mode === "cinematic_o27";
       const holdMs = st.summaryState.holdDurationMs ?? 1500;
-      const stepDuration = isO27 ? (1500 + holdMs) : 3500;
+      const nSeats = st.summaryState.orderedSeats.length;
+      const graphicStepMs = nSeats <= 4 ? 3500 : nSeats <= 6 ? 2600 : 2000;
+      const stepDuration = isO27 ? (1500 + holdMs) : graphicStepMs;
       if (elapsed >= stepDuration) {
         const nextIdx = st.summaryState.currentIndex + 1;
         if (nextIdx < st.summaryState.orderedSeats.length) {

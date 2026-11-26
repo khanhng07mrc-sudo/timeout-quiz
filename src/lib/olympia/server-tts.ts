@@ -1894,7 +1894,7 @@ export function resolveSafeVoiceFile(sampleUrlOrFile: string): string | null {
   if (!raw || raw.includes("\0")) return null;
   const withoutQuery = raw.split(/[?#]/)[0];
   let relative = withoutQuery;
-  if (relative.startsWith("/api/olympia/tts/voices")) {
+  if (relative.startsWith("/api/olympia/tts/voices") || relative.startsWith("/api/olympia/tts/voice-sample")) {
     const match = /[?&]file=([^&#]+)/.exec(raw);
     if (!match) return null;
     try {

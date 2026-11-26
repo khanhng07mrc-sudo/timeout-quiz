@@ -16,7 +16,7 @@
  * - Strict 6-mode per-turn MC alternation, hype fillers, data-grounded explanations, VCNV/TT grouping & typo checks
  */
 
-import type { CustomTtsScriptConfig, McVoiceCustomization } from "./types";
+import type { CustomTtsScriptConfig, McVoiceCloneConfig, McVoiceCustomization } from "./types";
 import {
   applyChannelRoutingGraph,
   createChannelRoutingGraph,
@@ -779,7 +779,10 @@ function getNarrationBaseTempo(segment?: TTSSegment): number {
     case "buzzer":
     case "hype_filler":
     case "steal_callout":
-      return 1.06;
+      return 1.2;
+    case "score_summary":
+    case "post_match_summary":
+      return 1.18;
     case "intro_greeting":
     case "lobby_greeting":
     case "opening_duo":
@@ -789,20 +792,20 @@ function getNarrationBaseTempo(segment?: TTSSegment): number {
     case "round_transition":
     case "final_awards":
     case "closing_farewell":
-      return 1.04;
+      return 1.16;
     default:
-      return 1.05;
+      return 1.18;
   }
 }
 
 /**
  * Season-aware reading rate calculation with question vs narration speed separation:
  * - Question speed:
- *     * O20-O22: Rapid-fire tempo (1.40x)
- *     * O23-O27: Moderate broadcast tempo (1.08x)
- *     * >25 words: 1.12x boost (capped at 1.65 before baseRate scaling)
+ *     * O20-O22: Rapid-fire tempo (1.42x)
+ *     * O23-O27: Snappy broadcast tempo (1.18x default; KD 1.24x, VCNV/TT 1.18x, VD 1.14x)
+ *     * >25 words: 1.12x boost (capped at 1.70 before baseRate scaling)
  * - Narration speed:
- *     * Natural lively broadcast cadence (~1.04-1.06x), unaffected by O20-O22 sprint rate
+ *     * Crisp natural broadcast cadence (~1.16-1.20x), unaffected by O20-O22 sprint rate
  * - Scaled by Host `baseRate` (0.75..1.5), clamped to [0.5, 2.0]
  */
 export function getSeasonReadingRate(
@@ -839,11 +842,11 @@ export function getSeasonReadingRate(
   let tempo: number;
   if (category === "question") {
     if (round === "khoiDong") {
-      tempo = 1.18;
+      tempo = 1.24;
     } else if (round === "vcnv" || round === "tangToc") {
-      tempo = 1.08;
+      tempo = 1.18;
     } else if (round === "veDich") {
-      tempo = 0.98;
+      tempo = 1.14;
     } else {
       const s = (season || "O26").toUpperCase();
       const isRapidSeason =
@@ -853,10 +856,10 @@ export function getSeasonReadingRate(
         s === "20" ||
         s === "21" ||
         s === "22";
-      tempo = isRapidSeason ? 1.4 : 1.08;
+      tempo = isRapidSeason ? 1.4 : 1.18;
     }
     if (wordCount > 25) {
-      tempo = Math.min(1.65, tempo * 1.12);
+      tempo = Math.min(1.7, tempo * 1.12);
     }
   } else {
     tempo = getNarrationBaseTempo(segment);
@@ -2342,7 +2345,7 @@ export function resolveMCVoiceConfig(
 
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     const defaultPitch = role === "khanh_vy" ? 1.12 : 0.88;
-    const defaultRate = role === "khanh_vy" ? 1.05 : 1.04;
+    const defaultRate = 1.16;
     const pitch = customVoiceSetting?.pitch !== undefined ? customVoiceSetting.pitch : defaultPitch;
     const rate = customVoiceSetting?.rate !== undefined ? customVoiceSetting.rate : defaultRate;
     return { voice: null, pitch, rate };
@@ -2637,6 +2640,54 @@ function speakWebSpeechSegmentsSync(
   runNext();
 }
 
+function buildClientClonePayload(clone?: McVoiceCloneConfig): McVoiceCloneConfig | undefined {
+  if (!clone || !clone.enabled) return undefined;
+  return {
+    enabled: true,
+    provider: clone.provider || "local_profile",
+    ...(clone.profileId ? { profileId: clone.profileId.trim() } : {}),
+    ...(clone.voiceId ? { voiceId: clone.voiceId.trim() } : {}),
+    ...(clone.sampleUrl ? { sampleUrl: clone.sampleUrl.trim() } : {}),
+    ...(clone.sampleName ? { sampleName: clone.sampleName.trim() } : {}),
+    ...(clone.endpointUrl ? { endpointUrl: clone.endpointUrl.trim() } : {}),
+    ...(clone.apiKey ? { apiKey: clone.apiKey.trim() } : {}),
+    ...(typeof clone.targetPitchHz === "number" && Number.isFinite(clone.targetPitchHz)
+      ? { targetPitchHz: clone.targetPitchHz }
+      : {}),
+    ...(typeof clone.pitchRatio === "number" && Number.isFinite(clone.pitchRatio)
+      ? { pitchRatio: clone.pitchRatio }
+      : {}),
+  };
+}
+
+function makeSanitizedPayloadCacheKey(payload: Record<string, unknown>): string {
+  const cloneObj = payload.clone as McVoiceCloneConfig | undefined;
+  if (!cloneObj || !cloneObj.apiKey) {
+    return JSON.stringify(payload);
+  }
+  return JSON.stringify({
+    ...payload,
+    clone: {
+      ...cloneObj,
+      apiKey: `len:${cloneObj.apiKey.length}`,
+    },
+  });
+}
+
+function detectClientAudioMime(buf: ArrayBuffer): "audio/wav" | "audio/mpeg" {
+  const bytes = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46
+  ) {
+    return "audio/wav";
+  }
+  return "audio/mpeg";
+}
+
 async function fetchServerTtsAudio(
   seg: LanguageSpeechSegment,
   role: DualMcRole,
@@ -2650,10 +2701,19 @@ async function fetchServerTtsAudio(
   }
 
   const endpoint = transportConfig.endpoint || DEFAULT_ENDPOINT;
-  const timeoutMs =
+  const customCfg =
+    options?.voiceConfig ||
+    activeCustomTtsScripts?.mcVoiceConfig?.[role] ||
+    (role === "khanh_vy"
+      ? activeCustomTtsScripts?.mcVoiceConfig?.khanhVy
+      : activeCustomTtsScripts?.mcVoiceConfig?.ngocHuy);
+  const clonePayload = buildClientClonePayload(customCfg?.clone);
+
+  const baseTimeoutMs =
     transportConfig.timeoutMs !== undefined
       ? transportConfig.timeoutMs
       : DEFAULT_TIMEOUT_MS;
+  const timeoutMs = clonePayload && baseTimeoutMs > 0 ? Math.max(baseTimeoutMs, 6500) : baseTimeoutMs;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   activeAbortController = controller;
 
@@ -2669,13 +2729,6 @@ async function fetchServerTtsAudio(
   }
 
   try {
-    const customCfg =
-      options?.voiceConfig ||
-      activeCustomTtsScripts?.mcVoiceConfig?.[role] ||
-      (role === "khanh_vy"
-        ? activeCustomTtsScripts?.mcVoiceConfig?.khanhVy
-        : activeCustomTtsScripts?.mcVoiceConfig?.ngocHuy);
-
     const payload: Record<string, unknown> = {
       text: seg.text,
       role,
@@ -2704,8 +2757,11 @@ async function fetchServerTtsAudio(
     if (effectiveVoice) {
       payload.voice = effectiveVoice;
     }
+    if (clonePayload) {
+      payload.clone = clonePayload;
+    }
 
-    const payloadKey = JSON.stringify(payload);
+    const payloadKey = makeSanitizedPayloadCacheKey(payload);
     const cachedBuf = clientTtsPrefetchCache.get(payloadKey);
     if (cachedBuf) {
       return cachedBuf;
@@ -2886,7 +2942,7 @@ async function playAudioBufferWithHtmlAudio(
     throw new Error("html_audio_unavailable");
   }
 
-  const blob = new Blob([buf], { type: "audio/mpeg" });
+  const blob = new Blob([buf], { type: detectClientAudioMime(buf) });
   const objectUrl = UrlApi.createObjectURL(blob);
   const audio: HTMLAudioElement = new AudioCtor(objectUrl);
   try {
@@ -3304,6 +3360,7 @@ export function prefetchOlympiaTtsAudio(
       : undefined);
 
   for (const seg of segments) {
+    const clonePayload = buildClientClonePayload(customCfg?.clone);
     const payload: Record<string, unknown> = {
       text: seg.text,
       role,
@@ -3316,14 +3373,17 @@ export function prefetchOlympiaTtsAudio(
     if (effectiveVoice) {
       payload.voice = effectiveVoice;
     }
-    const payloadKey = JSON.stringify(payload);
+    if (clonePayload) {
+      payload.clone = clonePayload;
+    }
+    const payloadKey = makeSanitizedPayloadCacheKey(payload);
     if (clientTtsPrefetchCache.has(payloadKey) || clientTtsPrefetchInFlight.has(payloadKey)) {
       continue;
     }
     const p = fetchFn(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: payloadKey,
+      body: JSON.stringify(payload),
     })
       .then(async (res) => {
         if (!res.ok) return null;
@@ -4371,21 +4431,45 @@ export function buildContestantIntroContinuousScript(
 }
 
 /**
+ * Progressive Summary Score TTS tempo scale by contestant count (2..8 seats).
+ * Higher contestant counts scale TTS faster so each contestant reveal fits comfortably
+ * inside shorter auto-advance / manual stepping windows without clipping or lag.
+ */
+export function getSummaryTtsRateScale(seatCount: number): number {
+  const n = Math.max(2, Math.min(8, Math.round(seatCount || 4)));
+  if (n <= 3) return 1.0;
+  if (n === 4) return 1.06;
+  if (n === 5) return 1.14;
+  if (n === 6) return 1.22;
+  if (n === 7) return 1.3;
+  return 1.38;
+}
+
+/**
  * Inter-round Score Summary step segment (score ascending order).
  */
 export function buildScoreSummaryStepSegment(
   seat: ContestantScriptInput,
   index: number,
   total: number,
-  options?: { isTiedTopWithPrev?: boolean; pauseAfterMs?: number }
+  options?: { isTiedTopWithPrev?: boolean; pauseAfterMs?: number; concise?: boolean; totalSeats?: number }
 ): DualMcScriptSegment {
   const role: DualMcRole = index % 2 === 0 ? "khanh_vy" : "ngoc_huy";
   const name = getContestantSpokenName(seat.name) || `Thí sinh ${seat.id + 1}`;
+  const useConcise = Boolean(options?.concise ?? (options?.totalSeats ?? total) >= 6);
   let text: string;
   if (index === total - 1 && total > 1) {
-    text = options?.isTiedTopWithPrev
-      ? `Cùng chia sẻ vị trí dẫn đầu là bạn ${name} với ${seat.score} điểm.`
-      : `Và tạm dẫn đầu sau phần thi này là bạn ${name} với ${seat.score} điểm.`;
+    if (useConcise) {
+      text = options?.isTiedTopWithPrev
+        ? `Đồng dẫn đầu: bạn ${name}, ${seat.score} điểm.`
+        : `Tạm dẫn đầu: bạn ${name}, ${seat.score} điểm.`;
+    } else {
+      text = options?.isTiedTopWithPrev
+        ? `Cùng chia sẻ vị trí dẫn đầu là bạn ${name} với ${seat.score} điểm.`
+        : `Và tạm dẫn đầu sau phần thi này là bạn ${name} với ${seat.score} điểm.`;
+    }
+  } else if (useConcise) {
+    text = `Bạn ${name}: ${seat.score} điểm.`;
   } else if (index === 0) {
     text = `Bạn ${name} hiện đang có ${seat.score} điểm.`;
   } else {
@@ -4661,6 +4745,7 @@ export function buildPostMatchContestantSummarySegment(
     chpWinnerSeatId?: number | null;
     seatRanks?: Record<number, number>;
     stepIndex?: number;
+    totalSeats?: number;
   }
 ): DualMcScriptSegment | null {
   const orderedBySeat = [...normalizeIntroSeats(seats)].sort((a, b) => a.id - b.id);
@@ -4701,16 +4786,25 @@ export function buildPostMatchContestantSummarySegment(
   const seatNumber = targetSeat.id + 1;
   const role: DualMcRole =
     (options?.stepIndex ?? seatIdx) % 2 === 0 ? "khanh_vy" : "ngoc_huy";
+  const useConcise = (options?.totalSeats ?? orderedBySeat.length) >= 6;
 
   let text: string;
   if (effectiveRank === 1) {
-    text = `Ở vị trí số ${seatNumber}, bạn ${name} xuất sắc đạt ${targetSeat.score} điểm và giành Giải Nhất chung cuộc!`;
+    text = useConcise
+      ? `Vị trí ${seatNumber}, bạn ${name}: ${targetSeat.score} điểm, Giải Nhất!`
+      : `Ở vị trí số ${seatNumber}, bạn ${name} xuất sắc đạt ${targetSeat.score} điểm và giành Giải Nhất chung cuộc!`;
   } else if (effectiveRank === 2) {
-    text = `Ở vị trí số ${seatNumber}, bạn ${name} đạt ${targetSeat.score} điểm, giành Giải Nhì chung cuộc!`;
+    text = useConcise
+      ? `Vị trí ${seatNumber}, bạn ${name}: ${targetSeat.score} điểm, Giải Nhì!`
+      : `Ở vị trí số ${seatNumber}, bạn ${name} đạt ${targetSeat.score} điểm, giành Giải Nhì chung cuộc!`;
   } else if (meta.awardLabel === "Giải Ba") {
-    text = `Ở vị trí số ${seatNumber}, bạn ${name} kết thúc trận đấu với ${targetSeat.score} điểm, giành Giải Ba!`;
+    text = useConcise
+      ? `Vị trí ${seatNumber}, bạn ${name}: ${targetSeat.score} điểm, Giải Ba.`
+      : `Ở vị trí số ${seatNumber}, bạn ${name} kết thúc trận đấu với ${targetSeat.score} điểm, giành Giải Ba!`;
   } else {
-    text = `Ở vị trí số ${seatNumber}, bạn ${name} hoàn thành cuộc thi với ${targetSeat.score} điểm và giành đồng Giải Ba.`;
+    text = useConcise
+      ? `Vị trí ${seatNumber}, bạn ${name}: ${targetSeat.score} điểm, đồng Giải Ba.`
+      : `Ở vị trí số ${seatNumber}, bạn ${name} hoàn thành cuộc thi với ${targetSeat.score} điểm và giành đồng Giải Ba.`;
   }
 
   return {

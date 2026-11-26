@@ -119,6 +119,7 @@ import {
   buildScoreSummaryStepSegment,
   buildScoreSummaryCommentary,
   buildScoreSummaryScript,
+  getSummaryTtsRateScale,
   computeOlympiaMatchRankings,
   buildPostMatchMcOpeningSegment,
   buildPostMatchContestantSummarySegment,
@@ -412,32 +413,32 @@ test("TTS: summarizeOlympiaAnswer handles dates, multi-parentheticals, alternati
 test("TTS: getSeasonReadingRate separates question vs narration speed and scales by baseRate", () => {
   setTtsBaseRate(TTS_BASE_RATE_DEFAULT);
 
-  // Legacy question rate contracts
+  // Upgraded default question rate contracts (snappier than legacy 1.08 baseline)
   assert.equal(getSeasonReadingRate("O20"), 1.40);
   assert.equal(getSeasonReadingRate("O21"), 1.40);
   assert.equal(getSeasonReadingRate("O22"), 1.40);
-  assert.equal(getSeasonReadingRate("O23"), 1.08);
-  assert.equal(getSeasonReadingRate("O24-25"), 1.08);
-  assert.equal(getSeasonReadingRate("O26"), 1.08);
-  assert.equal(getSeasonReadingRate("O27"), 1.08);
+  assert.equal(getSeasonReadingRate("O23"), 1.18);
+  assert.equal(getSeasonReadingRate("O24-25"), 1.18);
+  assert.equal(getSeasonReadingRate("O26"), 1.18);
+  assert.equal(getSeasonReadingRate("O27"), 1.18);
 
   const normalRate = getSeasonReadingRate("O26", 15);
   const boostedRate = getSeasonReadingRate("O26", 30);
   assert.ok(boostedRate > normalRate);
-  assert.equal(boostedRate, +(1.08 * 1.12).toFixed(2));
+  assert.equal(boostedRate, +(1.18 * 1.12).toFixed(2));
 
-  // Speed separation: narration in O20 stays lively natural (~1.04-1.06), NOT 1.40 sprint
+  // Speed separation: narration in O20 stays crisp (~1.16-1.20), faster than old 1.04-1.06, NOT 1.42 sprint
   assert.equal(getTtsSpeedCategory("question"), "question");
   assert.equal(getTtsSpeedCategory("result"), "narration");
   assert.equal(getTtsSpeedCategory("opening_duo"), "narration");
   const o20Narration = getSeasonReadingRate("O20", 12, "opening_duo");
-  assert.ok(o20Narration >= 1.0 && o20Narration <= 1.10, `Expected natural narration speed, got ${o20Narration}`);
+  assert.ok(o20Narration >= 1.14 && o20Narration <= 1.24, `Expected crisp narration speed, got ${o20Narration}`);
 
   // Host baseRate slider scaling & clamping [0.5, 2.0]
   try {
     setTtsBaseRate(1.25);
     assert.equal(getTtsBaseRate(), 1.25);
-    assert.equal(getSeasonReadingRate("O26", 10, "question"), +(1.08 * 1.25).toFixed(2));
+    assert.equal(getSeasonReadingRate("O26", 10, "question"), +(1.18 * 1.25).toFixed(2));
 
     setTtsBaseRate(1.5);
     assert.equal(getSeasonReadingRate("O20", 10, "question"), 2.0, "Should clamp upper bound at 2.0");
@@ -3193,4 +3194,112 @@ test("Olympia Audio & PlayerPad: O26-O27 open_question cache-busts via olympia-a
   const padSrc = fs.readFileSync(new URL("../../components/olympia/PlayerPad.tsx", import.meta.url), "utf8");
   assert.equal(padSrc.includes("unlockRemainingMs / 1000).toFixed(1)"), false, "PlayerPad must not show decimal seconds for buzzer unlock");
   assert.equal(padSrc.includes("}, 200)"), false, "PlayerPad must not poll every 200ms during unlock countdown");
+});
+
+test("TTS Summary & Voice Cloning UI/API: seat-count speed scaling, DisplayScreen summary TTS, and voice-sample upload/list/delete", async () => {
+  // 1. Speed scales strictly upward as contestant count grows (2..8)
+  const s3 = getSummaryTtsRateScale(3);
+  const s4 = getSummaryTtsRateScale(4);
+  const s5 = getSummaryTtsRateScale(5);
+  const s6 = getSummaryTtsRateScale(6);
+  const s7 = getSummaryTtsRateScale(7);
+  const s8 = getSummaryTtsRateScale(8);
+  assert.ok(s3 <= s4 && s4 < s5 && s5 < s6 && s6 < s7 && s7 < s8, "Summary TTS speed must scale faster with more contestants");
+
+  const conciseStep = buildScoreSummaryStepSegment(
+    { id: 0, name: "Nguyễn Văn An", score: 150 },
+    0,
+    8,
+    { totalSeats: 8 }
+  );
+  assert.equal(conciseStep.text, "Bạn Nguyễn Văn An: 150 điểm.");
+
+  // 2. DisplayScreen wires state.summaryState & modal includes Voice Cloning UI
+  const displaySrc = fs.readFileSync(new URL("../../components/olympia/DisplayScreen.tsx", import.meta.url), "utf8");
+  const modalSrc = fs.readFileSync(new URL("../../components/olympia/TtsManagerModal.tsx", import.meta.url), "utf8");
+  assert.ok(displaySrc.includes("buildScoreSummaryStepSegment"), "DisplayScreen must speak inter-round summary steps");
+  assert.ok(displaySrc.includes("buildPostMatchContestantSummarySegment"), "DisplayScreen must speak post-match summary steps");
+  assert.ok(displaySrc.includes("getSummaryTtsRateScale"), "DisplayScreen must scale summary TTS rate by seat count");
+  assert.ok(modalSrc.includes("McVoiceCloneSection"), "TtsManagerModal must include Voice Cloning controls");
+  assert.ok(modalSrc.includes("/api/olympia/tts/voice-sample"), "TtsManagerModal must wire voice-sample upload API");
+
+  // 3. Client fetchServerTtsAudio forwards clone config cleanly
+  resetOlympiaTtsSession();
+  const sentBodies: Array<Record<string, unknown>> = [];
+  await withMockBrowserEnv({ withAudioContext: true, origin: "http://localhost:3000" }, async () => {
+    configureTtsTransport({
+      fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+        sentBodies.push(JSON.parse(String(init?.body || "{}")));
+        return {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new Uint8Array([0xff, 0xfb, 0x90, 0x00]).buffer,
+        } as unknown as Response;
+      }) as unknown as typeof fetch,
+    });
+    await speakOlympiaTTSAsync("Thử nghiệm clone", {
+      role: "ngoc_huy",
+      voiceConfig: {
+        clone: {
+          enabled: true,
+          provider: "local_profile",
+          profileId: "vp_test",
+          targetPitchHz: 122,
+        },
+      },
+    });
+    assert.equal(sentBodies.length, 1);
+    assert.equal((sentBodies[0].clone as any)?.enabled, true);
+    assert.equal((sentBodies[0].clone as any)?.provider, "local_profile");
+    assert.equal((sentBodies[0].clone as any)?.targetPitchHz, 122);
+  });
+
+  // 4. Voice sample upload, list (secret-safe), path traversal guard, and cleanup
+  const { VOICES_UPLOAD_DIR, encodeWavBuffer } = await import("./server-tts");
+  const voiceRoute = await import("../../app/api/olympia/tts/voice-sample/route");
+  const pathMod = await import("node:path");
+
+  // Synthesize a clean 140Hz WAV test sample
+  const sr = 16000;
+  const nSamples = 4000;
+  const pcm = new Float32Array(nSamples);
+  for (let i = 0; i < nSamples; i++) {
+    pcm[i] = 0.4 * Math.sin((2 * Math.PI * 140 * i) / sr);
+  }
+  const wavBuf = encodeWavBuffer(pcm, sr);
+  const fd = new FormData();
+  fd.append("file", new File([new Uint8Array(wavBuf)], "mc_test.wav", { type: "audio/wav" }));
+  fd.append("name", "Test Male MC");
+  fd.append("roleHint", "ngoc_huy");
+  fd.append("apiKey", "sk-secret-must-not-leak");
+
+  const uploadReq = new Request("http://localhost:3000/api/olympia/tts/voice-sample", {
+    method: "POST",
+    body: fd,
+  }) as any;
+  const uploadRes = await voiceRoute.POST(uploadReq);
+  assert.equal(uploadRes.status, 201);
+  const uploadJson = (await uploadRes.json()) as { ok: boolean; profile: { id: string; targetPitchHz?: number; hasApiKey?: boolean; apiKey?: string; sampleUrl?: string } };
+  assert.equal(uploadJson.ok, true);
+  assert.equal(uploadJson.profile.hasApiKey, true);
+  assert.equal("apiKey" in uploadJson.profile, false, "Uploaded response must not leak raw apiKey");
+  assert.ok(
+    uploadJson.profile.targetPitchHz && Math.abs(uploadJson.profile.targetPitchHz - 140) <= 15,
+    `Expected auto-detected F0 near 140Hz, got ${uploadJson.profile.targetPitchHz}`
+  );
+
+  // Path traversal rejection on ?file=
+  const badRes = await voiceRoute.GET({ nextUrl: new URL("http://localhost:3000/api/olympia/tts/voice-sample?file=../package.json") } as any);
+  assert.equal(badRes.status, 400);
+
+  // Clean up test profile & file
+  const delRes = await voiceRoute.DELETE({ nextUrl: new URL(`http://localhost:3000/api/olympia/tts/voice-sample?profileId=${uploadJson.profile.id}`) } as any);
+  assert.equal(delRes.status, 200);
+  const registryPath = pathMod.join(VOICES_UPLOAD_DIR, "profiles.json");
+  if (fs.existsSync(registryPath)) {
+    const remaining = JSON.parse(fs.readFileSync(registryPath, "utf8"));
+    if (Array.isArray(remaining.profiles) && remaining.profiles.length === 0) {
+      fs.rmSync(VOICES_UPLOAD_DIR, { recursive: true, force: true });
+    }
+  }
 });

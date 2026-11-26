@@ -1019,7 +1019,7 @@ test("T1.5.3: Negative pitch float (e.g. 0.88) formats to SSML prosody percentag
 
 test("T1.5.4: Custom rate parameter correctly modulates speech tempo across seasons", () => {
   assert.equal(getSeasonReadingRate("O20"), 1.40, "O20 sprint speed must be 1.40x");
-  assert.equal(getSeasonReadingRate("O26"), 1.08, "O26 broadcast pacing must be 1.08x");
+  assert.equal(getSeasonReadingRate("O26"), 1.18, "O26 upgraded default pacing must be 1.18x");
   assert.equal(getTtsSpeedCategory("result"), "narration");
   assert.equal(getTtsSpeedCategory("question"), "question");
 });
@@ -1218,8 +1218,8 @@ test("T1.6.7: Season rate modulation separates rapid-fire question reading from 
   const nSpeedO20 = getSeasonReadingRate("O20", 10, "result");
 
   assert.equal(qSpeedO20, 1.40, "O20 sprint question rate must be 1.40x");
-  assert.equal(qSpeedO26, 1.08, "O26 broadcast question rate must be 1.08x");
-  assert.ok(nSpeedO20 >= 1.0 && nSpeedO20 <= 1.10, "Narration in O20 must remain natural, not sprint");
+  assert.equal(qSpeedO26, 1.18, "O26 upgraded question rate must be 1.18x");
+  assert.ok(nSpeedO20 >= 1.14 && nSpeedO20 <= 1.24, "Narration in O20 must stay crisp (~1.16-1.20x), not 1.40x sprint");
 });
 
 // ----------------------------------------------------------------------------

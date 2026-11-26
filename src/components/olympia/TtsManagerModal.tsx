@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import type { CustomTtsScriptConfig, McVoiceCustomization } from "@/lib/olympia/types";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import type {
+  CustomTtsScriptConfig,
+  McVoiceCloneConfig,
+  McVoiceCloneProvider,
+  McVoiceCustomization,
+  SavedVoiceProfile,
+} from "@/lib/olympia/types";
 import {
   DEFAULT_OLYMPIA_SCRIPTS,
   speakOlympiaTTS,
@@ -41,6 +47,8 @@ export function TtsManagerModal({
   });
 
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [savedProfiles, setSavedProfiles] = useState<SavedVoiceProfile[]>([]);
+  const [uploadingRole, setUploadingRole] = useState<"khanh_vy" | "ngoc_huy" | null>(null);
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [diagnosticEngine, setDiagnosticEngine] = useState<"auto" | "server" | "webspeech">("auto");
   const [telemetry, setTelemetry] = useState<{
@@ -56,6 +64,25 @@ export function TtsManagerModal({
     latencyMs: 0,
     zeroDiskConfirmed: true,
   });
+
+  const loadVoiceProfiles = useCallback(async () => {
+    try {
+      const res = await fetch("/api/olympia/tts/voice-sample", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { profiles?: SavedVoiceProfile[] };
+      if (Array.isArray(data.profiles)) {
+        setSavedProfiles(data.profiles);
+      }
+    } catch {
+      // ignore offline or transient errors
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadVoiceProfiles();
+    }
+  }, [isOpen, loadVoiceProfiles]);
 
   // Sync available speech synthesis voices
   useEffect(() => {
@@ -120,11 +147,17 @@ export function TtsManagerModal({
       pitch: cfg?.pitch,
       voice: cfg?.voiceURI,
       voiceConfig: cfg,
-      baseRate: cfg?.rate ?? (role === "khanh_vy" ? 1.05 : 1.04),
+      baseRate: cfg?.rate ?? 1.16,
       engine: engineToUse,
       onEnd: () => {
         const elapsed = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startTime);
-        setTestStatus(`Phát thành công (${elapsed}ms)`);
+        const engineState = getTtsEngineStatus();
+        const cloneLabel = cfg?.clone?.enabled
+          ? engineState.lastFallbackReason
+            ? `Fallback giọng mặc định (${engineState.lastFallbackReason})`
+            : `Voice Clone (${cfg.clone.provider})`
+          : engineState.mode;
+        setTestStatus(`Phát thành công (${elapsed}ms · ${cloneLabel})`);
         setTelemetry((prev) => ({
           ...prev,
           status: "ended",
@@ -399,14 +432,14 @@ export function TtsManagerModal({
 
                   <div>
                     <label className="text-slate-300 font-bold block mb-1">
-                      Tốc độ cơ bản (Rate): {scripts.mcVoiceConfig?.khanhVy?.rate ?? 1.05}x
+                      Tốc độ cơ bản (Rate): {scripts.mcVoiceConfig?.khanhVy?.rate ?? 1.16}x
                     </label>
                     <input
                       type="range"
                       min="0.75"
-                      max="1.4"
+                      max="1.5"
                       step="0.02"
-                      value={scripts.mcVoiceConfig?.khanhVy?.rate ?? 1.05}
+                      value={scripts.mcVoiceConfig?.khanhVy?.rate ?? 1.16}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value);
                         setScripts((prev) => ({
@@ -447,6 +480,71 @@ export function TtsManagerModal({
                       ))}
                     </select>
                   </div>
+
+                  <McVoiceCloneSection
+                    role="khanh_vy"
+                    accent="rose"
+                    clone={scripts.mcVoiceConfig?.khanhVy?.clone}
+                    savedProfiles={savedProfiles}
+                    isUploading={uploadingRole === "khanh_vy"}
+                    onChange={(nextClone) => {
+                      setScripts((prev) => ({
+                        ...prev,
+                        mcVoiceConfig: {
+                          ...prev.mcVoiceConfig,
+                          khanhVy: { ...prev.mcVoiceConfig?.khanhVy, clone: nextClone },
+                        },
+                      }));
+                    }}
+                    onUploadSample={async (file, profileName) => {
+                      setUploadingRole("khanh_vy");
+                      try {
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        fd.append("name", profileName || file.name);
+                        fd.append("roleHint", "khanh_vy");
+                        fd.append("provider", "local_profile");
+                        const res = await fetch("/api/olympia/tts/voice-sample", { method: "POST", body: fd });
+                        const json = (await res.json()) as { ok?: boolean; profile?: SavedVoiceProfile; error?: string };
+                        if (!res.ok || !json.profile) {
+                          setTestStatus(json.error || "Tải mẫu giọng thất bại");
+                          return;
+                        }
+                        await loadVoiceProfiles();
+                        setScripts((prev) => ({
+                          ...prev,
+                          mcVoiceConfig: {
+                            ...prev.mcVoiceConfig,
+                            khanhVy: {
+                              ...prev.mcVoiceConfig?.khanhVy,
+                              clone: {
+                                enabled: true,
+                                provider: "local_profile",
+                                profileId: json.profile!.id,
+                                sampleUrl: json.profile!.sampleUrl,
+                                sampleName: json.profile!.sampleName,
+                                targetPitchHz: json.profile!.targetPitchHz,
+                                updatedAt: Date.now(),
+                              },
+                            },
+                          },
+                        }));
+                        setTestStatus(
+                          `Đã lưu mẫu "${json.profile.name}"${json.profile.targetPitchHz ? ` (F0 ~${json.profile.targetPitchHz}Hz)` : ""}`
+                        );
+                      } catch {
+                        setTestStatus("Lỗi mạng khi tải mẫu giọng");
+                      } finally {
+                        setUploadingRole(null);
+                      }
+                    }}
+                    onDeleteProfile={async (profileId) => {
+                      await fetch(`/api/olympia/tts/voice-sample?profileId=${encodeURIComponent(profileId)}`, {
+                        method: "DELETE",
+                      });
+                      await loadVoiceProfiles();
+                    }}
+                  />
                 </div>
               </div>
 
@@ -505,14 +603,14 @@ export function TtsManagerModal({
 
                   <div>
                     <label className="text-slate-300 font-bold block mb-1">
-                      Tốc độ cơ bản (Rate): {scripts.mcVoiceConfig?.ngocHuy?.rate ?? 1.04}x
+                      Tốc độ cơ bản (Rate): {scripts.mcVoiceConfig?.ngocHuy?.rate ?? 1.16}x
                     </label>
                     <input
                       type="range"
                       min="0.75"
-                      max="1.4"
+                      max="1.5"
                       step="0.02"
-                      value={scripts.mcVoiceConfig?.ngocHuy?.rate ?? 1.04}
+                      value={scripts.mcVoiceConfig?.ngocHuy?.rate ?? 1.16}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value);
                         setScripts((prev) => ({
@@ -553,6 +651,71 @@ export function TtsManagerModal({
                       ))}
                     </select>
                   </div>
+
+                  <McVoiceCloneSection
+                    role="ngoc_huy"
+                    accent="sky"
+                    clone={scripts.mcVoiceConfig?.ngocHuy?.clone}
+                    savedProfiles={savedProfiles}
+                    isUploading={uploadingRole === "ngoc_huy"}
+                    onChange={(nextClone) => {
+                      setScripts((prev) => ({
+                        ...prev,
+                        mcVoiceConfig: {
+                          ...prev.mcVoiceConfig,
+                          ngocHuy: { ...prev.mcVoiceConfig?.ngocHuy, clone: nextClone },
+                        },
+                      }));
+                    }}
+                    onUploadSample={async (file, profileName) => {
+                      setUploadingRole("ngoc_huy");
+                      try {
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        fd.append("name", profileName || file.name);
+                        fd.append("roleHint", "ngoc_huy");
+                        fd.append("provider", "local_profile");
+                        const res = await fetch("/api/olympia/tts/voice-sample", { method: "POST", body: fd });
+                        const json = (await res.json()) as { ok?: boolean; profile?: SavedVoiceProfile; error?: string };
+                        if (!res.ok || !json.profile) {
+                          setTestStatus(json.error || "Tải mẫu giọng thất bại");
+                          return;
+                        }
+                        await loadVoiceProfiles();
+                        setScripts((prev) => ({
+                          ...prev,
+                          mcVoiceConfig: {
+                            ...prev.mcVoiceConfig,
+                            ngocHuy: {
+                              ...prev.mcVoiceConfig?.ngocHuy,
+                              clone: {
+                                enabled: true,
+                                provider: "local_profile",
+                                profileId: json.profile!.id,
+                                sampleUrl: json.profile!.sampleUrl,
+                                sampleName: json.profile!.sampleName,
+                                targetPitchHz: json.profile!.targetPitchHz,
+                                updatedAt: Date.now(),
+                              },
+                            },
+                          },
+                        }));
+                        setTestStatus(
+                          `Đã lưu mẫu "${json.profile.name}"${json.profile.targetPitchHz ? ` (F0 ~${json.profile.targetPitchHz}Hz)` : ""}`
+                        );
+                      } catch {
+                        setTestStatus("Lỗi mạng khi tải mẫu giọng");
+                      } finally {
+                        setUploadingRole(null);
+                      }
+                    }}
+                    onDeleteProfile={async (profileId) => {
+                      await fetch(`/api/olympia/tts/voice-sample?profileId=${encodeURIComponent(profileId)}`, {
+                        method: "DELETE",
+                      });
+                      await loadVoiceProfiles();
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1175,6 +1338,237 @@ export function TtsManagerModal({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function McVoiceCloneSection({
+  role,
+  accent,
+  clone,
+  savedProfiles,
+  isUploading,
+  onChange,
+  onUploadSample,
+  onDeleteProfile,
+}: {
+  role: "khanh_vy" | "ngoc_huy";
+  accent: "rose" | "sky";
+  clone?: McVoiceCloneConfig;
+  savedProfiles: SavedVoiceProfile[];
+  isUploading: boolean;
+  onChange: (next: McVoiceCloneConfig | undefined) => void;
+  onUploadSample: (file: File, name?: string) => Promise<void>;
+  onDeleteProfile: (profileId: string) => Promise<void>;
+}) {
+  const [sampleTitle, setSampleTitle] = useState("");
+  const enabled = Boolean(clone?.enabled);
+  const provider: McVoiceCloneProvider = clone?.provider || "local_profile";
+  const borderCls = accent === "rose" ? "border-rose-500/35 bg-rose-950/35" : "border-sky-500/35 bg-sky-950/35";
+  const badgeCls = accent === "rose" ? "text-rose-200" : "text-sky-200";
+
+  const patchClone = (patch: Partial<McVoiceCloneConfig>) => {
+    onChange({
+      enabled: true,
+      provider,
+      ...clone,
+      ...patch,
+      updatedAt: Date.now(),
+    });
+  };
+
+  return (
+    <div className={`rounded-lg border ${borderCls} p-3 space-y-2.5 text-xs`}>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <span className={`font-bold ${badgeCls}`}>🧬 Giọng Clone (Voice Cloning)</span>
+          <p className="text-[11px] text-slate-400">
+            Tự động dùng giọng {role === "khanh_vy" ? "Nữ" : "Nam"} mặc định nếu chưa cấu hình hoặc service lỗi.
+          </p>
+        </div>
+        <label className="inline-flex items-center gap-1.5 cursor-pointer font-bold text-slate-200">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              onChange({
+                provider: clone?.provider || "local_profile",
+                ...clone,
+                enabled: checked,
+                updatedAt: Date.now(),
+              });
+            }}
+            className="rounded accent-amber-400 cursor-pointer"
+          />
+          <span>{enabled ? "Đang bật" : "Tắt"}</span>
+        </label>
+      </div>
+
+      {enabled && (
+        <div className="space-y-2.5 pt-1 border-t border-slate-700/60">
+          <div>
+            <label className="text-slate-300 font-bold block mb-1">Nguồn / Engine Voice Clone:</label>
+            <select
+              value={provider}
+              onChange={(e) => patchClone({ provider: e.target.value as McVoiceCloneProvider })}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 text-xs"
+            >
+              <option value="local_profile">Mẫu giọng Local (Tự khớp F0 / tải file .wav/.mp3)</option>
+              <option value="elevenlabs">ElevenLabs Voice Cloning API</option>
+              <option value="fish_audio">Fish Audio Voice Cloning API</option>
+              <option value="custom_http">Custom HTTP Endpoint (Tự host / OpenAI-compatible)</option>
+            </select>
+          </div>
+
+          {provider === "local_profile" ? (
+            <div className="space-y-2">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Chọn mẫu giọng đã lưu:</label>
+                <div className="flex gap-1.5">
+                  <select
+                    value={clone?.profileId ?? ""}
+                    onChange={(e) => {
+                      const pid = e.target.value;
+                      if (!pid) {
+                        patchClone({ profileId: undefined, sampleUrl: undefined, sampleName: undefined, targetPitchHz: undefined });
+                        return;
+                      }
+                      const found = savedProfiles.find((p) => p.id === pid);
+                      if (found) {
+                        patchClone({
+                          profileId: found.id,
+                          sampleUrl: found.sampleUrl,
+                          sampleName: found.sampleName,
+                          targetPitchHz: found.targetPitchHz,
+                          pitchRatio: found.pitchRatio,
+                        });
+                      }
+                    }}
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-slate-200 text-xs"
+                  >
+                    <option value="">-- Chưa chọn (Fallback giọng mặc định) --</option>
+                    {savedProfiles.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.targetPitchHz ? `(~${p.targetPitchHz}Hz)` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {clone?.profileId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pid = clone.profileId!;
+                        patchClone({ profileId: undefined, sampleUrl: undefined, sampleName: undefined, targetPitchHz: undefined });
+                        void onDeleteProfile(pid);
+                      }}
+                      className="px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-100 font-bold text-[11px] cursor-pointer"
+                      title="Xóa mẫu giọng này"
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                <input
+                  type="text"
+                  value={sampleTitle}
+                  onChange={(e) => setSampleTitle(e.target.value)}
+                  placeholder="Tên mẫu (vd: MC Quốc Khánh)"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200 text-[11px]"
+                />
+                <label className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/50 text-amber-200 font-bold text-[11px] text-center cursor-pointer shrink-0">
+                  {isUploading ? "Đang tải lên…" : "⬆ Tải file mẫu (.wav/.mp3)"}
+                  <input
+                    type="file"
+                    accept="audio/*,.wav,.mp3,.ogg,.webm,.m4a"
+                    disabled={isUploading}
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) {
+                        void onUploadSample(f, sampleTitle.trim() || undefined);
+                        setSampleTitle("");
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
+              {clone?.sampleUrl && (
+                <div className="bg-slate-950/70 rounded p-2 space-y-1 border border-slate-800">
+                  <div className="flex items-center justify-between text-[11px] text-emerald-300">
+                    <span className="truncate">Mẫu: {clone.sampleName || clone.profileId}</span>
+                    {clone.targetPitchHz && <span className="font-mono">F0: {clone.targetPitchHz} Hz</span>}
+                  </div>
+                  <audio controls preload="none" src={clone.sampleUrl} className="w-full h-7" />
+                </div>
+              )}
+
+              <div>
+                <label className="text-slate-300 block mb-0.5 text-[11px]">
+                  Cao độ mục tiêu (Hz, tùy chọn để tinh chỉnh thêm): {clone?.targetPitchHz ? `${clone.targetPitchHz} Hz` : "Tự động theo mẫu"}
+                </label>
+                <input
+                  type="number"
+                  min={65}
+                  max={400}
+                  step={1}
+                  value={clone?.targetPitchHz ?? ""}
+                  placeholder={role === "ngoc_huy" ? "125 (Nam trầm)" : "210 (Nữ thanh)"}
+                  onChange={(e) => {
+                    const v = e.target.value ? Number(e.target.value) : undefined;
+                    patchClone({ targetPitchHz: v && Number.isFinite(v) ? v : undefined });
+                  }}
+                  className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {provider === "custom_http" && (
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Endpoint URL:</label>
+                  <input
+                    type="url"
+                    value={clone?.endpointUrl ?? ""}
+                    onChange={(e) => patchClone({ endpointUrl: e.target.value })}
+                    placeholder="https://voice-clone.example.com/tts"
+                    className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 text-xs"
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">
+                    {provider === "fish_audio" ? "Reference / Model ID:" : "Voice ID:"}
+                  </label>
+                  <input
+                    type="text"
+                    value={clone?.voiceId ?? ""}
+                    onChange={(e) => patchClone({ voiceId: e.target.value })}
+                    placeholder="vd: 21m00Tcm4TlvDq8ikWAM"
+                    className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">API Key (tùy chọn):</label>
+                  <input
+                    type="password"
+                    value={clone?.apiKey ?? ""}
+                    onChange={(e) => patchClone({ apiKey: e.target.value })}
+                    placeholder="Dùng biến môi trường nếu để trống"
+                    className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

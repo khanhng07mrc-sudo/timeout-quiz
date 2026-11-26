@@ -72,6 +72,13 @@ import {
   skipOlympiaTTS,
   setOlympiaTtsVolume,
   replayCurrentQuestionTTS,
+  getTtsBaseRate,
+  getSummaryTtsRateScale,
+  buildScoreSummaryStepSegment,
+  buildScoreSummaryCommentary,
+  buildPostMatchMcOpeningSegment,
+  buildPostMatchContestantSummarySegment,
+  buildAwardTierScript,
 } from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -775,6 +782,8 @@ export default function DisplayScreen({ code }: { code: string }) {
       prevRevealKeyRef.current = null;
       prevBuzzKeyRef.current = null;
       prevCommandSeqRef.current = -1;
+      summarySpokenKeyRef.current = null;
+      summaryPrefetchedKeyRef.current = null;
       prevCnvBellsLenRef.current = 0;
       handledTimeoutsRef.current.clear();
       if (timeoutDelayTimerRef.current) {
@@ -856,8 +865,154 @@ export default function DisplayScreen({ code }: { code: string }) {
         lastQuestionRef.current = "";
         replayCurrentQuestionTTS();
         break;
+      case "final_awards": {
+        if (!ttsActive || !state?.seats?.length) break;
+        const tier = cmd.meta?.tier as "third" | "second" | "first" | undefined;
+        if (tier && (tier === "third" || tier === "second" || tier === "first")) {
+          const awScript = buildAwardTierScript(tier, state.seats, {
+            tiers: state.awardsState?.tiers,
+            roomName: state.name,
+          });
+          if (awScript.length > 0) {
+            speakDualMcScript(awScript, {
+              season: effectiveAudioSeason,
+              preferServer: true,
+            });
+          }
+        }
+        break;
+      }
     }
-  }, [isExplicitMuteParam, state?.ttsCommand]);
+  }, [isExplicitMuteParam, state?.ttsCommand, state?.awardsState?.tiers, state?.name, ttsActive, state?.seats, effectiveAudioSeason]);
+
+  const summarySpokenKeyRef = useRef<string | null>(null);
+  const summaryPrefetchedKeyRef = useRef<string | null>(null);
+
+  // Vocalize Score Summary (both inter-round auto/manual and post-match TS1->TSX)
+  // Speed & concise phrasing scale progressively as contestant count grows (2..8 seats).
+  useEffect(() => {
+    const sm = state?.summaryState;
+    if (isExplicitMuteParam || !state || state.stage === "lobby" || !ttsActive || !sm?.active) {
+      if (!sm?.active) {
+        summarySpokenKeyRef.current = null;
+        summaryPrefetchedKeyRef.current = null;
+      }
+      return;
+    }
+
+    const orderedSeats = sm.orderedSeats || [];
+    const seatCount = orderedSeats.length || state.seats.length || 4;
+    const summaryBaseRate = +Math.min(1.5, Math.max(0.75, getTtsBaseRate() * getSummaryTtsRateScale(seatCount))).toFixed(2);
+    const prefetchKey = `${sm.startedAt}-${sm.isPostMatch ? 1 : 0}-${orderedSeats.join(",")}`;
+
+    if (summaryPrefetchedKeyRef.current !== prefetchKey && orderedSeats.length > 0) {
+      summaryPrefetchedKeyRef.current = prefetchKey;
+      const sortedMaxScore = Math.max(...orderedSeats.map((id) => state.seats.find((s) => s.id === id)?.score ?? 0));
+      orderedSeats.forEach((seatId, idx) => {
+        const seatObj = state.seats.find((s) => s.id === seatId);
+        if (!seatObj) return;
+        const seg = sm.isPostMatch
+          ? buildPostMatchContestantSummarySegment(state.seats, seatId, {
+              stepIndex: idx,
+              seatRanks: sm.seatRanks,
+              totalSeats: seatCount,
+            })
+          : buildScoreSummaryStepSegment(seatObj, idx, seatCount, {
+              isTiedTopWithPrev:
+                idx > 0 &&
+                seatObj.score === sortedMaxScore &&
+                (state.seats.find((s) => s.id === orderedSeats[idx - 1])?.score ?? -1) === sortedMaxScore,
+              totalSeats: seatCount,
+            });
+        if (seg?.text) {
+          prefetchOlympiaTtsAudio(seg.text, {
+            role: seg.role,
+            season: effectiveAudioSeason,
+            segment: sm.isPostMatch ? "post_match_summary" : "score_summary",
+            baseRate: summaryBaseRate,
+            seatId,
+          });
+        }
+      });
+    }
+
+    const curIdx = sm.currentIndex ?? -1;
+    const activeSeatId = curIdx >= 0 && curIdx < orderedSeats.length ? orderedSeats[curIdx] : null;
+    const stepKey = `${sm.startedAt}-${sm.isPostMatch ? "post" : "inter"}-${sm.focusTarget}-${curIdx}-${activeSeatId ?? "mc"}`;
+    if (summarySpokenKeyRef.current === stepKey) return;
+    summarySpokenKeyRef.current = stepKey;
+
+    if (sm.isPostMatch && (sm.focusTarget === "mc" || curIdx < 0)) {
+      const opening = buildPostMatchMcOpeningSegment({
+        roomName: state.name,
+        seatCount,
+      });
+      if (opening.length > 0) {
+        speakDualMcScript(opening, {
+          season: effectiveAudioSeason,
+          baseRate: summaryBaseRate,
+          preferServer: true,
+        });
+      }
+      return;
+    }
+
+    if (activeSeatId == null) return;
+    const seatObj = state.seats.find((s) => s.id === activeSeatId);
+    if (!seatObj) return;
+
+    if (sm.isPostMatch) {
+      const seg = buildPostMatchContestantSummarySegment(state.seats, activeSeatId, {
+        stepIndex: curIdx,
+        seatRanks: sm.seatRanks,
+        totalSeats: seatCount,
+      });
+      if (seg) {
+        speakDualMcScript([seg], {
+          season: effectiveAudioSeason,
+          baseRate: summaryBaseRate,
+          preferServer: true,
+        });
+      }
+      return;
+    }
+
+    const sortedMaxScore = Math.max(...orderedSeats.map((id) => state.seats.find((s) => s.id === id)?.score ?? 0));
+    const prevSeatScore = curIdx > 0 ? (state.seats.find((s) => s.id === orderedSeats[curIdx - 1])?.score ?? -1) : -1;
+    const stepSeg = buildScoreSummaryStepSegment(seatObj, curIdx, seatCount, {
+      isTiedTopWithPrev: curIdx > 0 && seatObj.score === sortedMaxScore && prevSeatScore === sortedMaxScore,
+      totalSeats: seatCount,
+      pauseAfterMs: curIdx === seatCount - 1 ? 220 : 0,
+    });
+    const segments = [stepSeg];
+    if (curIdx === seatCount - 1) {
+      const nextRole = stepSeg.role === "khanh_vy" ? "ngoc_huy" : "khanh_vy";
+      segments.push(
+        ...buildScoreSummaryCommentary(state.seats, {
+          startRole: nextRole,
+        })
+      );
+    }
+    speakDualMcScript(segments, {
+      season: effectiveAudioSeason,
+      baseRate: summaryBaseRate,
+      preferServer: true,
+    });
+  }, [
+    isExplicitMuteParam,
+    state?.stage,
+    state?.name,
+    state?.seats,
+    state?.summaryState?.active,
+    state?.summaryState?.startedAt,
+    state?.summaryState?.isPostMatch,
+    state?.summaryState?.focusTarget,
+    state?.summaryState?.currentIndex,
+    state?.summaryState?.orderedSeats,
+    state?.summaryState?.seatRanks,
+    ttsActive,
+    effectiveAudioSeason,
+  ]);
 
   // Khởi Động state-transition TTS interrupt effect (runs before round-intro, bridge, and question effects)
   useEffect(() => {

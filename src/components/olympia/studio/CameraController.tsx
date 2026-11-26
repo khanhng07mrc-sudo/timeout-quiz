@@ -640,7 +640,8 @@ export function CameraController({
     const isCamChanged = prevCamAngleRef.current !== camAngle;
 
     // 0a. Khởi Động 0s -> 3.5s: CAM 14 low-left Laurel Wreath sweep
-    if (kdStartCooldownUntil && !isManualCamera) {
+    // Overrides manual camera during kd:start so the floor sweep always plays cleanly.
+    if (kdStartCooldownUntil) {
       const now = serverNow ? serverNow() : Date.now();
       if (now < kdStartCooldownUntil) {
         const cam14 = OLYMPIA_CAM_PRESETS[14];
@@ -691,7 +692,7 @@ export function CameraController({
     // The orbit follows a nonlinear arc (circular interpolation via slerp on a horizontal arc around
     // the stage center), giving the feeling of a crane/dolly swinging around the contestant arc rather
     // than a cheap linear cross-stage slide.
-    if (!isContestantCam || isManualCamera) {
+    if (!isContestantCam) {
       kdZoomActiveRef.current = null;
     } else if (prevCamAngleRef.current === 14 && camAngle !== 14 && kdStartCooldownUntil) {
       kdZoomActiveRef.current = kdStartCooldownUntil;
@@ -700,8 +701,7 @@ export function CameraController({
     if (
       kdZoomActiveRef.current != null &&
       kdStartCooldownUntil === kdZoomActiveRef.current &&
-      isContestantCam &&
-      !isManualCamera
+      isContestantCam
     ) {
       const now = serverNow ? serverNow() : Date.now();
       if (now >= kdStartCooldownUntil && now < kdStartCooldownUntil + 2500) {

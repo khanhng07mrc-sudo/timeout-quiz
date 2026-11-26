@@ -619,12 +619,15 @@ test("R9.3: O22-O26 1_KhoiDong/open_question matches fandom O9 balanced track wh
   );
 });
 
-test("R9.4: Audio panner routes Left/Right strictly to target ear with 0.5 unity summing in hooks.ts", () => {
+test("R9.4: Audio panner preserves Stereo on 'both' and duplicates target channel cleanly in hooks.ts & audio-channel.ts", () => {
+  const audioChannelPath = path.resolve(process.cwd(), "src/lib/olympia/audio-channel.ts");
+  const audioChannelContent = fs.readFileSync(audioChannelPath, "utf-8");
   assert.ok(
-    hooksContent.includes("graph.gainL_to_L.gain.setTargetAtTime(0.5") &&
-    hooksContent.includes("splitter.connect(mixGain, 0)") &&
-    hooksContent.includes("mixGain.connect(merger, 0, 0)"),
-    "hooks.ts must keep unity 0.5 gain summing and isolate Left/Right channels cleanly in RAM SFX path"
+    hooksContent.includes("createChannelRoutingGraph") &&
+      hooksContent.includes("applyChannelRoutingGraph") &&
+      audioChannelContent.includes("setTargetAtTime") &&
+      audioChannelContent.includes("L_to_L: 1.0, L_to_R: 1.0"),
+    "hooks.ts and audio-channel.ts must route Stereo on both and duplicate Left/Right cleanly across all paths"
   );
 });
 

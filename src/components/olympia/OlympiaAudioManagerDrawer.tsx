@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
 import { speakHostStealCall, cancelTTS, isTtsEnabled, playTestMCVoices, unlockOlympiaTTS } from "@/lib/olympia/tts";
+import { applyChannelRoutingGraph, createChannelRoutingGraph } from "@/lib/olympia/audio-channel";
 
 interface SoundItem {
   id: string; // e.g. "1_KhoiDong/start_round"
@@ -309,67 +310,18 @@ export default function OlympiaAudioManagerDrawer({
         let graph = pannerGraphMap.current.get(a);
         if (!graph) {
           const source = getOrCreateMediaSource(a, ctx);
-          const splitter = ctx.createChannelSplitter(2);
-          const merger = ctx.createChannelMerger(2);
-          const gainL_to_L = ctx.createGain();
-          const gainL_to_R = ctx.createGain();
-          const gainR_to_L = ctx.createGain();
-          const gainR_to_R = ctx.createGain();
-
-          source.connect(splitter);
-
-          // Splitter ch 0 (Left input) -> gainL_to_L -> merger ch 0 (Left output)
-          splitter.connect(gainL_to_L, 0);
-          gainL_to_L.connect(merger, 0, 0);
-
-          // Splitter ch 0 (Left input) -> gainL_to_R -> merger ch 1 (Right output)
-          splitter.connect(gainL_to_R, 0);
-          gainL_to_R.connect(merger, 0, 1);
-
-          // Splitter ch 1 (Right input) -> gainR_to_L -> merger ch 0 (Left output)
-          splitter.connect(gainR_to_L, 1);
-          gainR_to_L.connect(merger, 0, 0);
-
-          // Splitter ch 1 (Right input) -> gainR_to_R -> merger ch 1 (Right output)
-          splitter.connect(gainR_to_R, 1);
-          gainR_to_R.connect(merger, 0, 1);
-
-          merger.connect(ctx.destination);
+          const routing = createChannelRoutingGraph(ctx);
+          source.connect(routing.splitter);
 
           graph = {
             source,
-            splitter,
-            merger,
-            gainL_to_L,
-            gainL_to_R,
-            gainR_to_L,
-            gainR_to_R,
+            ...routing,
           };
           pannerGraphMap.current.set(a, graph);
         }
 
         // Apply real-time channel routing with a smooth 15ms clickless ramp (zero audio interruption)
-        const now = ctx.currentTime;
-        const rampTime = 0.015;
-        if (ch === "left") {
-          // Route all audio channels (L + R) exclusively to Left output (Right silent)
-          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(0.0, now, rampTime);
-        } else if (ch === "right") {
-          // Route all audio channels (L + R) exclusively to Right output (Left silent)
-          graph.gainL_to_L.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-        } else {
-          // "both": balance equally across both ears without +6dB digital summing peak
-          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-        }
+        applyChannelRoutingGraph(ctx, graph, ch, 0.015);
       } catch (err) {
         console.warn("[AudioManager] WebAudio connectPanner error:", err);
       }
@@ -630,9 +582,9 @@ export default function OlympiaAudioManagerDrawer({
                     ? "bg-cyan-400 text-slate-950 font-black shadow"
                     : "bg-white/5 text-slate-400 hover:bg-white/10"
                 }`}
-                title="Âm thanh lệch sang loa trái (Left)"
+                title="Chỉ lấy kênh Trái và nhân đôi phát ra cả 2 bên loa"
               >
-                ⬅️ Lệch trái
+                ⬅️ Kênh trái
               </button>
               <button
                 type="button"
@@ -642,9 +594,9 @@ export default function OlympiaAudioManagerDrawer({
                     ? "bg-amber-400 text-slate-950 font-black shadow"
                     : "bg-white/5 text-slate-400 hover:bg-white/10"
                 }`}
-                title="Âm thanh lệch sang loa phải (Right)"
+                title="Chỉ lấy kênh Phải và nhân đôi phát ra cả 2 bên loa"
               >
-                ➡️ Lệch phải
+                ➡️ Kênh phải
               </button>
             </div>
           </div>

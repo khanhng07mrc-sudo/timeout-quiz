@@ -5,6 +5,12 @@ import { io, type Socket } from "socket.io-client";
 import type { OlympiaState, TimerState } from "@/lib/olympia/types";
 import { getEntranceScheduleOffsetsMs } from "@/lib/olympia/entrance-geometry";
 import { RULESETS } from "@/lib/olympia/rulesets";
+import {
+  applyChannelRoutingGraph,
+  createChannelRoutingGraph,
+  getStoredOlympiaAudioChannel,
+  type ChannelRoutingGraph,
+} from "@/lib/olympia/audio-channel";
 
 export function isPriorityInstantCue(sound?: string): boolean {
   if (!sound) return false;
@@ -972,9 +978,9 @@ export function useOlympiaAudio(
     (a: HTMLAudioElement, panOverride?: "both" | "left" | "right") => {
       const activePan =
         panOverride ||
-        (typeof window !== "undefined"
-          ? (localStorage.getItem("olympia_audio_channel") as any) || channel || "both"
-          : channel || "both");
+        getStoredOlympiaAudioChannel() ||
+        channel ||
+        "both";
       const ctx = getAudioContext();
       if (!ctx) return;
       try {
@@ -989,67 +995,18 @@ export function useOlympiaAudio(
             mediaSourceMap.current.set(a, source);
           }
 
-          const splitter = ctx.createChannelSplitter(2);
-          const merger = ctx.createChannelMerger(2);
-          const gainL_to_L = ctx.createGain();
-          const gainL_to_R = ctx.createGain();
-          const gainR_to_L = ctx.createGain();
-          const gainR_to_R = ctx.createGain();
-
-          source.connect(splitter);
-
-          // Splitter ch 0 (Left input) -> gainL_to_L -> merger ch 0 (Left output)
-          splitter.connect(gainL_to_L, 0);
-          gainL_to_L.connect(merger, 0, 0);
-
-          // Splitter ch 0 (Left input) -> gainL_to_R -> merger ch 1 (Right output)
-          splitter.connect(gainL_to_R, 0);
-          gainL_to_R.connect(merger, 0, 1);
-
-          // Splitter ch 1 (Right input) -> gainR_to_L -> merger ch 0 (Left output)
-          splitter.connect(gainR_to_L, 1);
-          gainR_to_L.connect(merger, 0, 0);
-
-          // Splitter ch 1 (Right input) -> gainR_to_R -> merger ch 1 (Right output)
-          splitter.connect(gainR_to_R, 1);
-          gainR_to_R.connect(merger, 0, 1);
-
-          merger.connect(ctx.destination);
+          const routing = createChannelRoutingGraph(ctx);
+          source.connect(routing.splitter);
 
           graph = {
             source,
-            splitter,
-            merger,
-            gainL_to_L,
-            gainL_to_R,
-            gainR_to_L,
-            gainR_to_R,
+            ...routing,
           };
           pannerGraphMap.current.set(a, graph);
         }
 
         // Apply real-time channel routing with a smooth 15ms clickless ramp (zero audio interruption)
-        const now = ctx.currentTime;
-        const rampTime = 0.015;
-        if (activePan === "left") {
-          // Route all audio channels (L + R) exclusively to Left output (Right silent)
-          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(0.0, now, rampTime);
-        } else if (activePan === "right") {
-          // Route all audio channels (L + R) exclusively to Right output (Left silent)
-          graph.gainL_to_L.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(0.0, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-        } else {
-          // "both": balance equally across both ears without +6dB digital summing peak
-          graph.gainL_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_L.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainL_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-          graph.gainR_to_R.gain.setTargetAtTime(0.5, now, rampTime);
-        }
+        applyChannelRoutingGraph(ctx, graph, activePan, 0.015);
       } catch {
         // Fallback: already connected or not supported
       }
@@ -1391,26 +1348,9 @@ export function useOlympiaAudio(
           gainNode.gain.value = 0.85;
           srcNode.connect(gainNode);
 
-          const splitter = ctx.createChannelSplitter(2);
-          const merger = ctx.createChannelMerger(2);
-          const mixGain = ctx.createGain();
-          mixGain.gain.value = 0.5;
-          gainNode.connect(splitter);
-          if (activePan === "left") {
-            splitter.connect(mixGain, 0);
-            splitter.connect(mixGain, 1);
-            mixGain.connect(merger, 0, 0);
-          } else if (activePan === "right") {
-            splitter.connect(mixGain, 0);
-            splitter.connect(mixGain, 1);
-            mixGain.connect(merger, 0, 1);
-          } else {
-            splitter.connect(mixGain, 0);
-            splitter.connect(mixGain, 1);
-            mixGain.connect(merger, 0, 0);
-            mixGain.connect(merger, 0, 1);
-          }
-          merger.connect(ctx.destination);
+          const routing = createChannelRoutingGraph(ctx);
+          gainNode.connect(routing.splitter);
+          applyChannelRoutingGraph(ctx, routing, activePan, 0.005);
           srcNode.start(0);
           return;
         } catch {}

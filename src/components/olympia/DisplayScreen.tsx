@@ -1184,6 +1184,11 @@ export default function DisplayScreen({ code }: { code: string }) {
           ) {
             spokenBridgeKeysRef.current.delete(key);
             kdBridgeNeedsRecoveryRef.current = true;
+            setTimeout(() => {
+              if (stopSeq === explicitStopSeqRef.current) {
+                recoverBlockedRoundSpeech();
+              }
+            }, 300);
           }
         }
       });

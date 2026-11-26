@@ -315,19 +315,20 @@ export function createFloorLaurelWreathCanvas(): HTMLCanvasElement {
 /**
  * Smoothstep outer radius profile for the unified raised dais platform.
  * Standard contestant & stage-right arc uses R = 7.60m, while the rear MC portal bay
- * across [0.29π, 0.498π] extends smoothly to R = 9.00m at Y = 0.22m.
+ * across [0.26π, 0.56π] extends smoothly to R = 9.20m at Y = 0.22m so both portal legs
+ * and the starry backdrop (0.307π..0.542π, r <= 9.15m) sit solidly on the dais.
  */
 export function getOuterDaisRadius(a: number): number {
-  if (a <= 0.29 * Math.PI || a >= 0.498 * Math.PI) return 7.60;
-  if (a < 0.31 * Math.PI) {
-    const t = (a - 0.29 * Math.PI) / (0.02 * Math.PI);
+  if (a <= 0.23 * Math.PI || a >= 0.59 * Math.PI) return 7.60;
+  if (a < 0.26 * Math.PI) {
+    const t = (a - 0.23 * Math.PI) / (0.03 * Math.PI);
     const s = t * t * (3 - 2 * t);
-    return 7.60 + (9.00 - 7.60) * s;
+    return 7.60 + (9.20 - 7.60) * s;
   }
-  if (a <= 0.475 * Math.PI) return 9.00;
-  const t = (a - 0.475 * Math.PI) / (0.023 * Math.PI);
+  if (a <= 0.56 * Math.PI) return 9.20;
+  const t = (a - 0.56 * Math.PI) / (0.03 * Math.PI);
   const s = t * t * (3 - 2 * t);
-  return 9.00 + (7.60 - 9.00) * s;
+  return 9.20 + (7.60 - 9.20) * s;
 }
 
 /**
@@ -657,11 +658,11 @@ export function StudioFloor({
     []
   );
 
-  // Raised Unified Stage Dais Extruded Geometry (Y = 0.22m, spanning [-0.08π, 1.28π] with integral R=9.00m MC Portal bay)
+  // Raised Unified Stage Dais Extruded Geometry (top flush at Y = 0.22m with bevelThickness=0.02 at y=-0.01)
   const daisGeometry = useMemo(() => {
     const shape = createAnnularSectorShape(5.2, getOuterDaisRadius, -0.08 * Math.PI, 1.28 * Math.PI, 256);
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.22,
+      depth: 0.21,
       bevelEnabled: true,
       bevelSegments: 2,
       steps: 1,

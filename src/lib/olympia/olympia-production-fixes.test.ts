@@ -233,14 +233,16 @@ export function runProductionFixesSuite() {
   // --- R7: Uninterrupted Persistent WebAudio Routing Graph & O27 Score Summary Contracts ---
   const r7HooksSrc = fs.readFileSync(path.resolve(projectRoot, "src/components/olympia/hooks.ts"), "utf8");
   const r7DrawerSrc = fs.readFileSync(path.resolve(projectRoot, "src/components/olympia/OlympiaAudioManagerDrawer.tsx"), "utf8");
+  const r7ChannelSrc = fs.readFileSync(path.resolve(projectRoot, "src/lib/olympia/audio-channel.ts"), "utf8");
   const r7CamCtrlSrc = fs.readFileSync(path.resolve(projectRoot, "src/components/olympia/studio/CameraController.tsx"), "utf8");
   const r7PodiumsSrc = fs.readFileSync(path.resolve(projectRoot, "src/components/olympia/studio/Podiums.tsx"), "utf8");
 
   assert.ok(r7HooksSrc.includes("pannerGraphMap"), "hooks.ts must declare persistent pannerGraphMap");
-  assert.ok(r7HooksSrc.includes("gainL_to_L"), "hooks.ts must use 4-GainNode persistent routing graph");
-  assert.ok(r7HooksSrc.includes("setTargetAtTime"), "hooks.ts must use setTargetAtTime for clickless gain ramp");
+  assert.ok(r7HooksSrc.includes("applyChannelRoutingGraph"), "hooks.ts must delegate routing to shared applyChannelRoutingGraph");
   assert.ok(r7DrawerSrc.includes("pannerGraphMap"), "OlympiaAudioManagerDrawer.tsx must declare persistent pannerGraphMap");
-  assert.ok(r7DrawerSrc.includes("setTargetAtTime"), "OlympiaAudioManagerDrawer.tsx must use setTargetAtTime");
+  assert.ok(r7DrawerSrc.includes("applyChannelRoutingGraph"), "OlympiaAudioManagerDrawer.tsx must delegate routing to shared applyChannelRoutingGraph");
+  assert.ok(r7ChannelSrc.includes("gainL_to_L"), "audio-channel.ts must use 4-GainNode persistent routing graph");
+  assert.ok(r7ChannelSrc.includes("setTargetAtTime"), "audio-channel.ts must use setTargetAtTime for clickless gain ramp");
 
   // CAM 18 Score Summary aim elevates to 1.45m and elevates camera to 1.56m
   assert.ok(r7CamCtrlSrc.includes("lerp(1.05, 1.45, activePush)"), "CameraController must elevate CAM 18 aim to 1.45m");

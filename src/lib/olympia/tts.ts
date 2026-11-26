@@ -17,6 +17,13 @@
  */
 
 import type { CustomTtsScriptConfig, McVoiceCustomization } from "./types";
+import {
+  applyChannelRoutingGraph,
+  createChannelRoutingGraph,
+  getStoredOlympiaAudioChannel,
+  type ChannelRoutingGraph,
+  type OlympiaAudioChannel,
+} from "./audio-channel";
 
 export type MCRole = "khanh_vy" | "ngoc_huy" | "khanhVy" | "ngocHuy" | "auto" | "random";
 export type DualMcRole = "khanh_vy" | "ngoc_huy";
@@ -1688,6 +1695,59 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 }
 
 let sharedAudioContext: AudioContext | null = null;
+const ttsChannelGraphMap = new WeakMap<AudioContext, ChannelRoutingGraph>();
+const ttsHtmlMediaSourceMap = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
+let ttsChannelListenersBound = false;
+
+function ensureTtsChannelListeners(): void {
+  if (ttsChannelListenersBound || typeof window === "undefined") return;
+  if (typeof window.addEventListener !== "function") return;
+  ttsChannelListenersBound = true;
+  const applyChannel = (nextChannel?: OlympiaAudioChannel | string | null) => {
+    const ctx = sharedAudioContext;
+    if (!ctx || (ctx as any).state === "closed") return;
+    const graph = ttsChannelGraphMap.get(ctx);
+    if (!graph) return;
+    const ch =
+      nextChannel === "left" || nextChannel === "right" || nextChannel === "both"
+        ? nextChannel
+        : getStoredOlympiaAudioChannel();
+    try {
+      applyChannelRoutingGraph(ctx, graph, ch, 0.015);
+    } catch {}
+  };
+  window.addEventListener("olympia_audio_channel_change", (e: Event) => {
+    const detail = (e as CustomEvent<{ channel?: OlympiaAudioChannel }>).detail;
+    applyChannel(detail?.channel);
+  });
+  window.addEventListener("storage", (e: StorageEvent) => {
+    if (e.key === "olympia_audio_channel" && e.newValue) {
+      applyChannel(e.newValue);
+    }
+  });
+}
+
+function getTtsOutputDestination(ctx: AudioContext): AudioNode {
+  ensureTtsChannelListeners();
+  const existing = ttsChannelGraphMap.get(ctx);
+  if (existing) {
+    applyChannelRoutingGraph(ctx, existing, getStoredOlympiaAudioChannel(), 0.015);
+    return existing.splitter;
+  }
+  if (
+    typeof ctx.createChannelSplitter === "function" &&
+    typeof ctx.createChannelMerger === "function" &&
+    typeof ctx.createGain === "function"
+  ) {
+    try {
+      const graph = createChannelRoutingGraph(ctx);
+      ttsChannelGraphMap.set(ctx, graph);
+      applyChannelRoutingGraph(ctx, graph, getStoredOlympiaAudioChannel(), 0.015);
+      return graph.splitter;
+    } catch {}
+  }
+  return ctx.destination;
+}
 
 function getOrCreateAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -2649,7 +2709,7 @@ async function playAudioBufferWithWebAudio(
     gainNode.gain.setValueAtTime(initialGain, ctx.currentTime);
     activeGainNodeRef = gainNode;
     source.connect(gainNode);
-    gainNode.connect(ctx.destination);
+    gainNode.connect(getTtsOutputDestination(ctx));
 
     const startedAtCtx = ctx.currentTime;
     const durationMs = (audioBuffer.duration || 0) * 1000;
@@ -2737,6 +2797,15 @@ async function playAudioBufferWithHtmlAudio(
   try {
     audio.volume = getOlympiaTtsVolume();
     activeHtmlAudioRef = audio;
+    const ctx = getOrCreateAudioContext();
+    if (ctx && typeof ctx.createMediaElementSource === "function") {
+      let mediaSource = ttsHtmlMediaSourceMap.get(audio);
+      if (!mediaSource) {
+        mediaSource = ctx.createMediaElementSource(audio);
+        ttsHtmlMediaSourceMap.set(audio, mediaSource);
+      }
+      mediaSource.connect(getTtsOutputDestination(ctx));
+    }
   } catch {}
 
   return new Promise<boolean>((resolve, reject) => {

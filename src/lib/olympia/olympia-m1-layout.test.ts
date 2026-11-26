@@ -765,15 +765,15 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
       "coveRightFloorGlowGeom must extend cleanly to 0.50 * Math.PI"
     );
     assert.ok(!studioLightingSrc.includes("0.48 * Math.PI"), "No stale 0.48 * Math.PI trench angle may remain");
-    assert.equal(getOuterDaisRadius(0.40 * Math.PI), 9.00, "Rear portal bay center must reach R=9.00m");
-    assert.equal(getOuterDaisRadius(0.50 * Math.PI), 7.60, "Contestant dais boundary at 0.50π must stay R=7.60m");
+    assert.equal(getOuterDaisRadius(0.40 * Math.PI), 9.20, "Rear portal bay center must reach R=9.20m");
+    assert.equal(getOuterDaisRadius(0.542 * Math.PI), 9.20, "Left portal leg at 0.542π must sit solidly on R=9.20m bay");
     // Verify smoothstep ramp monotonicity & boundary continuity on exported getOuterDaisRadius
-    assert.equal(getOuterDaisRadius(0.29 * Math.PI), 7.60);
-    assert.equal(getOuterDaisRadius(0.31 * Math.PI), 9.00);
-    assert.equal(getOuterDaisRadius(0.475 * Math.PI), 9.00);
-    assert.equal(getOuterDaisRadius(0.498 * Math.PI), 7.60);
-    assert.ok(getOuterDaisRadius(0.30 * Math.PI) > 7.60 && getOuterDaisRadius(0.30 * Math.PI) < 9.00);
-    assert.ok(getOuterDaisRadius(0.486 * Math.PI) > 7.60 && getOuterDaisRadius(0.486 * Math.PI) < 9.00);
+    assert.equal(getOuterDaisRadius(0.23 * Math.PI), 7.60);
+    assert.equal(getOuterDaisRadius(0.26 * Math.PI), 9.20);
+    assert.equal(getOuterDaisRadius(0.56 * Math.PI), 9.20);
+    assert.equal(getOuterDaisRadius(0.59 * Math.PI), 7.60);
+    assert.ok(getOuterDaisRadius(0.245 * Math.PI) > 7.60 && getOuterDaisRadius(0.245 * Math.PI) < 9.20);
+    assert.ok(getOuterDaisRadius(0.575 * Math.PI) > 7.60 && getOuterDaisRadius(0.575 * Math.PI) < 9.20);
   });
 
   runTest(2, "R1.3: MC Hexagonal Portal, CenterMcDesk, and MC Presenters share synchronized Y=0.22m elevation and rear deck containment", () => {

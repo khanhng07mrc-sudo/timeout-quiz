@@ -6,6 +6,8 @@ import {
   validateAndNormalizeTtsInput,
   buildEdgeSsml,
   synthesizeEdgeTtsStream,
+  splitTextForGoogleTts,
+  synthesizeGoogleTranslateTts,
   detectTtsLanguage,
   resetTtsCacheForTesting,
   populateTtsCacheForTesting,
@@ -2395,4 +2397,41 @@ test("TTS: Client fetch populates prefetch cache for 0ms repeat & server-tts dis
       assert.equal(fetchCount, 1, "Second call with identical utterance/voice must hit 0ms client RAM cache");
     }
   );
+});
+
+test("TTS: splitTextForGoogleTts splits long sentences <= maxChars & synthesizeGoogleTranslateTts fetches chunks in parallel", async () => {
+  const longText =
+    "Câu hỏi số 1 dành cho thí sinh Nguyễn Văn An trong phần thi Khởi động riêng: " +
+    "Hãy cho biết định lý Py-ta-go phát biểu rằng trong một tam giác vuông, bình phương độ dài cạnh huyền luôn bằng tổng bình phương độ dài hai cạnh góc vuông còn lại hay không?";
+
+  const chunks = splitTextForGoogleTts(longText, 120);
+  assert.ok(chunks.length >= 2, "Expected long text to split into >= 2 chunks");
+  for (const c of chunks) {
+    assert.ok(c.length <= 120, `Chunk exceeded maxChars: ${c.length}`);
+  }
+  assert.equal(chunks.join(" "), longText.replace(/\s+/g, " ").trim());
+
+  const originalFetch = globalThis.fetch;
+  const requestedUrls: string[] = [];
+  const fakeMp3 = Buffer.from([0xff, 0xfb, 0x90, 0x64, 0x01, 0x02]);
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    requestedUrls.push(String(url));
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => fakeMp3.buffer.slice(fakeMp3.byteOffset, fakeMp3.byteOffset + fakeMp3.byteLength),
+    } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const audio = await synthesizeGoogleTranslateTts({
+      cleanText: longText,
+      lang: "vi",
+    });
+    assert.ok(requestedUrls.length >= 2);
+    assert.ok(requestedUrls.every((u) => u.includes("translate.googleapis.com/translate_tts") && u.includes("tl=vi")));
+    assert.equal(audio.byteLength, fakeMp3.byteLength * requestedUrls.length);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

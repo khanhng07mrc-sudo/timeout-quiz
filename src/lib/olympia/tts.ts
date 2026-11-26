@@ -1632,7 +1632,7 @@ export function getActiveTtsSpeaker(): ActiveTtsSpeaker {
 }
 
 const DEFAULT_ENDPOINT = "/api/olympia/tts";
-const DEFAULT_TIMEOUT_MS = 2200;
+const DEFAULT_TIMEOUT_MS = 2600;
 const DEFAULT_COOLDOWN_MS = 5000;
 
 let transportConfig: TtsTransportConfig = {

@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await synthesizeEdgeTtsStream(body as SynthesizeTtsInput);
+    const engineHeader = result.engine ?? "edge-neural";
     if (result.cacheHit && result.audio) {
       return new Response(new Uint8Array(result.audio), {
         status: 200,
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
           "Content-Type": "audio/mpeg",
           "Content-Length": String(result.audio.byteLength),
           "Cache-Control": "no-store",
-          "X-TTS-Engine": "edge-neural",
+          "X-TTS-Engine": engineHeader,
           "X-TTS-Voice": result.voice,
           "X-TTS-Lang": result.lang,
           "X-TTS-Cache": "hit",
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "no-store",
-        "X-TTS-Engine": "edge-neural",
+        "X-TTS-Engine": engineHeader,
         "X-TTS-Voice": result.voice,
         "X-TTS-Lang": result.lang,
         "X-TTS-Cache": "miss",

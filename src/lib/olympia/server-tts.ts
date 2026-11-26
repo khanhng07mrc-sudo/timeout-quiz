@@ -15,6 +15,8 @@ export interface SynthesizeTtsInput {
   voice?: string;
 }
 
+export type TtsEngine = "edge-neural" | "google-translate-tts";
+
 export interface SynthesizeTtsResult {
   audio: Buffer;
   voice: string;
@@ -22,6 +24,7 @@ export interface SynthesizeTtsResult {
   rateStr: string;
   pitch: string;
   cacheHit: boolean;
+  engine?: TtsEngine;
 }
 
 export interface SynthesizeTtsStreamResult {
@@ -32,6 +35,7 @@ export interface SynthesizeTtsStreamResult {
   rateStr: string;
   pitch: string;
   cacheHit: boolean;
+  engine?: TtsEngine;
 }
 
 export class TtsValidationError extends Error {
@@ -70,9 +74,16 @@ const EDGE_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0";
 
 const MAX_TEXT_LENGTH = 2000;
-const WS_TIMEOUT_MS = 4500;
-const FIRST_AUDIO_STALL_MS = 2800;
+const WS_TIMEOUT_MS = 2400;
+const FIRST_AUDIO_STALL_MS = 1300;
+const HANDSHAKE_TIMEOUT_MS = 1100;
 const MAX_CONCURRENT_WS = 8;
+const EDGE_DEGRADED_COOLDOWN_MS = 5 * 60 * 1000;
+const GOOGLE_TTS_MAX_CHARS = 175;
+const GOOGLE_TTS_TIMEOUT_MS = 2200;
+
+let edgeDegradedUntil = 0;
+let edgeProbeInFlight: Promise<void> | null = null;
 
 const MAX_CACHE_ENTRIES = 200;
 const MAX_CACHE_BYTES = 24 * 1024 * 1024;
@@ -707,7 +718,7 @@ function synthesizeOnce(params: {
     const ws = new WebSocketCtor(url, {
       family: 4,
       perMessageDeflate: false,
-      handshakeTimeout: 3000,
+      handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
       headers: {
         Pragma: "no-cache",
         "Cache-Control": "no-cache",
@@ -874,24 +885,225 @@ function synthesizeOnce(params: {
   });
 }
 
+export function splitTextForGoogleTts(
+  text: string,
+  maxChars: number = GOOGLE_TTS_MAX_CHARS
+): string[] {
+  const clean = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  if (clean.length <= maxChars) return [clean];
+
+  const breakPieces: string[] = [];
+  const sentences = clean.split(/(?<=[.!?…])\s+/);
+  for (const s of sentences) {
+    if (s.length <= maxChars) {
+      breakPieces.push(s);
+      continue;
+    }
+    const clauses = s.split(/(?<=[,;:])\s+/);
+    for (const c of clauses) {
+      if (c.length <= maxChars) {
+        breakPieces.push(c);
+        continue;
+      }
+      const words = c.split(/\s+/);
+      let current = "";
+      for (const word of words) {
+        if (word.length > maxChars) {
+          if (current) {
+            breakPieces.push(current);
+            current = "";
+          }
+          for (let idx = 0; idx < word.length; idx += maxChars) {
+            breakPieces.push(word.slice(idx, idx + maxChars));
+          }
+          continue;
+        }
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= maxChars) {
+          current = candidate;
+        } else {
+          if (current) breakPieces.push(current);
+          current = word;
+        }
+      }
+      if (current) breakPieces.push(current);
+    }
+  }
+
+  const merged: string[] = [];
+  let buf = "";
+  for (const piece of breakPieces) {
+    if (!piece) continue;
+    const candidate = buf ? `${buf} ${piece}` : piece;
+    if (candidate.length <= maxChars) {
+      buf = candidate;
+    } else {
+      if (buf) merged.push(buf);
+      buf = piece;
+    }
+  }
+  if (buf) merged.push(buf);
+  return merged;
+}
+
+async function fetchGoogleTranslateChunk(chunk: string, lang: TtsLang): Promise<Buffer> {
+  const tl = lang === "en" ? "en" : "vi";
+  const url =
+    `https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob` +
+    `&tl=${tl}&q=${encodeURIComponent(chunk)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "User-Agent": EDGE_USER_AGENT,
+    },
+    signal: AbortSignal.timeout(GOOGLE_TTS_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new TtsUpstreamError(`Google-TTS upstream HTTP ${res.status}`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.byteLength === 0 || !isValidMp3Buffer(buf)) {
+    throw new TtsUpstreamError("Google-TTS returned empty or invalid audio");
+  }
+  return buf;
+}
+
+export async function synthesizeGoogleTranslateTts(params: {
+  cleanText: string;
+  lang: TtsLang;
+}): Promise<Buffer> {
+  const chunks = splitTextForGoogleTts(params.cleanText);
+  if (chunks.length === 0) {
+    throw new TtsValidationError("Text must not be empty");
+  }
+  const buffers = await Promise.all(
+    chunks.map((chunk) => fetchGoogleTranslateChunk(chunk, params.lang))
+  );
+  return Buffer.concat(buffers);
+}
+
+async function synthesizeGoogleTranslateTtsStream(params: {
+  cleanText: string;
+  lang: TtsLang;
+  onTurnEnd?: (fullAudio: Buffer) => void;
+}): Promise<ReadableStream<Uint8Array>> {
+  const chunks = splitTextForGoogleTts(params.cleanText);
+  if (chunks.length === 0) {
+    throw new TtsValidationError("Text must not be empty");
+  }
+  // Fire all chunk HTTP fetches concurrently, then await only chunk 0 before sending HTTP 200 headers.
+  const chunkPromises = chunks.map((chunk) => fetchGoogleTranslateChunk(chunk, params.lang));
+  for (const p of chunkPromises) {
+    p.catch(() => {});
+  }
+  const firstBuf = await chunkPromises[0];
+
+  if (chunkPromises.length === 1) {
+    params.onTurnEnd?.(firstBuf);
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(firstBuf));
+        controller.close();
+      },
+    });
+  }
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const completed: Buffer[] = [firstBuf];
+      try {
+        controller.enqueue(new Uint8Array(firstBuf));
+        for (let i = 1; i < chunkPromises.length; i++) {
+          const nextBuf = await chunkPromises[i];
+          completed.push(nextBuf);
+          controller.enqueue(new Uint8Array(nextBuf));
+        }
+        params.onTurnEnd?.(Buffer.concat(completed));
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
+}
+
+function markEdgeDegraded(): void {
+  edgeDegradedUntil = Date.now() + EDGE_DEGRADED_COOLDOWN_MS;
+}
+
+function markEdgeHealthy(): void {
+  edgeDegradedUntil = 0;
+}
+
+function shouldBypassEdgeWithBackgroundProbe(): boolean {
+  if (edgeDegradedUntil === 0) return false;
+  const now = Date.now();
+  if (now < edgeDegradedUntil) return true;
+  if (!edgeProbeInFlight && process.env.NODE_ENV !== "test") {
+    edgeProbeInFlight = withWsConcurrencyLimit(() =>
+      synthesizeOnce({
+        cleanText: "Kiểm tra kết nối.",
+        voice: EDGE_TTS_VOICES.khanh_vy.vi,
+        lang: "vi",
+        rateStr: "+0%",
+        pitch: "+0Hz",
+      })
+    )
+      .then(() => {
+        markEdgeHealthy();
+      })
+      .catch(() => {
+        markEdgeDegraded();
+      })
+      .finally(() => {
+        edgeProbeInFlight = null;
+      });
+  }
+  return true;
+}
+
 async function synthesizeWithSkewRetry(params: {
   cleanText: string;
   voice: string;
   lang: TtsLang;
   rateStr: string;
   pitch: string;
-}): Promise<Buffer> {
-  return withWsConcurrencyLimit(async () => {
-    try {
-      return await synthesizeOnce(params);
-    } catch (err) {
-      const typed = err as { statusCode?: number; closeCode?: number } | null;
-      if (typed?.statusCode === 403 || typed?.closeCode === 1006) {
+}): Promise<{ audio: Buffer; engine: TtsEngine }> {
+  if (shouldBypassEdgeWithBackgroundProbe()) {
+    const audio = await synthesizeGoogleTranslateTts({
+      cleanText: params.cleanText,
+      lang: params.lang,
+    });
+    return { audio, engine: "google-translate-tts" };
+  }
+
+  try {
+    const audio = await withWsConcurrencyLimit(async () => {
+      try {
         return await synthesizeOnce(params);
+      } catch (err) {
+        const typed = err as { statusCode?: number } | null;
+        if (typed?.statusCode === 403) {
+          return await synthesizeOnce(params);
+        }
+        throw err;
       }
-      throw err;
+    });
+    markEdgeHealthy();
+    return { audio, engine: "edge-neural" };
+  } catch (edgeErr) {
+    markEdgeDegraded();
+    try {
+      const audio = await synthesizeGoogleTranslateTts({
+        cleanText: params.cleanText,
+        lang: params.lang,
+      });
+      return { audio, engine: "google-translate-tts" };
+    } catch {
+      throw edgeErr;
     }
-  });
+  }
 }
 
 export async function synthesizeEdgeTts(input: SynthesizeTtsInput): Promise<SynthesizeTtsResult> {
@@ -910,7 +1122,7 @@ export async function synthesizeEdgeTts(input: SynthesizeTtsInput): Promise<Synt
   }
 
   const promise = (async () => {
-    const audio = await synthesizeWithSkewRetry({
+    const { audio, engine } = await synthesizeWithSkewRetry({
       cleanText: normalized.cleanText,
       voice: normalized.voice,
       lang: normalized.lang,
@@ -919,11 +1131,12 @@ export async function synthesizeEdgeTts(input: SynthesizeTtsInput): Promise<Synt
     });
     const entry: SynthesizeTtsResult = {
       audio,
-      voice: normalized.voice,
+      voice: engine === "google-translate-tts" ? `google-${normalized.lang}` : normalized.voice,
       lang: normalized.lang,
       rateStr: normalized.rateStr,
       pitch: normalized.pitch,
       cacheHit: false,
+      engine,
     };
     ttsCache.set(cacheKey, entry);
     return entry;
@@ -988,7 +1201,7 @@ function synthesizeStreamOnce(params: {
     const ws = new WebSocketCtor(url, {
       family: 4,
       perMessageDeflate: false,
-      handshakeTimeout: 3000,
+      handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
       headers: {
         Pragma: "no-cache",
         "Cache-Control": "no-cache",
@@ -1182,28 +1395,75 @@ async function synthesizeWithSkewRetryStream(params: {
   lang: TtsLang;
   rateStr: string;
   pitch: string;
-  onTurnEnd?: (fullAudio: Buffer) => void;
-}): Promise<ReadableStream<Uint8Array>> {
+  onTurnEnd?: (fullAudio: Buffer, engine: TtsEngine) => void;
+}): Promise<{ stream: ReadableStream<Uint8Array>; engine: TtsEngine }> {
+  if (shouldBypassEdgeWithBackgroundProbe()) {
+    const stream = await synthesizeGoogleTranslateTtsStream({
+      cleanText: params.cleanText,
+      lang: params.lang,
+      onTurnEnd: (fullAudio) => params.onTurnEnd?.(fullAudio, "google-translate-tts"),
+    });
+    return { stream, engine: "google-translate-tts" };
+  }
+
   const releaseSlot = await acquireWsSlot();
   try {
-    return await synthesizeStreamOnce({
-      ...params,
+    const stream = await synthesizeStreamOnce({
+      cleanText: params.cleanText,
+      voice: params.voice,
+      lang: params.lang,
+      rateStr: params.rateStr,
+      pitch: params.pitch,
+      onTurnEnd: (fullAudio) => {
+        markEdgeHealthy();
+        params.onTurnEnd?.(fullAudio, "edge-neural");
+      },
       onDone: releaseSlot,
     });
+    return { stream, engine: "edge-neural" };
   } catch (err) {
-    const typed = err as { statusCode?: number; closeCode?: number } | null;
-    if (typed?.statusCode === 403 || typed?.closeCode === 1006) {
+    const typed = err as { statusCode?: number } | null;
+    if (typed?.statusCode === 403) {
       const retryRelease = await acquireWsSlot();
       try {
-        return await synthesizeStreamOnce({
-          ...params,
+        const stream = await synthesizeStreamOnce({
+          cleanText: params.cleanText,
+          voice: params.voice,
+          lang: params.lang,
+          rateStr: params.rateStr,
+          pitch: params.pitch,
+          onTurnEnd: (fullAudio) => {
+            markEdgeHealthy();
+            params.onTurnEnd?.(fullAudio, "edge-neural");
+          },
           onDone: retryRelease,
         });
+        return { stream, engine: "edge-neural" };
       } catch (retryErr) {
-        throw retryErr;
+        markEdgeDegraded();
+        try {
+          const stream = await synthesizeGoogleTranslateTtsStream({
+            cleanText: params.cleanText,
+            lang: params.lang,
+            onTurnEnd: (fullAudio) => params.onTurnEnd?.(fullAudio, "google-translate-tts"),
+          });
+          return { stream, engine: "google-translate-tts" };
+        } catch {
+          throw retryErr;
+        }
       }
     }
-    throw err;
+    markEdgeDegraded();
+    try {
+      const stream = await synthesizeGoogleTranslateTtsStream({
+        cleanText: params.cleanText,
+        lang: params.lang,
+        onTurnEnd: (fullAudio) => params.onTurnEnd?.(fullAudio, "google-translate-tts"),
+      });
+      return { stream, engine: "google-translate-tts" };
+    } catch {
+      throw err;
+    }
   }
 }
 
@@ -1224,39 +1484,42 @@ export async function synthesizeEdgeTtsStream(
     return {
       stream,
       audio: cached.audio,
-      voice: normalized.voice,
+      voice: cached.voice,
       lang: normalized.lang,
       rateStr: normalized.rateStr,
       pitch: normalized.pitch,
       cacheHit: true,
+      engine: cached.engine ?? "edge-neural",
     };
   }
 
-  const stream = await synthesizeWithSkewRetryStream({
+  const { stream, engine } = await synthesizeWithSkewRetryStream({
     cleanText: normalized.cleanText,
     voice: normalized.voice,
     lang: normalized.lang,
     rateStr: normalized.rateStr,
     pitch: normalized.pitch,
-    onTurnEnd: (fullAudio) => {
+    onTurnEnd: (fullAudio, usedEngine) => {
       ttsCache.set(cacheKey, {
         audio: fullAudio,
-        voice: normalized.voice,
+        voice: usedEngine === "google-translate-tts" ? `google-${normalized.lang}` : normalized.voice,
         lang: normalized.lang,
         rateStr: normalized.rateStr,
         pitch: normalized.pitch,
         cacheHit: false,
+        engine: usedEngine,
       });
     },
   });
 
   return {
     stream,
-    voice: normalized.voice,
+    voice: engine === "google-translate-tts" ? `google-${normalized.lang}` : normalized.voice,
     lang: normalized.lang,
     rateStr: normalized.rateStr,
     pitch: normalized.pitch,
     cacheHit: false,
+    engine,
   };
 }
 
@@ -1267,6 +1530,8 @@ export function getTtsCacheStats() {
 export function resetTtsCacheForTesting(): void {
   (ttsCache as any).store?.clear();
   (ttsCache as any).totalBytes = 0;
+  edgeDegradedUntil = 0;
+  edgeProbeInFlight = null;
 }
 
 export function populateTtsCacheForTesting(input: SynthesizeTtsInput, audio: Buffer): void {

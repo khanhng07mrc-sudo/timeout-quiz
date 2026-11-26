@@ -2360,3 +2360,39 @@ test("TTS: Context-aware Opening Duo greeting handles Sandbox + team counts with
     }
   );
 });
+
+test("TTS: Client fetch populates prefetch cache for 0ms repeat & server-tts disables perMessageDeflate with IPv4", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const serverSrc = fs.readFileSync(path.resolve(process.cwd(), "src/lib/olympia/server-tts.ts"), "utf8");
+  const routeSrc = fs.readFileSync(path.resolve(process.cwd(), "src/app/api/olympia/tts/route.ts"), "utf8");
+
+  assert.ok(serverSrc.includes("perMessageDeflate: false"), "Edge WS must disable perMessageDeflate to avoid 1006 stalls");
+  assert.ok(serverSrc.includes("family: 4"), "Edge WS must force IPv4 family to avoid IPv6 ENETUNREACH delays");
+  assert.ok(!routeSrc.includes('"Transfer-Encoding": "chunked"'), "TTS stream route must not inject manual Transfer-Encoding header");
+
+  resetOlympiaTtsSession();
+  let fetchCount = 0;
+  await withMockBrowserEnv(
+    {
+      withAudioContext: true,
+      origin: "http://localhost:3000",
+    },
+    async () => {
+      configureTtsTransport({
+        fetchImpl: (async () => {
+          fetchCount++;
+          return {
+            ok: true,
+            status: 200,
+            arrayBuffer: async () => new Uint8Array([0xff, 0xfb, 0x90, 0x00]).buffer,
+          } as unknown as Response;
+        }) as unknown as typeof fetch,
+      });
+
+      await speakOlympiaTTSAsync("Chính xác!", { role: "khanh_vy", segment: "result" });
+      await speakOlympiaTTSAsync("Chính xác!", { role: "khanh_vy", segment: "result" });
+      assert.equal(fetchCount, 1, "Second call with identical utterance/voice must hit 0ms client RAM cache");
+    }
+  );
+});

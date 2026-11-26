@@ -1438,18 +1438,105 @@ export default function DisplayScreen({ code }: { code: string }) {
       cancelQuestionTTS();
     }
 
-    // Pre-warm upcoming Khởi Động pre-loaded question before host reveals it so Q1 plays with 0ms delay
-    if (
-      state.currentRound === "khoiDong" &&
-      state.khoiDong?.current?.q &&
-      !state.khoiDong.questionRevealed
-    ) {
-      prefetchOlympiaTtsAudio(state.khoiDong.current.q, {
-        season: effectiveAudioSeason,
-        round: "khoiDong",
-        seatId: state.khoiDong.segments?.[state.khoiDong.segIdx ?? 0]?.seat,
-        segIdx: state.khoiDong.segIdx,
-      });
+    // Pre-warm upcoming questions and summarized answers across ALL rounds before host triggers verdict/reveal
+    if (state.currentRound === "khoiDong" && state.khoiDong) {
+      const seatId = state.khoiDong.segments?.[state.khoiDong.segIdx ?? 0]?.seat;
+      if (state.khoiDong.current?.q && !state.khoiDong.questionRevealed) {
+        prefetchOlympiaTtsAudio(state.khoiDong.current.q, {
+          season: effectiveAudioSeason,
+          round: "khoiDong",
+          seatId,
+          segIdx: state.khoiDong.segIdx,
+        });
+      }
+      if (state.khoiDong.current?.a && state.khoiDong.questionRevealed) {
+        const cleanAns = summarizeOlympiaAnswer(state.khoiDong.current.a);
+        if (cleanAns) {
+          prefetchOlympiaTtsAudio(cleanAns, {
+            season: effectiveAudioSeason,
+            round: "khoiDong",
+            segment: "result",
+            seatId,
+          });
+        }
+      }
+    } else if (state.currentRound === "vcnv" && state.vcnv) {
+      const v = state.vcnv;
+      const curRow = v.currentRow ?? -1;
+      const rawPrompt = curRow === 4 ? v.centerQuestion?.q : (curRow >= 0 && curRow < 4 ? v.rows?.[curRow]?.hint : undefined);
+      const cleanPrompt = rawPrompt ? stripVcnvLetterCount(rawPrompt) : "";
+      if (cleanPrompt && v.phase === "selecting") {
+        prefetchOlympiaTtsAudio(cleanPrompt, {
+          season: effectiveAudioSeason,
+          round: "vcnv",
+          rowIdx: curRow,
+        });
+      }
+      const rowAns = curRow === 4 ? v.centerQuestion?.a : v.rows?.[curRow]?.answer;
+      if (rowAns && v.phase === "question") {
+        const cleanAns = summarizeOlympiaAnswer(rowAns);
+        if (cleanAns) {
+          prefetchOlympiaTtsAudio(cleanAns, {
+            season: effectiveAudioSeason,
+            round: "vcnv",
+            segment: "result",
+            rowIdx: curRow,
+          });
+        }
+      }
+    } else if (state.currentRound === "tangToc" && state.tangToc) {
+      const tt = state.tangToc;
+      const qObj = tt.qIdx != null && tt.qIdx >= 0 ? tt.questions?.[tt.qIdx] : null;
+      if (qObj?.q && tt.phase === "idle") {
+        prefetchOlympiaTtsAudio(qObj.q, {
+          season: effectiveAudioSeason,
+          round: "tangToc",
+        });
+      }
+      if (qObj?.answer && tt.phase === "question") {
+        const cleanAns = summarizeOlympiaAnswer(qObj.answer);
+        if (cleanAns) {
+          prefetchOlympiaTtsAudio(cleanAns, {
+            season: effectiveAudioSeason,
+            round: "tangToc",
+            segment: "result",
+          });
+        }
+      }
+    } else if (state.currentRound === "veDich" && state.veDich) {
+      const vd = state.veDich;
+      const owner = vd.order?.[vd.turnIdx];
+      if (vd.current?.q?.q && vd.phase === "packageReady") {
+        prefetchOlympiaTtsAudio(vd.current.q.q, {
+          season: effectiveAudioSeason,
+          round: "veDich",
+          seatId: owner,
+        });
+      }
+      if (vd.current?.q?.a && (vd.phase === "thinking" || vd.phase === "stealing")) {
+        const cleanAns = summarizeOlympiaAnswer(vd.current.q.a);
+        if (cleanAns) {
+          prefetchOlympiaTtsAudio(cleanAns, {
+            season: effectiveAudioSeason,
+            round: "veDich",
+            segment: "result",
+            seatId: owner,
+          });
+        }
+      }
+    } else if (state.currentRound === "cauHoiPhu" && state.cauHoiPhu) {
+      const cp = state.cauHoiPhu;
+      const qObj = cp.qIdx != null && cp.qIdx >= 0 ? cp.questions?.[cp.qIdx] : null;
+      if (qObj?.a && cp.phase === "question") {
+        const cleanAns = summarizeOlympiaAnswer(qObj.a);
+        if (cleanAns) {
+          prefetchOlympiaTtsAudio(cleanAns, {
+            season: effectiveAudioSeason,
+            round: "cauHoiPhu",
+            segment: "result",
+          });
+        }
+      }
     }
   }, [
     ttsActive,

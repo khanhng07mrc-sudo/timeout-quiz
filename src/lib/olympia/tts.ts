@@ -1632,8 +1632,8 @@ export function getActiveTtsSpeaker(): ActiveTtsSpeaker {
 }
 
 const DEFAULT_ENDPOINT = "/api/olympia/tts";
-const DEFAULT_TIMEOUT_MS = 4000;
-const DEFAULT_COOLDOWN_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 2200;
+const DEFAULT_COOLDOWN_MS = 5000;
 
 let transportConfig: TtsTransportConfig = {
   endpoint: DEFAULT_ENDPOINT,
@@ -2708,6 +2708,13 @@ async function fetchServerTtsAudio(
     if (epoch !== playbackEpoch) {
       throw new Error("aborted_epoch");
     }
+    if (buf.byteLength > 0 && buf.byteLength <= 1024 * 1024) {
+      if (clientTtsPrefetchCache.size >= 120) {
+        const oldestKey = clientTtsPrefetchCache.keys().next().value;
+        if (oldestKey) clientTtsPrefetchCache.delete(oldestKey);
+      }
+      clientTtsPrefetchCache.set(payloadKey, buf);
+    }
     return buf;
   } catch (err: any) {
     if (timedOut) {
@@ -3289,7 +3296,7 @@ export function prefetchOlympiaTtsAudio(
       .then(async (res) => {
         if (!res.ok) return null;
         const buf = await res.arrayBuffer();
-        if (clientTtsPrefetchCache.size >= 48) {
+        if (clientTtsPrefetchCache.size >= 120) {
           const oldestKey = clientTtsPrefetchCache.keys().next().value;
           if (oldestKey) clientTtsPrefetchCache.delete(oldestKey);
         }
@@ -3345,6 +3352,21 @@ export function speakDualMcScriptAsync(
       options?.onSegmentStart?.(seg, i);
 
       const ttsSegment = mapDualMcKindToSegment(seg.kind);
+
+      // Prefetch next Dual-MC segment in parallel so alternating MCs respond with 0ms gap
+      if (i + 1 < segments.length) {
+        const nextSeg = segments[i + 1];
+        prefetchOlympiaTtsAudio(nextSeg.text, {
+          role: nextSeg.role,
+          segment: mapDualMcKindToSegment(nextSeg.kind),
+          seatId: nextSeg.seatId,
+          lang: nextSeg.lang ?? "auto",
+          season: options?.season,
+          baseRate: options?.baseRate,
+          preferServer: options?.preferServer,
+          engine: options?.engine,
+        });
+      }
 
       const completed = await speakOlympiaTTSInternal(
         seg.text,

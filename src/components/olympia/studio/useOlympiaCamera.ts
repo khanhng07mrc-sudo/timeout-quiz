@@ -444,11 +444,23 @@ export function useOlympiaCameraState(
           state.veDich.phase === "packageReady"))
   );
 
+  const isHighFreqCameraTransition = Boolean(
+    state?.currentRound === "khoiDong" &&
+      state?.khoiDong &&
+      (state.khoiDong.phase === "segmentDone" ||
+        (state.khoiDong.startCooldownUntil != null &&
+          getNow() >= state.khoiDong.startCooldownUntil - 150 &&
+          getNow() < state.khoiDong.startCooldownUntil + 2600))
+  );
+
   useEffect(() => {
     if (!needsTimedCameraTicker) return;
-    const id = setInterval(() => setTick((t) => (t + 1) % 100000), 100);
+    const id = setInterval(
+      () => setTick((t) => (t + 1) % 100000),
+      isHighFreqCameraTransition ? 33 : 100
+    );
     return () => clearInterval(id);
-  }, [needsTimedCameraTicker]);
+  }, [needsTimedCameraTicker, isHighFreqCameraTransition]);
 
   const baseCameraState = useMemo<OlympiaCameraState>(() => {
     // Default fallback
@@ -611,7 +623,10 @@ export function useOlympiaCameraState(
     // - >= 3.0s: CUT ngay sang Toàn Cảnh Trường Quay (CAM 1) bao quát toàn bộ thí sinh và 2 MC cho tới khi Host nhấn [BẮT ĐẦU]
     if (state.roundIntroDoneAt && !state.banner) {
       const isRoundNotStarted =
-        (round === "khoiDong" && !state.khoiDong?.started && (state.khoiDong?.phase === "intro" || state.khoiDong?.phase === "idle" || (state.khoiDong?.qIdx ?? -1) < 0)) ||
+        (round === "khoiDong" &&
+          !state.khoiDong?.started &&
+          state.khoiDong?.phase !== "segmentDone" &&
+          (state.khoiDong?.phase === "intro" || state.khoiDong?.phase === "idle" || (state.khoiDong?.qIdx ?? -1) < 0)) ||
         (round === "vcnv" && (state.vcnv?.phase === "grid" || (state.vcnv?.currentRow ?? -1) < 0)) ||
         (round === "tangToc" && state.tangToc?.phase === "idle") ||
         (round === "veDich" && state.veDich?.phase === "idle" && !state.veDich?.onStage) ||
@@ -674,7 +689,7 @@ export function useOlympiaCameraState(
 
       // 3.2. Khi chưa nhấn Bắt đầu (màn chờ Khởi Động):
       // Giữ zoom in bục MC 2.8s để MC dẫn trọn lời trước khi CUT sang toàn cảnh (CAM 1)
-      if (!kd.started && (kd.phase === "intro" || kd.phase === "idle" || kd.qIdx < 0)) {
+      if (!kd.started && kd.phase !== "segmentDone" && (kd.phase === "intro" || kd.phase === "idle" || kd.qIdx < 0)) {
         const introElapsed = Math.max(0, (now - (state.roundIntroDoneAt ?? roundEnteredAtRef.current)) / 1000);
         if (introElapsed < 2.8) {
           return {
@@ -719,8 +734,8 @@ export function useOlympiaCameraState(
         };
       }
 
-      // 3.4. Khi đồ hoạ câu hỏi hiện lên nhưng chưa mở nội dung:
-      if (!kd.questionRevealed) {
+      // 3.4. Khi đồ hoạ câu hỏi hiện lên nhưng chưa mở nội dung (không chặn segmentDone):
+      if (!kd.questionRevealed && kd.phase !== "segmentDone") {
         return {
           camAngle: targetContestantCam,
           transitionMode: "CUT",
@@ -735,7 +750,7 @@ export function useOlympiaCameraState(
       // - Zoom in xong trong 7.5s thì đứng yên ở mức zoom tối đa (1.25x / push=1.0), không tự hoàn lại nữa
       // - Khi chuyển câu tiếp theo: tự quay về mức cũ (1.0x / push=0.0) rồi mới zoom in tiếp
       // - Khi nhấn tính giờ (isTimerRunning): tạm dừng zoom, đứng yên tại mức hiện tại để tránh xung đột
-      if (kd.phase === "question" || kd.started) {
+      if (kd.phase !== "segmentDone" && (kd.phase === "question" || kd.started)) {
         if (isSolo) {
           const isTimerRunning = Boolean(
             kd.timer?.startedAt &&

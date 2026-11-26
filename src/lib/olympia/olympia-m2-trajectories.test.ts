@@ -565,10 +565,19 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.equal(evaluateVeDichCameraState(vdResultSteal, 21400, 20000, 10000, 4).camAngle, 7, "Result holds stealer seat 2 at 1.4s");
     assert.equal(evaluateVeDichCameraState(vdResultSteal, 21550, 20000, 10000, 4).camAngle, 3, "Result cuts to MC CAM 3 at 1.55s");
 
-    // 4. Khởi Động holds MC intro 2.8s and segmentDone 2.5s
+    // 4. Khởi Động holds MC intro 2.8s and segmentDone 2.5s (without !questionRevealed or !started blocking segmentDone)
     const camSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/useOlympiaCamera.ts"), "utf-8");
+    const ctrlSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/CameraController.tsx"), "utf-8");
     assert.ok(camSrc.includes("introElapsed < 2.8"), "Khởi Động intro holds MC zoom-in for 2.8s");
     assert.ok(camSrc.includes("segDoneElapsed < 1.5"), "Khởi Động segmentDone zooms 0.75x->1.25x for 1.5s then cuts to CAM 10 -> CAM 1");
+    assert.ok(
+      camSrc.includes('if (!kd.questionRevealed && kd.phase !== "segmentDone")'),
+      "useOlympiaCamera must NOT let !kd.questionRevealed swallow segmentDone after kd:finishTurn"
+    );
+    assert.ok(
+      ctrlSrc.includes("useLayoutEffect(") && ctrlSrc.includes("camAngle === 14 && !isManualCamera"),
+      "CameraController must use useLayoutEffect and hold CAM 10 bridge at t>=3.5s so CAM 14->10 never flashes wrong frames"
+    );
   });
 
   console.log("\n================================================================================");

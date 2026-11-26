@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -586,8 +586,9 @@ export function CameraController({
   const questionZoomStartRef = useRef<number>(0);
   const kdZoomActiveRef = useRef<number | null>(null);
 
-  // Handle instant cut on camera or seat switch when mode is CUT, and 0ms CAM 14 -> CAM 10 CUT at t = 3.5s
-  useEffect(() => {
+  // Handle instant cut synchronously before paint on camera or seat switch when mode is CUT,
+  // and 0ms CAM 14 -> CAM 10 CUT at t = 3.5s (zero wrong-frame flicker)
+  useLayoutEffect(() => {
     const isCamChanged = prevCamAngleRef.current !== camAngle;
     const isSeatChanged = prevActiveSeatRef.current !== activeSeat;
     const isSummarySeatCut = camAngle === 18 && isSeatChanged;
@@ -617,13 +618,18 @@ export function CameraController({
           camera.position.copy(targetPos);
           camera.lookAt(targetLookAt);
           if (camera instanceof THREE.PerspectiveCamera && targetPreset.fov) {
-            camera.fov = targetPreset.fov;
+            let initFov = targetPreset.fov;
+            if (camAngle === 18) {
+              const initPush = Math.max(0, Math.min(1.0, pushInProgress));
+              initFov = targetPreset.fov / (0.75 + initPush * 0.50);
+            }
+            camera.fov = initFov;
             camera.updateProjectionMatrix();
           }
         }
       }
       if (transitionMode === "CUT" || isCamChanged) {
-        smoothPushRef.current = 0.0;
+        smoothPushRef.current = camAngle === 18 ? Math.max(0, Math.min(1.0, pushInProgress)) : 0.0;
         questionZoomStartRef.current = 0;
       } else {
         smoothPushRef.current = isSummarySeatCut ? 0.0 : pushInProgress;
@@ -693,6 +699,24 @@ export function CameraController({
         smoothPushRef.current = 0.0;
         prevCamAngleRef.current = camAngle;
         prevActiveSeatRef.current = activeSeat;
+        return;
+      }
+    }
+
+    // 0a-bridge: At t >= 3.5s while awaiting React tick from CAM 14 -> CAM 10 / contestant cam,
+    // lock directly onto CAM 10 so we never flash static CAM 14 (_sweepStartPos) for even 1 frame.
+    if (kdStartCooldownUntil && camAngle === 14 && !isManualCamera) {
+      const now = serverNow ? serverNow() : Date.now();
+      if (now >= kdStartCooldownUntil) {
+        const cam10 = getWidePodiumsCameraPreset(effectiveTotalSeats);
+        currentPos.current.set(...cam10.pos);
+        currentTarget.current.set(...cam10.target);
+        camera.position.copy(currentPos.current);
+        camera.lookAt(currentTarget.current);
+        if (camera instanceof THREE.PerspectiveCamera && cam10.fov) {
+          camera.fov = cam10.fov;
+          camera.updateProjectionMatrix();
+        }
         return;
       }
     }
@@ -817,7 +841,8 @@ export function CameraController({
       const targetKdPush = Math.min(1.0, elapsedSec / 7.5);
       smoothPushRef.current = THREE.MathUtils.damp(smoothPushRef.current, targetKdPush, 8.0, delta);
     } else {
-      smoothPushRef.current = THREE.MathUtils.damp(smoothPushRef.current, pushInProgress, 8.0, delta);
+      const pushDampSpeed = camAngle === 18 ? 28.0 : 8.0;
+      smoothPushRef.current = THREE.MathUtils.damp(smoothPushRef.current, pushInProgress, pushDampSpeed, delta);
     }
 
     if (!questionRevealed && prevRevealedRef.current) {
@@ -852,7 +877,8 @@ export function CameraController({
         camera.fov = Math.min(85, Math.max(12, pushFov));
         camera.updateProjectionMatrix();
       } else {
-        const dampedFov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 8.0, delta);
+        const fovDampSpeed = camAngle === 18 ? 28.0 : 8.0;
+        const dampedFov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), fovDampSpeed, delta);
         if (Math.abs(dampedFov - camera.fov) > 1e-4) {
           camera.fov = dampedFov;
           camera.updateProjectionMatrix();

@@ -70,7 +70,8 @@ const EDGE_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0";
 
 const MAX_TEXT_LENGTH = 2000;
-const WS_TIMEOUT_MS = 9000;
+const WS_TIMEOUT_MS = 4500;
+const FIRST_AUDIO_STALL_MS = 2800;
 const MAX_CONCURRENT_WS = 8;
 
 const MAX_CACHE_ENTRIES = 200;
@@ -704,6 +705,9 @@ function synthesizeOnce(params: {
     let statusCode403 = false;
 
     const ws = new WebSocketCtor(url, {
+      family: 4,
+      perMessageDeflate: false,
+      handshakeTimeout: 3000,
       headers: {
         Pragma: "no-cache",
         "Cache-Control": "no-cache",
@@ -713,10 +717,15 @@ function synthesizeOnce(params: {
         "Accept-Language": "en-US,en;q=0.9",
         Cookie: `muid=${generateMuid()};`,
       },
-    });
+    } as any);
 
+    let firstAudioTimer: ReturnType<typeof setTimeout> | null = null;
     const cleanup = () => {
       clearTimeout(timer);
+      if (firstAudioTimer) {
+        clearTimeout(firstAudioTimer);
+        firstAudioTimer = null;
+      }
       ws.removeAllListeners();
     };
 
@@ -775,6 +784,12 @@ function synthesizeOnce(params: {
 
     ws.on("open", () => {
       try {
+        firstAudioTimer = setTimeout(() => {
+          firstAudioTimer = null;
+          if (!settled && chunks.length === 0) {
+            finishError(new TtsUpstreamError(`Edge-TTS stalled without audio after ${FIRST_AUDIO_STALL_MS}ms`));
+          }
+        }, FIRST_AUDIO_STALL_MS);
         const ts = edgeTimestampString();
         const configMsg =
           `X-Timestamp:${ts}\r\n` +
@@ -832,6 +847,10 @@ function synthesizeOnce(params: {
       ) {
         const payload = buf.subarray(2 + headerLen);
         if (payload.byteLength > 0) {
+          if (firstAudioTimer) {
+            clearTimeout(firstAudioTimer);
+            firstAudioTimer = null;
+          }
           chunks.push(payload);
         }
       }
@@ -967,6 +986,9 @@ function synthesizeStreamOnce(params: {
     });
 
     const ws = new WebSocketCtor(url, {
+      family: 4,
+      perMessageDeflate: false,
+      handshakeTimeout: 3000,
       headers: {
         Pragma: "no-cache",
         "Cache-Control": "no-cache",
@@ -976,10 +998,15 @@ function synthesizeStreamOnce(params: {
         "Accept-Language": "en-US,en;q=0.9",
         Cookie: `muid=${generateMuid()};`,
       },
-    });
+    } as any);
 
+    let firstAudioTimer: ReturnType<typeof setTimeout> | null = null;
     const cleanup = () => {
       clearTimeout(timer);
+      if (firstAudioTimer) {
+        clearTimeout(firstAudioTimer);
+        firstAudioTimer = null;
+      }
       ws.removeAllListeners();
     };
 
@@ -1052,6 +1079,12 @@ function synthesizeStreamOnce(params: {
 
     ws.on("open", () => {
       try {
+        firstAudioTimer = setTimeout(() => {
+          firstAudioTimer = null;
+          if (!settled && chunks.length === 0) {
+            finishError(new TtsUpstreamError(`Edge-TTS stalled without audio after ${FIRST_AUDIO_STALL_MS}ms`));
+          }
+        }, FIRST_AUDIO_STALL_MS);
         const ts = edgeTimestampString();
         const configMsg =
           `X-Timestamp:${ts}\r\n` +
@@ -1109,6 +1142,10 @@ function synthesizeStreamOnce(params: {
       ) {
         const payload = buf.subarray(2 + headerLen);
         if (payload.byteLength > 0) {
+          if (firstAudioTimer) {
+            clearTimeout(firstAudioTimer);
+            firstAudioTimer = null;
+          }
           chunks.push(payload);
           try {
             streamController?.enqueue(new Uint8Array(payload));
@@ -1243,4 +1280,17 @@ export function populateTtsCacheForTesting(input: SynthesizeTtsInput, audio: Buf
     pitch: normalized.pitch,
     cacheHit: false,
   });
+}
+
+let edgeWarmStarted = false;
+export function warmEdgeTtsVoices(): void {
+  if (edgeWarmStarted || process.env.NODE_ENV !== "production") return;
+  edgeWarmStarted = true;
+  const primes: SynthesizeTtsInput[] = [
+    { text: "Chính xác!", role: "khanh_vy", lang: "vi", rate: 1.05 },
+    { text: "Đã hết thời gian!", role: "ngoc_huy", lang: "vi", rate: 1.05 },
+  ];
+  for (const item of primes) {
+    void synthesizeEdgeTts(item).catch(() => {});
+  }
 }

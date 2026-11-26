@@ -5,6 +5,7 @@ import {
   TtsValidationError,
   getTtsCacheStats,
   synthesizeEdgeTtsStream,
+  warmEdgeTtsVoices,
   type SynthesizeTtsInput,
 } from "@/lib/olympia/server-tts";
 
@@ -12,6 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  warmEdgeTtsVoices();
   return NextResponse.json(
     {
       status: "ok",
@@ -52,7 +54,6 @@ export async function POST(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
-        "Transfer-Encoding": "chunked",
         "Cache-Control": "no-store",
         "X-TTS-Engine": "edge-neural",
         "X-TTS-Voice": result.voice,

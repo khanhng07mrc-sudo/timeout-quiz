@@ -774,13 +774,13 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
     assert.equal(KV_CONCEAL_POS[1], 0.22, "KV_CONCEAL_POS Y must be 0.22");
     assert.equal(NH_CONCEAL_POS[1], 0.22, "NH_CONCEAL_POS Y must be 0.22");
     assert.ok(
-      podiumsSrc.includes('<group ref={mcDeskRef} position={[2.00, 0.22, -5.85]} rotation={[0, -0.22, 0]}>'),
-      "CenterMcDesk must mount at [2.00, 0.22, -5.85]"
+      podiumsSrc.includes('<group ref={mcDeskRef} position={[1.73, 0.22, -5.85]} rotation={[0, -0.22, 0]}>'),
+      "CenterMcDesk must mount coaxially at [1.73, 0.22, -5.85]"
     );
     assert.ok(
-      podiumsSrc.includes('<group ref={kvRef} position={[2.28, 0.22, -6.25]} rotation={[0, -0.22, 0]}>') &&
-      podiumsSrc.includes('<group ref={nhRef} position={[1.84, 0.22, -6.35]} rotation={[0, -0.22, 0]}>'),
-      "kvRef and nhRef initial positions must match Y = 0.22"
+      podiumsSrc.includes('<group ref={kvRef} position={[2.01, 0.22, -6.25]} rotation={[0, -0.22, 0]}>') &&
+      podiumsSrc.includes('<group ref={nhRef} position={[1.57, 0.22, -6.35]} rotation={[0, -0.22, 0]}>'),
+      "kvRef and nhRef initial positions must match Y = 0.22 coaxially with CenterMcDesk"
     );
     assert.ok(
       centralLedWallSrc.includes('<group position={[2.10, 0.22, -7.50]} rotation={[0, -0.22, 0]}>'),
@@ -973,10 +973,10 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
     assert.ok(cam3.pos[1] >= 1.50 && cam3.target[1] >= 1.34, "CAM 3 Y must reflect +0.08m headroom sync");
     const cam3Fov = cam3.fov ?? 40;
     const mcPoints: Array<[string, [number, number, number]]> = [
-      ["CenterMcDesk shroud", [2.00, 1.36, -5.85]],
-      ["CenterMcDesk screen", [2.00, 0.76, -5.85]],
-      ["KV crown", [2.28, 1.75, -6.25]],
-      ["NH crown", [1.84, 1.84, -6.35]],
+      ["CenterMcDesk shroud", [1.73, 1.36, -5.85]],
+      ["CenterMcDesk screen", [1.73, 0.76, -5.85]],
+      ["KV crown", [2.01, 1.75, -6.25]],
+      ["NH crown", [1.57, 1.84, -6.35]],
       ["Portal center", [2.10, 2.20, -7.50]],
     ];
     for (const [label, pt] of mcPoints) {

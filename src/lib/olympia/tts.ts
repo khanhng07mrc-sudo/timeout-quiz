@@ -801,11 +801,12 @@ function getNarrationBaseTempo(segment?: TTSSegment): number {
 /**
  * Season-aware reading rate calculation with question vs narration speed separation:
  * - Question speed:
- *     * O20-O22: Rapid-fire tempo (1.42x)
+ *     * O20-O21: Ultra-rapid 60s tempo (1.60x)
+ *     * O13-O19 & O22: Fast 60s tempo (1.40x)
  *     * O23-O27: Snappy broadcast tempo (1.18x default; KD 1.24x, VCNV/TT 1.18x, VD 1.14x)
- *     * >25 words: 1.12x boost (capped at 1.70 before baseRate scaling)
+ *     * >25 words: 1.12x boost (capped at 1.85 before baseRate scaling)
  * - Narration speed:
- *     * Crisp natural broadcast cadence (~1.16-1.20x), unaffected by O20-O22 sprint rate
+ *     * Crisp natural broadcast cadence (~1.16-1.20x), unaffected by rapid Khởi Động sprint rate
  * - Scaled by Host `baseRate` (0.75..1.5), clamped to [0.5, 2.0]
  */
 export function getSeasonReadingRate(
@@ -813,7 +814,7 @@ export function getSeasonReadingRate(
   wordCount: number = 0,
   segmentOrOptions?:
     | TTSSegment
-    | { segment?: TTSSegment; baseRate?: number; speedCategory?: TtsSpeedCategory }
+    | { segment?: TTSSegment; baseRate?: number; speedCategory?: TtsSpeedCategory; round?: string }
 ): number {
   const segment =
     typeof segmentOrOptions === "string"
@@ -829,7 +830,7 @@ export function getSeasonReadingRate(
       : undefined;
   const round =
     typeof segmentOrOptions === "object" && segmentOrOptions !== null
-      ? (segmentOrOptions as any).round
+      ? segmentOrOptions.round
       : undefined;
 
   const category = explicitCategory ?? getTtsSpeedCategory(segment);
@@ -841,25 +842,29 @@ export function getSeasonReadingRate(
 
   let tempo: number;
   if (category === "question") {
+    const s = (season || "O26").toUpperCase();
+    const isVeryFastSeason =
+      /^O?2[01](?:\b|-|$)/.test(s) || s.includes("O20") || s.includes("O21") || s === "20" || s === "21";
+    const isO22Season = /^O?22(?:\b|-|$)/.test(s) || s.includes("O22") || s === "22";
+    const isO13ToO19Season =
+      /^O?1[3-9](?:\b|-|$)/.test(s) ||
+      ["O13", "O14", "O15", "O16", "O17", "O18", "O19"].some((tag) => s.includes(tag));
+
     if (round === "khoiDong") {
-      tempo = 1.24;
+      tempo = isVeryFastSeason
+        ? 1.6
+        : isO13ToO19Season || isO22Season
+        ? 1.4
+        : 1.24;
     } else if (round === "vcnv" || round === "tangToc") {
       tempo = 1.18;
     } else if (round === "veDich") {
       tempo = 1.14;
     } else {
-      const s = (season || "O26").toUpperCase();
-      const isRapidSeason =
-        s.includes("O20") ||
-        s.includes("O21") ||
-        s.includes("O22") ||
-        s === "20" ||
-        s === "21" ||
-        s === "22";
-      tempo = isRapidSeason ? 1.4 : 1.18;
+      tempo = isVeryFastSeason ? 1.6 : isO13ToO19Season || isO22Season ? 1.4 : 1.18;
     }
     if (wordCount > 25) {
-      tempo = Math.min(1.7, tempo * 1.12);
+      tempo = Math.min(1.85, tempo * 1.12);
     }
   } else {
     tempo = getNarrationBaseTempo(segment);

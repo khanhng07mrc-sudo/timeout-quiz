@@ -3322,6 +3322,14 @@ test("MC walkout and Opening Audio Lifecycle & Khởi Động O23-O26 no timer b
   const graphicsSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/Vtv3BroadcastGraphics.tsx"), "utf-8");
   assert.ok(graphicsSrc.includes("isKhoiDongO23ToO26 = state.currentRound === \"khoiDong\" && !showTimerClock;"));
   assert.ok(graphicsSrc.includes("shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));"));
+
+  // 5. V3 question chamber decoupled bounding box, no top clock pill, UTM Avo / Arial fonts, & instant swap
+  assert.ok(graphicsSrc.includes('data-testid="v3-question-bounding-box"'), "V3 question box must sit outside Tier-2 clipPath");
+  assert.ok(graphicsSrc.includes("overflow: \"visible\"") && graphicsSrc.includes("clipPath: \"none\""), "V3 question box must never clip 3+ lines");
+  assert.ok(!graphicsSrc.includes('className="text-cyan-300">⏱</span>'), "V3 upper floating timer pill must be removed when timer bar handles timing");
+  assert.ok(graphicsSrc.includes("'UTM Avo'"), "V3 theme must configure UTM Avo geometric font stack");
+  assert.ok(graphicsSrc.includes("Arial, 'Helvetica Neue', Helvetica, sans-serif"), "Classic theme must configure Arial font stack");
+  assert.ok(graphicsSrc.includes("classicQFontSizeClass"), "TangTocQuestionGraphic Classic must adaptively size question typography");
 });
 
 test("Audio-First Buzzer Pipeline (0ms AudioBuffer + 1-2 frame visual defer) & Fixed VCNV Bell Overlay", () => {

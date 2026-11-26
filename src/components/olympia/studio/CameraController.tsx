@@ -319,10 +319,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   3: {
     id: 3,
     label: "Bục MC & Cổng Lục Giác",
-    // Coaxial direct eye-level frontal angle along MC desk normal, framing full MC desk, presenters & Hexagon Portal
-    // Legacy baseline: pos: [2.30, 1.26, -3.94], target: [3.12, 1.02, -7.16]
-    pos: [1.40, 1.52, -3.17],
-    target: [2.02, 1.36, -5.95],
+    // Coaxial direct eye-level frontal angle along MC desk ([1.73, 0.22, -5.85]) & Hexagon Portal ([2.10, 0.22, -7.50]) normal
+    // Legacy baseline: pos: [1.40, 1.52, -3.17], target: [2.02, 1.36, -5.95]
+    pos: [1.13, 1.52, -3.17],
+    target: [1.75, 1.36, -5.95],
     fov: 40,
   },
   4: {

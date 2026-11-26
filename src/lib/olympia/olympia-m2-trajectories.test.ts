@@ -150,6 +150,20 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.equal(camNextDoor.camAngle, 12, "Seat 0 at 4.0s cuts directly to next contestant's door (CAM 12) without CAM 10 interruption");
   });
 
+  runTest(1, "M2.3b: Pre-entrance contestants wait deep in Left/Right backstage wings (|X| >= 2.35m, Z >= 12.90m) before stepping through center at t=0.72s", () => {
+    const arc = getContestantArcParams(4);
+    for (let s = 0; s < 4; s++) {
+      const cfg = getDeskConfig(s, 4);
+      const waitTraj = evaluateContestantEntranceTrajectory(-1.0, s, cfg, arc.startPhi, 4);
+      assert.ok(Math.abs(waitTraj.rawPos[0]) >= 2.35, `Seat ${s} waiting X=${waitTraj.rawPos[0]} must be deeply occluded (|X| >= 2.35m)`);
+      assert.ok(waitTraj.rawPos[2] >= 12.90, `Seat ${s} waiting Z=${waitTraj.rawPos[2]} must stay behind wing baffles`);
+      assert.equal(waitTraj.walkingNow, false, `Seat ${s} waiting must be stationary`);
+
+      const centerEntry = evaluateContestantEntranceTrajectory(0.75, s, cfg, arc.startPhi, 4);
+      assert.ok(Math.abs(centerEntry.rawPos[0]) < 0.01, `Seat ${s} reaches center portal by t=0.75s before CAM 13 cut`);
+    }
+  });
+
   runTest(1, "M2.4: Continuous trajectory start point P0 = [0, 0.22, 6.20] with rotY = Math.PI at t = 4.0s", () => {
     const arc = getContestantArcParams(4);
     const cfg = getDeskConfig(0, 4);

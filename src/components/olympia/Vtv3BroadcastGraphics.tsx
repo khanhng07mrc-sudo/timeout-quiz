@@ -1060,11 +1060,11 @@ export function Vtv3ChalkboardQuestionFrame({
           </div>
         )}
 
-        {/* Center: Question Prompt Text (Top-Left Aligned Broadcast Standard) */}
-        <div className="relative z-10 flex-1 px-4 sm:px-6 md:px-7 py-2 sm:py-2.5 flex flex-col items-start justify-start text-left">
+        {/* Center: Question Prompt Text (Top-Left Aligned Broadcast Standard, Instant Swap) */}
+        <div className="relative z-10 flex-1 px-4 sm:px-6 md:px-7 py-2 sm:py-2.5 flex flex-col items-start justify-start text-left font-classic-arial">
           {questionText ? (
             <div
-              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${clampQuestionFont(
+              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text font-classic-arial ${clampQuestionFont(
                 questionText
               )}`}
             >
@@ -1263,7 +1263,9 @@ export function UnifiedOlympiaAnswerOverlay({
 
   return (
     <div
-      className={`relative w-full max-w-4xl sm:max-w-5xl 2xl:max-w-6xl mx-auto flex items-center justify-center pointer-events-auto select-none p-1 sm:p-2 ${className}`}
+      className={`relative w-full max-w-4xl sm:max-w-5xl 2xl:max-w-6xl mx-auto flex items-center justify-center pointer-events-auto select-none p-1 sm:p-2 ${
+        isClassic ? "font-classic-arial" : "font-v3-avo"
+      } ${className}`}
     >
       <HorizontalBrassRod />
       <motion.div
@@ -1700,8 +1702,8 @@ export function ClassicUnifiedLowerThird({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
-      className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1 overflow-visible"
-      style={{ perspective: 1600 }}
+      className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1 overflow-visible font-classic-arial"
+      style={{ perspective: 1600, fontFamily: "Arial, 'Helvetica Neue', Helvetica, sans-serif" }}
     >
       {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
@@ -1926,7 +1928,7 @@ export function ClassicUnifiedLowerThird({
             />
           ) : questionText ? (
             <div
-              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${
+              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text font-classic-arial ${
                 isFullscreen
                   ? "text-xl sm:text-2xl md:text-3xl"
                   : clampQuestionFont(questionText)
@@ -3177,13 +3179,14 @@ export function TangTocQuestionGraphic({
   if (isV3Arrow) {
     const qText = q?.q || "Sắp xếp các miếng ghép sau để có được bức hình hoàn chỉnh.";
     return (
-      <div className="absolute inset-0 flex items-center justify-center px-6 py-4 sm:px-10 sm:py-6 md:px-12 md:py-7 z-20 pointer-events-auto bg-[#040d21] overflow-hidden">
+      <div
+        className="absolute inset-0 flex items-center justify-center px-6 py-4 sm:px-10 sm:py-6 md:px-12 md:py-7 z-20 pointer-events-auto bg-[#040d21] overflow-hidden font-v3-avo"
+        style={{ fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif" }}
+      >
         <Olympia22BackgroundBackdrop />
 
         <div
-          className={`relative z-10 w-full h-full flex items-center justify-center ${
-            isSilent ? "" : "animate-fade-in"
-          }`}
+          className="relative z-10 w-full h-full flex items-center justify-center"
           style={{ containerType: "size" }}
         >
           {/* Unified width column so Question Box and 16:9 Media Box always share exact width */}
@@ -3284,26 +3287,37 @@ export function TangTocQuestionGraphic({
     );
   }
 
+  const classicQText = q?.q || "Sắp xếp các miếng ghép sau để có được bức hình hoàn chỉnh.";
+  const classicQFontSizeClass =
+    classicQText.length > 170
+      ? "text-sm sm:text-base md:text-lg"
+      : classicQText.length > 105
+      ? "text-base sm:text-lg md:text-xl"
+      : "text-lg sm:text-xl md:text-[22px]";
+
   return (
-    <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-8 z-20 pointer-events-auto">
+    <div
+      className="absolute inset-0 flex items-center justify-center p-4 sm:p-8 z-20 pointer-events-auto font-classic-arial"
+      style={{ fontFamily: "Arial, 'Helvetica Neue', Helvetica, sans-serif" }}
+    >
       {/* Classic Chalkboard backdrop */}
       <Vtv3ChalkboardBackdrop />
 
       {/* Main framed container */}
-      <div className={`relative w-full max-w-5xl lg:max-w-6xl z-10 flex flex-col items-center ${isSilent ? "" : "animate-fade-in"}`}>
+      <div className="relative w-full max-w-5xl lg:max-w-6xl z-10 flex flex-col items-center">
         {/* ── 1. Horizontal Brass Rod (Classic only) ── */}
         <HorizontalBrassRod />
 
-        {/* ── 2. Top Header Plaque (Attached directly above frame) ── */}
+        {/* ── 2. Top Header Plaque (Attached directly above frame, responsive sizing) ── */}
         <div
-          className="relative z-10 px-8 py-3 rounded-t-2xl border-2 border-amber-500/80 shadow-lg w-full max-w-4xl text-center"
+          className="relative z-10 px-6 sm:px-8 py-2.5 sm:py-3 rounded-t-2xl border-2 border-amber-500/80 shadow-lg w-full max-w-4xl text-center"
           style={{
             background: "linear-gradient(180deg, #2a1815 0%, #170d0b 60%, #0a0504 100%)",
             boxShadow: "0 6px 18px rgba(0,0,0,0.85), inset 0 1px 2px rgba(255,255,255,0.25)",
           }}
         >
-          <div className="font-black text-xl sm:text-2xl md:text-3xl text-white leading-snug drop-shadow">
-            {q?.q || "Sắp xếp các miếng ghép sau để có được bức hình hoàn chỉnh."}
+          <div className={`font-black text-white leading-snug drop-shadow font-classic-arial ${classicQFontSizeClass}`}>
+            {classicQText}
           </div>
         </div>
 
@@ -5148,10 +5162,57 @@ export function EconovaLowerThirdV3({
   const isFs = overlayMode === "FULLSCREEN";
   const isVeDich = state.currentRound === "veDich";
   const W = 1000;
-  const H = isVeDich ? 200 : 186;
-  const cThick = Math.round(H * 0.16);
+  const baseH = isVeDich ? 200 : 186;
+  const isKhoiDongO23ToO26 = state.currentRound === "khoiDong" && !showTimerClock;
+  const shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));
+  const topReserve = showScoreTab ? 48 : 16;
+  const bottomReserve = shouldShowTimerBar ? 28 : 14;
+
+  const strLen = typeof questionText === "string" ? questionText.length : 60;
+  // Standard broadcast typography with auto-scaling for long questions (UTM Avo / Montserrat)
+  const fontSizeClass =
+    strLen > 300
+      ? "text-[17px] sm:text-[18px] md:text-[19px] leading-snug font-bold"
+      : strLen > 200
+      ? "text-[20px] sm:text-[21px] md:text-[22px] leading-snug font-extrabold"
+      : "text-[23px] sm:text-[25px] md:text-[27px] leading-snug font-black";
+
+  const approxCharsPerLine = isVeDich ? 34 : 46;
+  const estLines =
+    questionText && typeof questionText === "string"
+      ? Math.max(1, Math.ceil(strLen / approxCharsPerLine))
+      : 1;
+  const estLineH = strLen > 300 ? 27 : strLen > 200 ? 31 : 38;
+  const estQHeight = answerText
+    ? 88
+    : estLines * estLineH + (mediaElement ? 96 : 16);
+
+  const [measuredQuestionH, setMeasuredQuestionH] = useState(0);
+  const questionMeasureRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = questionMeasureRef.current;
+    if (!el) {
+      setMeasuredQuestionH((prev) => (prev !== 0 ? 0 : prev));
+      return;
+    }
+    const measure = () => {
+      // offsetHeight / scrollHeight stays in untransformed design pixels inside V3ScaledStage
+      const next = Math.ceil(Math.max(el.offsetHeight || 0, el.scrollHeight || 0));
+      setMeasuredQuestionH((prev) => (Math.abs(prev - next) >= 2 ? next : prev));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [questionText, answerText, mediaElement, showScoreTab, shouldShowTimerBar]);
+
+  const effectiveQHeight = Math.max(estQHeight, measuredQuestionH);
+  const H = Math.max(baseH, topReserve + Math.ceil(effectiveQHeight) + bottomReserve);
+  const cThick = Math.round(baseH * 0.16);
   const pad = Math.round(cThick * 1.5);
-  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, pad });
+  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, cThick, pad });
   const seats = activeSeats(state);
   const n = seats.length;
   const vd = state.veDich;
@@ -5161,8 +5222,6 @@ export function EconovaLowerThirdV3({
     tabH: 42,
     clusterBottomW: isVeDich && qCount >= 4 ? 228 : 206,
   });
-  const isKhoiDongO23ToO26 = state.currentRound === "khoiDong" && !showTimerClock;
-  const shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));
 
   const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, qCount, 46) : null;
 
@@ -5172,28 +5231,9 @@ export function EconovaLowerThirdV3({
   const activeSeat = targetSeatId != null ? state.seats[targetSeatId] : null;
   const displayScore = activeSeat ? activeSeat.score : 0;
 
-  const clockRef = useRef<HTMLSpanElement>(null);
-  const initClockRem = timer
-    ? Math.max(
-        0,
-        timer.startedAt != null
-          ? timer.remainingMs - Math.max(0, serverNow() - timer.startedAt)
-          : timer.remainingMs
-      )
-    : 0;
-
-  const strLen = typeof questionText === "string" ? questionText.length : 60;
-  // Fixed standard broadcast font size across normal questions (<= 200 chars)
-  const fontSizeClass =
-    strLen > 300
-      ? "text-[17px] sm:text-[18px] md:text-[19px] leading-normal font-bold"
-      : strLen > 200
-      ? "text-[20px] sm:text-[21px] md:text-[22px] leading-snug font-extrabold"
-      : "text-[24px] sm:text-[26px] md:text-[28px] leading-snug font-black";
-
   const timerH = 22;
-  const qTop = showScoreTab ? 48 : 16;
-  const qHeight = H - (showScoreTab ? 48 : 16) - (shouldShowTimerBar ? 26 : 14);
+  const qTop = topReserve;
+  const qHeight = H - topReserve - bottomReserve;
   const qBottom = qTop + qHeight;
   const safeClusterX = isVeDich && lt.clusterX
     ? Math.min(lt.clusterX(qTop), lt.clusterX(qBottom)) - 18
@@ -5234,9 +5274,10 @@ export function EconovaLowerThirdV3({
     <div
       className={
         isFs
-          ? "absolute inset-0 z-30 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#051126]/90 backdrop-blur-md pointer-events-auto"
-          : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-1 sm:px-2 pb-2 pt-1 z-20 pointer-events-auto relative"
+          ? "absolute inset-0 z-30 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#051126]/90 backdrop-blur-md pointer-events-auto font-v3-avo"
+          : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-1 sm:px-2 pb-2 pt-1 z-20 pointer-events-auto relative font-v3-avo"
       }
+      style={{ fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif" }}
     >
       {extraTopBanner && <div className="mb-2 w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto">{extraTopBanner}</div>}
 
@@ -5588,7 +5629,7 @@ export function EconovaLowerThirdV3({
                         fontSize={scoreFontSize}
                         className="font-sans font-black"
                         style={{
-                          fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+                          fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
                           filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.85)) drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
                         }}
                       >
@@ -5621,7 +5662,7 @@ export function EconovaLowerThirdV3({
                             fontSize={qCount >= 4 ? "22" : "25"}
                             className="font-sans font-black"
                             style={{
-                              fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+                              fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
                               filter: isCurQ ? "drop-shadow(0 0 8px rgba(56,189,248,0.9))" : "drop-shadow(0 1px 3px rgba(0,0,0,0.85))",
                             }}
                           >
@@ -5634,40 +5675,6 @@ export function EconovaLowerThirdV3({
               )}
             </svg>
 
-            {/* HTML Question Chamber: TOP-LEFT ALIGNED (items-start, text-left) */}
-            <div
-              className={`absolute flex flex-col justify-start items-start text-left z-20 overflow-hidden ${
-                runAnim ? "v3-anim-content" : ""
-              }`}
-              style={{
-                left: qLeft,
-                top: qTop,
-                width: qWidth,
-                height: qHeight,
-                maxWidth: qWidth,
-              }}
-            >
-              {answerText ? (
-                <div className="flex flex-col items-start justify-center gap-1 w-full pt-1 pr-3 select-none animate-fade-in">
-                  <div className="text-xs sm:text-sm font-bold tracking-widest text-cyan-300 uppercase">
-                    ĐÁP ÁN CHÍNH XÁC
-                  </div>
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-400 drop-shadow-[0_0_18px_rgba(52,211,153,0.7)] tracking-wide">
-                    ✔ {answerText}
-                  </div>
-                </div>
-              ) : questionText ? (
-                <div
-                  key={typeof questionText === "string" ? questionText.slice(0, 40) : undefined}
-                  className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-h-full w-full pt-1 pr-3 v3-anim-swap select-none break-words overflow-hidden`}
-                >
-                  {questionText}
-                </div>
-              ) : null}
-              {mediaElement && <div className="mt-1">{mediaElement}</div>}
-              {children}
-            </div>
-
             {/* Exact Econova Show Silver Trapezoid Timer Housing (screen.html: 22px height, #d1d5db->#6b7280 housing, 8px black track, red left-to-right progress bar + pulsing white handle) */}
             {shouldShowTimerBar && (
               <EconovaSpecializedTimerBar
@@ -5677,7 +5684,6 @@ export function EconovaLowerThirdV3({
                 height={timerH}
                 trackMargin="0 24px"
                 clipPath={timerClipPath}
-                clockRef={showTimerClock ? clockRef : undefined}
                 clockFormat="mmss"
                 className="absolute z-20 pointer-events-none"
                 style={{
@@ -5687,6 +5693,46 @@ export function EconovaLowerThirdV3({
                 }}
               />
             )}
+          </div>
+
+          {/* Decoupled Independent Question Bounding Box (outside Tier-2 SVG clipPath, zero bottom clipping on 3+ lines, instant swap without fade) */}
+          <div
+            data-testid="v3-question-bounding-box"
+            className={`absolute flex flex-col justify-start items-start text-left font-v3-avo ${
+              runAnim ? "v3-anim-content" : ""
+            }`}
+            style={{
+              zIndex: 25,
+              left: qLeft,
+              top: qTop,
+              width: qWidth,
+              minHeight: qHeight,
+              maxWidth: qWidth,
+              overflow: "visible",
+              clipPath: "none",
+              fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
+            }}
+          >
+            <div ref={questionMeasureRef} className="w-full flex flex-col items-start justify-start text-left">
+              {answerText ? (
+                <div className="flex flex-col items-start justify-center gap-1 w-full pt-1 pr-3 select-none">
+                  <div className="text-xs sm:text-sm font-bold tracking-widest text-cyan-300 uppercase">
+                    ĐÁP ÁN CHÍNH XÁC
+                  </div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-400 drop-shadow-[0_0_18px_rgba(52,211,153,0.7)] tracking-wide">
+                    ✔ {answerText}
+                  </div>
+                </div>
+              ) : questionText ? (
+                <div
+                  className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full pt-1 pb-1.5 pr-3 select-none break-words`}
+                >
+                  {questionText}
+                </div>
+              ) : null}
+              {mediaElement && <div className="mt-1">{mediaElement}</div>}
+              {children}
+            </div>
           </div>
 
           {/* Tier 3 (Top / z-30): Navy chevrons + crisp white accent lines cutting the hex wedge */}
@@ -5726,7 +5772,7 @@ export function EconovaLowerThirdV3({
             </div>
           )}
 
-          {(questionNumberBadge || headerBadge || (showTimerClock && timer) || timerBadge) && (
+          {(questionNumberBadge || headerBadge || timerBadge) && (
             <div
               className={`absolute z-40 pointer-events-none flex items-center justify-between select-none ${
                 runAnim ? "v3-anim-content" : ""
@@ -5758,17 +5804,6 @@ export function EconovaLowerThirdV3({
                     }}
                   >
                     {headerBadge}
-                  </div>
-                )}
-                {showTimerClock && timer && (
-                  <div
-                    className="px-2.5 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest tabular-nums flex items-center gap-1.5 border-t border-x border-cyan-300/60 text-white shadow-[0_0_12px_rgba(31,209,255,0.45)]"
-                    style={{
-                      background: "linear-gradient(135deg, #0b2b59 0%, #061736 100%)",
-                    }}
-                  >
-                    <span className="text-cyan-300">⏱</span>
-                    <span ref={clockRef}>{formatClockMMSS(initClockRem)}</span>
                   </div>
                 )}
               </div>

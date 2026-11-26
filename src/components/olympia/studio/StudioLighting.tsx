@@ -56,8 +56,8 @@ const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
  */
 export const MC_LIGHTING_RIG_CONFIG = {
   keyLight: {
-    position: [4.60, 5.20, -3.40] as [number, number, number],
-    targetPosition: [3.10, 1.35, -6.85] as [number, number, number],
+    position: [4.33, 5.20, -3.40] as [number, number, number],
+    targetPosition: [2.83, 1.35, -6.85] as [number, number, number],
     color: "#fff5e6",
     minIntensity: 14.0,
     maxIntensity: 22.0,
@@ -67,8 +67,8 @@ export const MC_LIGHTING_RIG_CONFIG = {
     distance: 14,
   },
   fillLight: {
-    position: [1.40, 4.80, -3.60] as [number, number, number],
-    targetPosition: [3.10, 1.35, -6.85] as [number, number, number],
+    position: [1.13, 4.80, -3.60] as [number, number, number],
+    targetPosition: [2.83, 1.35, -6.85] as [number, number, number],
     color: "#fffaf0",
     minIntensity: 6.0,
     maxIntensity: 10.0,
@@ -78,8 +78,8 @@ export const MC_LIGHTING_RIG_CONFIG = {
     distance: 13,
   },
   rimLight: {
-    position: [3.10, 5.60, -8.80] as [number, number, number],
-    targetPosition: [3.10, 1.45, -6.85] as [number, number, number],
+    position: [2.83, 5.60, -8.80] as [number, number, number],
+    targetPosition: [2.83, 1.45, -6.85] as [number, number, number],
     color: "#ffffff",
     minIntensity: 4.0,
     maxIntensity: 6.5,
@@ -89,7 +89,7 @@ export const MC_LIGHTING_RIG_CONFIG = {
     distance: 10,
   },
   deskDownlight: {
-    position: [3.12, 2.40, -6.40] as [number, number, number],
+    position: [2.85, 2.40, -6.40] as [number, number, number],
     color: "#fff5e6",
     baseIntensity: 7.0,
     distance: 7.0,
@@ -3339,6 +3339,96 @@ export function AudienceAmphitheater({
           <tubeGeometry args={[rightInnerNeonCurve, 32, 0.016, 8, false]} />
           <primitive object={portalAmberNeonMat} attach="material" />
         </mesh>
+
+        {/* Sleek Wing Acoustic Baffle Walls (conceal pre-entrance contestants behind Left/Right Portal wings) */}
+        {/* Left Wing Baffle (X = +2.02..+3.36m, Y = 1.97..3.97m, Z_local = 3.66 -> Z_world = 12.16m) */}
+        <group position={[2.69, 2.97, 3.66]}>
+          <mesh>
+            <boxGeometry args={[1.34, 2.00, 0.10]} />
+            <primitive object={portalDarkSpacerMat} attach="material" />
+          </mesh>
+          <mesh position={[0, 1.00, -0.055]}>
+            <boxGeometry args={[1.34, 0.025, 0.02]} />
+            <primitive object={portalAmberNeonMat} attach="material" />
+          </mesh>
+          <mesh position={[0, -0.99, -0.055]}>
+            <boxGeometry args={[1.34, 0.025, 0.02]} />
+            <primitive object={portalCyanNeonMat} attach="material" />
+          </mesh>
+        </group>
+
+        {/* Right Wing Baffle (X = -3.66..-2.02m, Y = 1.97..3.97m, Z_local = 3.66 -> Z_world = 12.16m) */}
+        <group position={[-2.84, 2.97, 3.66]}>
+          <mesh>
+            <boxGeometry args={[1.64, 2.00, 0.10]} />
+            <primitive object={portalDarkSpacerMat} attach="material" />
+          </mesh>
+          <mesh position={[0, 1.00, -0.055]}>
+            <boxGeometry args={[1.64, 0.025, 0.02]} />
+            <primitive object={portalAmberNeonMat} attach="material" />
+          </mesh>
+          <mesh position={[0, -0.99, -0.055]}>
+            <boxGeometry args={[1.64, 0.025, 0.02]} />
+            <primitive object={portalCyanNeonMat} attach="material" />
+          </mesh>
+        </group>
+
+        {/* Overhead Ceiling Downlights & Soft Volumetric Cones over Left/Right Wing Waiting Zones (Active from Room Start / Lobby) */}
+        {[2.65, -2.65].map((wingX) => {
+          const wingRoomFactor = Math.max(0.85, liveFactor);
+          return (
+            <group key={`wing-ceiling-light-${wingX}`} position={[wingX, 6.25, 4.55]}>
+              {/* Anodized ceiling fixture housing & mounting stem */}
+              <mesh position={[0, 0.35, 0]}>
+                <cylinderGeometry args={[0.04, 0.04, 0.70, 10]} />
+                <primitive object={stanchionSteelMat} attach="material" />
+              </mesh>
+              <mesh position={[0, 0, 0]}>
+                <cylinderGeometry args={[0.16, 0.22, 0.24, 16]} />
+                <primitive object={portalBlackLacquerMat} attach="material" />
+              </mesh>
+              {/* Luminous fixture lens */}
+              <mesh position={[0, -0.125, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[0.19, 16]} />
+                <meshBasicMaterial color="#e0f2fe" />
+              </mesh>
+              {/* Soft downward volumetric light beam cone radiating onto wing waiting bay */}
+              {quality !== "LIGHT" && (
+                <>
+                  <mesh position={[0, -2.20, 0]}>
+                    <cylinderGeometry args={[0.18, 1.05, 4.15, 20, 1, true]} />
+                    <meshBasicMaterial
+                      color="#bae6fd"
+                      transparent={true}
+                      opacity={0.08 * wingRoomFactor}
+                      depthWrite={false}
+                      blending={THREE.AdditiveBlending}
+                      side={THREE.DoubleSide}
+                    />
+                  </mesh>
+                  <TargetedSpotLight
+                    position={[0, -0.15, 0]}
+                    targetPosition={[0, -4.28, 0]}
+                    color="#e0f2fe"
+                    intensity={10.5 * wingRoomFactor}
+                    angle={0.44}
+                    penumbra={0.55}
+                    distance={9.5}
+                    decay={1.2}
+                    castShadow={false}
+                  />
+                </>
+              )}
+              <pointLight
+                position={[0, -0.35, 0]}
+                intensity={7.5 * wingRoomFactor}
+                color="#e0f2fe"
+                distance={6.5}
+                decay={1.4}
+              />
+            </group>
+          );
+        })}
 
         {/* Authentic Stage Lighting & Volumetric Portal Glow (Consolidated fixture for 60 FPS performance) */}
         {quality !== "LIGHT" && (

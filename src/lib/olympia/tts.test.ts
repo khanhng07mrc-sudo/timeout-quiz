@@ -413,14 +413,23 @@ test("TTS: summarizeOlympiaAnswer handles dates, multi-parentheticals, alternati
 test("TTS: getSeasonReadingRate separates question vs narration speed and scales by baseRate", () => {
   setTtsBaseRate(TTS_BASE_RATE_DEFAULT);
 
-  // Upgraded default question rate contracts (snappier than legacy 1.08 baseline)
-  assert.equal(getSeasonReadingRate("O20"), 1.40);
-  assert.equal(getSeasonReadingRate("O21"), 1.40);
+  // Upgraded season-aware question rate contracts (O13-O19 fast 1.40x, O20-O21 very fast 1.60x)
+  assert.equal(getSeasonReadingRate("O13"), 1.40);
+  assert.equal(getSeasonReadingRate("O19"), 1.40);
+  assert.equal(getSeasonReadingRate("O20"), 1.60);
+  assert.equal(getSeasonReadingRate("O21"), 1.60);
   assert.equal(getSeasonReadingRate("O22"), 1.40);
   assert.equal(getSeasonReadingRate("O23"), 1.18);
   assert.equal(getSeasonReadingRate("O24-25"), 1.18);
   assert.equal(getSeasonReadingRate("O26"), 1.18);
   assert.equal(getSeasonReadingRate("O27"), 1.18);
+
+  // Explicit Khởi Động round scaling by season
+  assert.equal(getSeasonReadingRate("O13", 10, { segment: "question", round: "khoiDong" } as any), 1.40);
+  assert.equal(getSeasonReadingRate("O19", 10, { segment: "question", round: "khoiDong" } as any), 1.40);
+  assert.equal(getSeasonReadingRate("O20", 10, { segment: "question", round: "khoiDong" } as any), 1.60);
+  assert.equal(getSeasonReadingRate("O21", 10, { segment: "question", round: "khoiDong" } as any), 1.60);
+  assert.equal(getSeasonReadingRate("O26", 10, { segment: "question", round: "khoiDong" } as any), 1.24);
 
   const normalRate = getSeasonReadingRate("O26", 15);
   const boostedRate = getSeasonReadingRate("O26", 30);

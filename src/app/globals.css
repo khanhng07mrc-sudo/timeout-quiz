@@ -4,6 +4,14 @@
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 }
 
+.font-v3-avo {
+  font-family: "UTM Avo", "Montserrat", "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+.font-classic-arial {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
 /* ── SFU Helvetica Condensed Việt Hoá (Typography Bảng Ô Chữ) ── */
 @font-face {
   font-family: 'SFU Helvetica Condensed';

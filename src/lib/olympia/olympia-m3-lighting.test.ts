@@ -102,9 +102,9 @@ export function runOlympiaM3LightingSuite(): M3SuiteResults {
     assert.ok(studioLightingSrc.includes('color={MC_LIGHTING_RIG_CONFIG.rimLight.color}'));
   });
 
-  runTest(1, "M3.4: Dedicated local warm white PointLight exists directly above MC desk at [3.12, 2.40, -6.40]", () => {
+  runTest(1, "M3.4: Dedicated local warm white PointLight exists directly above coaxially shifted MC desk at [2.85, 2.40, -6.40]", () => {
     const pos = MC_LIGHTING_RIG_CONFIG.deskDownlight.position;
-    assert.equal(pos[0], 3.12);
+    assert.equal(pos[0], 2.85);
     assert.equal(pos[1], 2.40);
     assert.equal(pos[2], -6.40);
     assert.equal(MC_LIGHTING_RIG_CONFIG.deskDownlight.color.toLowerCase(), "#fff5e6");

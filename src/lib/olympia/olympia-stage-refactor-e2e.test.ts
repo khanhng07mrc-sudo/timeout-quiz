@@ -1182,7 +1182,7 @@ export function runOlympiaStageRefactorE2ESuite(): StageRefactorTestResults {
     const hostSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/HostConsole.tsx"), "utf-8");
 
     assert.ok(podiumSrc.includes("seatTiming.arrivalSec") || podiumSrc.includes("5200") || podiumSrc.includes("8500"), "R5: Podiums.tsx must transition active contestant scoreboard to name_school early before settling");
-    assert.ok(camSrc.includes("[2.30, 1.26, -3.94]") && camSrc.includes("[3.12, 1.02, -7.16]"), "R3: CAM 3 must be coaxial frontal MC desk preset");
+    assert.ok(camSrc.includes("[1.13, 1.52, -3.17]") && camSrc.includes("[1.75, 1.36, -5.95]"), "R3: CAM 3 must be coaxial frontal MC desk preset");
     assert.ok(camSrc.includes("effectiveTotalSeats"), "R7: CameraController must pass effectiveTotalSeats for CAM 25..28");
     assert.ok(lightSrc.includes("isGrandstandFullLit") && lightSrc.includes("TargetedSpotLight"), "R4: StudioLighting must illuminate grandstand via TargetedSpotLight");
     assert.ok(gfxSrc.includes("w-[68%] max-w-[1300px]") && gfxSrc.includes("w-[88%] max-w-[1640px]"), "R8 & R9: Vtv3BroadcastGraphics must size SummaryLowerThird (68%) and VCNV/TT reveals (88%) accurately");

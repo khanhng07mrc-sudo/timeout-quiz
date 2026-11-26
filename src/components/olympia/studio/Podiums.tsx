@@ -3052,7 +3052,7 @@ export function CenterMcDesk({
   }, []);
 
   return (
-    <group ref={mcDeskRef} position={[2.00, 0.22, -5.85]} rotation={[0, -0.22, 0]}>
+    <group ref={mcDeskRef} position={[1.73, 0.22, -5.85]} rotation={[0, -0.22, 0]}>
       {/* 1. Sleek Tapered Ground Plinth Base */}
       <mesh position={[0, 0.04, 0]} castShadow={true}>
         <boxGeometry args={[1.36, 0.08, 0.62]} />
@@ -3210,9 +3210,9 @@ export function CenterMcDesk({
   );
 }
 
-// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([2.00, 0.22, -5.85], rotY = -0.22 rad)
-export const KV_DESK_POS: [number, number, number] = [2.28, 0.22, -6.25];
-export const NH_DESK_POS: [number, number, number] = [1.84, 0.22, -6.35];
+// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([1.73, 0.22, -5.85], rotY = -0.22 rad) & Portal ([2.10, 0.22, -7.50])
+export const KV_DESK_POS: [number, number, number] = [2.01, 0.22, -6.25];
+export const NH_DESK_POS: [number, number, number] = [1.57, 0.22, -6.35];
 export const MC_DESK_ROT_Y = -0.22;
 export const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
 export const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
@@ -3786,7 +3786,7 @@ export function McPresenters({
   return (
     <group>
       {/* ── KHÁNH VY (Female Presenter - Stylized Realism VTV) ── */}
-      <group ref={kvRef} position={[2.28, 0.22, -6.25]} rotation={[0, -0.22, 0]}>
+      <group ref={kvRef} position={[2.01, 0.22, -6.25]} rotation={[0, -0.22, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Feminine Vietnamese Proportions: Smooth, graceful) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.445, 0.000]} scale={[0.96, 1.02, 0.98]}>
@@ -4149,7 +4149,7 @@ export function McPresenters({
       </group>
 
       {/* ── NGỌC HUY (Male Presenter - Metallic Bronze Suit #b88a44) ── */}
-      <group ref={nhRef} position={[1.84, 0.22, -6.35]} rotation={[0, -0.22, 0]}>
+      <group ref={nhRef} position={[1.57, 0.22, -6.35]} rotation={[0, -0.22, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Masculine Vietnamese Proportions: Handsome, defined jaw) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.515, 0.000]} scale={[0.96, 1.04, 1.00]}>
@@ -4635,12 +4635,12 @@ export function evaluateContestantEntranceTrajectory(
   const arrivalSec = timing ? timing.arrivalSec : +(ENTRANCE_STAIRS_END_SEC + floorDurationSec).toFixed(2);
   const bowEndSec = timing ? timing.bowEndSec : +(arrivalSec + ENTRANCE_DESK_BOW_SEC).toFixed(2);
 
-  // Door side selection for contestants (alternating or seat-based):
+  // Door side selection for contestants: deep left/right wing staging behind acoustic baffles
   const isDoorLeft = seatId % 2 === 0;
   const queueIdx = Math.floor(seatId / 2);
-  const queueSpreadX = queueIdx * 0.08;
-  const doorX = isDoorLeft ? (1.18 + queueSpreadX) : (-1.18 - queueSpreadX);
-  const doorZ = 12.85 + queueIdx * 0.48;
+  const queueSpreadX = queueIdx * 0.16;
+  const doorX = isDoorLeft ? (2.35 + queueSpreadX) : (-2.35 - queueSpreadX);
+  const doorZ = 12.90 + queueIdx * 0.42;
 
   const startX = doorX;
   const startY = 1.84;
@@ -4658,7 +4658,7 @@ export function evaluateContestantEntranceTrajectory(
   let vel = 0;
 
   if (t < 0) {
-    // Phase 0: Waiting behind portal doorway arch on grandstand top plinth
+    // Phase 0: Waiting concealed in deep wing backstage bays behind architectural wing baffles
     curX = startX;
     curY = startY;
     curZ = startZ;
@@ -4667,23 +4667,23 @@ export function evaluateContestantEntranceTrajectory(
     curGesture = "none";
     curGestureProg = 0;
     vel = 0;
-  } else if (t < 0.6) {
-    const p = t / 0.6;
+  } else if (t < 0.65) {
+    const p = t / 0.65;
     const smoothP = p * p * (3 - 2 * p);
     curX = THREE.MathUtils.lerp(startX, 0, smoothP);
     curY = startY;
     curZ = THREE.MathUtils.lerp(startZ, 11.9, smoothP);
     curRotY = THREE.MathUtils.lerp(initialDoorRotY, Math.PI, smoothP);
-    const dpDt = (6 * p * (1 - p)) / 0.6;
+    const dpDt = (6 * p * (1 - p)) / 0.65;
     vel = Math.hypot(-startX, 11.9 - startZ) * dpDt;
   } else if (t < 1.8) {
-    // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to Bục Giữa (Z = 10.20m, Y = 0.92m)
-    const p = (t - 0.6) / 1.2;
+    // Phase 2 (0.65 -> 1.8s): Walks down upper stairs (1.15s) to Bục Giữa (Z = 10.20m, Y = 0.92m)
+    const p = (t - 0.65) / 1.15;
     curX = 0;
     curZ = THREE.MathUtils.lerp(11.9, 10.2, p);
     curY = getGrandstandStairY(curZ);
     curRotY = Math.PI;
-    vel = (11.9 - 10.2) / 1.2;
+    vel = (11.9 - 10.2) / 1.15;
   } else if (t < 3.0) {
     // Phase 3 (1.8 -> 3.0s): Stands firmly on Bục Giữa & performs signature gesture (1.2s)
     curX = 0;

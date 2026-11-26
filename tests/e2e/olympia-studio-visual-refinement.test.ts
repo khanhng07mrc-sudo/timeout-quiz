@@ -714,15 +714,30 @@ test("R10.2: CentralLedWall mounts MC Portal at Y=0.22m and aligns Left Formula 
   );
 });
 
-test("R10.3: Podiums mounts CenterMcDesk and MC presenters at synchronized Y=0.22m dais elevation", () => {
+test("R10.3: Podiums mounts CenterMcDesk and MC presenters coaxially with Hexagon Portal at Y=0.22m", () => {
   assert.ok(
-    podiumsContent.includes('<group ref={mcDeskRef} position={[2.00, 0.22, -5.85]} rotation={[0, -0.22, 0]}>'),
-    "CenterMcDesk must mount at [2.00, 0.22, -5.85]"
+    podiumsContent.includes('<group ref={mcDeskRef} position={[1.73, 0.22, -5.85]} rotation={[0, -0.22, 0]}>'),
+    "CenterMcDesk must mount coaxially at [1.73, 0.22, -5.85]"
   );
   assert.ok(
-    podiumsContent.includes("KV_DESK_POS: [number, number, number] = [2.28, 0.22, -6.25]") &&
-    podiumsContent.includes("NH_DESK_POS: [number, number, number] = [1.84, 0.22, -6.35]"),
-    "KV_DESK_POS and NH_DESK_POS must sit at Y = 0.22"
+    podiumsContent.includes("KV_DESK_POS: [number, number, number] = [2.01, 0.22, -6.25]") &&
+    podiumsContent.includes("NH_DESK_POS: [number, number, number] = [1.57, 0.22, -6.35]"),
+    "KV_DESK_POS and NH_DESK_POS must sit coaxially at Y = 0.22"
+  );
+});
+
+test("R10.3b: Wing Acoustic Baffles & Room-Start Wing Ceiling Spotlights conceal and illuminate backstage waiting wings", () => {
+  assert.ok(
+    podiumsContent.includes("2.35 + queueSpreadX") && podiumsContent.includes("12.90 + queueIdx * 0.42"),
+    "Contestants waiting pre-entrance must stand deep behind Left/Right wings (|X| >= 2.35m, Z >= 12.90m)"
+  );
+  assert.ok(
+    studioLightingContent.includes("[2.69, 2.97, 3.66]") && studioLightingContent.includes("[-2.84, 2.97, 3.66]"),
+    "Left and Right wing acoustic baffles must bridge portal outer arcs to logo stanchions"
+  );
+  assert.ok(
+    studioLightingContent.includes("wing-ceiling-light-") && studioLightingContent.includes("Math.max(0.85, liveFactor)"),
+    "Overhead wing ceiling SpotLights and volumetric beams must illuminate wing bays from room start (lobby)"
   );
 });
 

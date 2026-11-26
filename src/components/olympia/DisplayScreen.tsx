@@ -272,6 +272,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     join?.audioSeason ||
     urlSeason ||
     "O26";
+  const effectiveTtsSeason = state?.rulesetId || urlRuleset || effectiveAudioSeason;
 
   latestStateRef.current = state;
   latestTtsActiveRef.current = ttsActive;
@@ -1579,7 +1580,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     if (currentQ && currentQ !== lastQuestionRef.current) {
       lastQuestionRef.current = currentQ;
       speakSmartQuestion(currentQ, {
-        season: effectiveAudioSeason,
+        season: effectiveTtsSeason,
         round: state.currentRound || undefined,
         seatId: questionSeatId,
         segIdx: state.currentRound === "khoiDong" ? state.khoiDong?.segIdx : undefined,
@@ -1599,7 +1600,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       const seatId = state.khoiDong.segments?.[state.khoiDong.segIdx ?? 0]?.seat;
       if (state.khoiDong.current?.q && !state.khoiDong.questionRevealed) {
         prefetchOlympiaTtsAudio(state.khoiDong.current.q, {
-          season: effectiveAudioSeason,
+          season: effectiveTtsSeason,
           round: "khoiDong",
           seatId,
           segIdx: state.khoiDong.segIdx,
@@ -1609,7 +1610,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         const cleanAns = formatFullOlympiaAnswer(state.khoiDong.current.a);
         if (cleanAns) {
           prefetchOlympiaTtsAudio(cleanAns, {
-            season: effectiveAudioSeason,
+            season: effectiveTtsSeason,
             round: "khoiDong",
             segment: "result",
             seatId,
@@ -1623,7 +1624,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       const cleanPrompt = rawPrompt ? stripVcnvLetterCount(rawPrompt) : "";
       if (cleanPrompt && v.phase === "selecting") {
         prefetchOlympiaTtsAudio(cleanPrompt, {
-          season: effectiveAudioSeason,
+          season: effectiveTtsSeason,
           round: "vcnv",
           rowIdx: curRow,
         });
@@ -1633,7 +1634,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         const cleanAns = summarizeOlympiaAnswer(rowAns);
         if (cleanAns) {
           prefetchOlympiaTtsAudio(cleanAns, {
-            season: effectiveAudioSeason,
+            season: effectiveTtsSeason,
             round: "vcnv",
             segment: "result",
             rowIdx: curRow,
@@ -1645,7 +1646,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       const qObj = tt.qIdx != null && tt.qIdx >= 0 ? tt.questions?.[tt.qIdx] : null;
       if (qObj?.q && tt.phase === "idle") {
         prefetchOlympiaTtsAudio(qObj.q, {
-          season: effectiveAudioSeason,
+          season: effectiveTtsSeason,
           round: "tangToc",
         });
       }
@@ -1653,7 +1654,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         const cleanAns = summarizeOlympiaAnswer(qObj.answer);
         if (cleanAns) {
           prefetchOlympiaTtsAudio(cleanAns, {
-            season: effectiveAudioSeason,
+            season: effectiveTtsSeason,
             round: "tangToc",
             segment: "result",
           });
@@ -1664,7 +1665,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       const owner = vd.order?.[vd.turnIdx];
       if (vd.current?.q?.q && vd.phase === "packageReady") {
         prefetchOlympiaTtsAudio(vd.current.q.q, {
-          season: effectiveAudioSeason,
+          season: effectiveTtsSeason,
           round: "veDich",
           seatId: owner,
         });
@@ -1673,7 +1674,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         const cleanAns = summarizeOlympiaAnswer(vd.current.q.a);
         if (cleanAns) {
           prefetchOlympiaTtsAudio(cleanAns, {
-            season: effectiveAudioSeason,
+            season: effectiveTtsSeason,
             round: "veDich",
             segment: "result",
             seatId: owner,
@@ -1687,7 +1688,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         const cleanAns = summarizeOlympiaAnswer(qObj.a);
         if (cleanAns) {
           prefetchOlympiaTtsAudio(cleanAns, {
-            season: effectiveAudioSeason,
+            season: effectiveTtsSeason,
             round: "cauHoiPhu",
             segment: "result",
           });
@@ -2506,7 +2507,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && activeRoundContent && !(state.currentRound === "vcnv" && isVcnvPureStudio) && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
-            <div className="w-full px-2 sm:px-6 pb-3.5 sm:pb-5 pt-1 pointer-events-auto flex flex-col justify-end z-20">
+            <div className={`w-full px-2 sm:px-6 pb-3.5 sm:pb-5 pt-1 pointer-events-auto flex flex-col justify-end z-20 ${state.themeMode === "o26_classic" ? "font-classic-arial" : "font-v3-avo"}`}>
               <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}
@@ -2517,7 +2518,7 @@ export default function DisplayScreen({ code }: { code: string }) {
             </div>
           ) : (
             /* ── FULLSCREEN BROADCAST OVERLAY (AUTHENTIC VTV3 GRAPHICS) ── */
-            <div className="absolute inset-0 pointer-events-auto z-30 flex items-center justify-center overflow-hidden bg-[#070b14]">
+            <div className={`absolute inset-0 pointer-events-auto z-30 flex items-center justify-center overflow-hidden bg-[#070b14] ${state.themeMode === "o26_classic" ? "font-classic-arial" : "font-v3-avo"}`}>
               {/* Opaque Broadcast Backdrop: Chalkboard with formulas for Classic, or Olympia22 for V3 */}
               {state.themeMode === "o26_classic" ? (
                 <Vtv3ChalkboardBackdrop className="opacity-95" />
@@ -2716,7 +2717,7 @@ function KhoiDong({ state, serverNow, isFullscreen }: P) {
   const effectiveShowSubject = Boolean(state.showSubject ?? kd.showSubject);
 
   const containerClass = isFullscreen
-    ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex flex-col justify-center items-center h-full min-h-0 py-4 gap-3 my-auto animate-fade-in"
+    ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex flex-col justify-center items-center h-full min-h-0 py-4 gap-3 my-auto"
     : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5";
 
   if (state.themeMode === "o26_classic") {
@@ -3066,7 +3067,7 @@ function Chp({ state, serverNow, isFullscreen }: P) {
     cp.qIdx >= 0 ? `CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "CÂU HỎI PHỤ";
 
   return (
-    <div className={isFullscreen ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto text-center space-y-2 my-auto flex flex-col justify-center items-center animate-fade-in" : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in"}>
+    <div className={isFullscreen ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto text-center space-y-2 my-auto flex flex-col justify-center items-center" : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2"}>
       {state.themeMode === "o26_classic" ? (
         (q || isChpResult) ? (
           <ClassicUnifiedLowerThird

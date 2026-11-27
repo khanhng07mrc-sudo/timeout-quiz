@@ -112,8 +112,12 @@ import {
   buildContestantIntroContinuousScript,
   buildPostIntroBreatherScript,
   buildKhoiDongTurnBridgeSegment,
+  buildKhoiDongFinalScoreTransitionSegment,
+  buildVcnvGridRevealBridgeSegments,
   buildVcnvRowBridgeSegment,
   buildTangTocBridgeSegment,
+  buildTangTocFinalSuspenseSegment,
+  buildGroupedScoreAwardAnnouncement,
   buildVeDichBridgeSegment,
   buildRoundCompleteBridgeSegment,
   buildScoreSummaryStepSegment,
@@ -3310,5 +3314,182 @@ test("TTS Summary & Voice Cloning UI/API: seat-count speed scaling, DisplayScree
     if (Array.isArray(remaining.profiles) && remaining.profiles.length === 0) {
       fs.rmSync(VOICES_UPLOAD_DIR, { recursive: true, force: true });
     }
+  }
+});
+
+test("TTS VCNV/KhoiDong/TangToc bridges, grouped score callouts & external TTS providers", async () => {
+  // 1. End of Khởi Động final score-check transition
+  const kdFinal = buildKhoiDongFinalScoreTransitionSegment();
+  assert.ok(kdFinal.text.includes("bao nhiêu điểm"));
+
+  // 2. VCNV grid reveal -> selector announcement -> units ("chữ số", "ký tự") -> grid_return -> question lead-in
+  const revealSegs = buildVcnvGridRevealBridgeSegments({ selectorName: "Minh Anh", selectorSeat: 0, turnCount: 1 });
+  assert.equal(revealSegs.length, 2);
+  assert.ok(revealSegs[0].text.includes("Sau đây là các hàng ngang gợi ý"));
+  assert.ok(revealSegs[1].text.includes("Người đầu tiên") && revealSegs[1].text.includes("Minh Anh"));
+
+  const rowDigits = buildVcnvRowBridgeSegment({ mode: "selecting", rowIdx: 1, letterCount: 4, unit: "chữ số", selectorName: "Gia Khánh" });
+  assert.ok(rowDigits.text.includes("Hàng ngang số 2") && rowDigits.text.includes("4 chữ số"));
+
+  const rowChars = buildVcnvRowBridgeSegment({ mode: "selecting", rowIdx: 2, letterCount: 6, unit: "ký tự" });
+  assert.ok(rowChars.text.includes("6 ký tự"));
+
+  const rowLead = buildVcnvRowBridgeSegment({ mode: "question_lead", rowIdx: 0 });
+  assert.ok(rowLead.text.includes("Với nội dung câu hỏi như sau"));
+
+  const gridReturn = buildVcnvRowBridgeSegment({ mode: "grid_return", selectorName: "Tuấn Tú", selectorSeat: 1, turnCount: 2 });
+  assert.ok(gridReturn.text.includes("thứ hai") && gridReturn.text.includes("Tuấn Tú"));
+
+  // 3. Tăng Tốc Q4 suspense bridge & grouped score callouts
+  const ttSuspense = buildTangTocFinalSuspenseSegment();
+  assert.ok(ttSuspense.text.includes("cuối cùng"));
+
+  const vcnvGrouped = buildGroupedScoreAwardAnnouncement(
+    [
+      { seatId: 0, name: "An", points: 10 },
+      { seatId: 1, name: "Bình", points: 0 },
+      { seatId: 2, name: "Chi", points: 10 },
+    ],
+    { round: "vcnv", rowIdx: 0 }
+  );
+  assert.ok(vcnvGrouped.includes("hai bạn An và Chi") && vcnvGrouped.includes("cùng ghi thêm 10 điểm"));
+
+  const ttGrouped = buildGroupedScoreAwardAnnouncement(
+    [
+      { seatId: 0, name: "An", points: 40 },
+      { seatId: 1, name: "Bình", points: 30 },
+      { seatId: 2, name: "Chi", points: 30 },
+      { seatId: 3, name: "Dũng", points: 0 },
+    ],
+    { round: "tangToc" }
+  );
+  assert.ok(ttGrouped.includes("40 điểm") && ttGrouped.includes("hai bạn Bình và Chi") && ttGrouped.includes("30 điểm"));
+
+  // 4. External providers (openai_compat, google_cloud base64, fpt_ai async URL, custom_http json)
+  const { resetTtsCacheForTesting } = await import("./server-tts");
+  const { POST, GET } = await import("../../app/api/olympia/tts/route");
+  const fakeMp3 = Buffer.from([0xff, 0xfb, 0x90, 0x64, ...new Array(96).fill(0x22)]);
+  const origFetch = globalThis.fetch;
+
+  try {
+    resetTtsCacheForTesting();
+    const getRes = await GET();
+    const getJson = (await getRes.json()) as { capabilities: { cloneProviders: string[] } };
+    assert.ok(getJson.capabilities.cloneProviders.includes("openai_compat"));
+    assert.ok(getJson.capabilities.cloneProviders.includes("fpt_ai"));
+    assert.ok(getJson.capabilities.cloneProviders.includes("google_cloud"));
+
+    const capturedOpenAiBodies: any[] = [];
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes("openai.example.com/v1/audio/speech")) {
+        capturedOpenAiBodies.push(JSON.parse(String(init?.body || "{}")));
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "audio/mpeg" }),
+          arrayBuffer: async () => fakeMp3.buffer.slice(fakeMp3.byteOffset, fakeMp3.byteOffset + fakeMp3.byteLength),
+        } as unknown as Response;
+      }
+      if (u.includes("gcloud.example.com")) {
+        const jsonBuf = Buffer.from(JSON.stringify({ audioContent: fakeMp3.toString("base64") }));
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "application/json" }),
+          arrayBuffer: async () =>
+            jsonBuf.buffer.slice(jsonBuf.byteOffset, jsonBuf.byteOffset + jsonBuf.byteLength),
+        } as unknown as Response;
+      }
+      if (u.includes("fpt.example.com/hmi/tts/v5")) {
+        const jsonBuf = Buffer.from(JSON.stringify({ async: "https://cdn.fpt.example.com/out.mp3" }));
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "application/json" }),
+          arrayBuffer: async () =>
+            jsonBuf.buffer.slice(jsonBuf.byteOffset, jsonBuf.byteOffset + jsonBuf.byteLength),
+        } as unknown as Response;
+      }
+      if (u.includes("cdn.fpt.example.com/out.mp3")) {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "audio/mpeg" }),
+          arrayBuffer: async () => fakeMp3.buffer.slice(fakeMp3.byteOffset, fakeMp3.byteOffset + fakeMp3.byteLength),
+        } as unknown as Response;
+      }
+      throw new Error(`Unexpected fetch URL: ${u}`);
+    }) as typeof fetch;
+
+    const oaRes = await POST(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Thử OpenAI TTS",
+          role: "ngoc_huy",
+          clone: {
+            enabled: true,
+            provider: "openai_compat",
+            endpointUrl: "https://openai.example.com/v1/audio/speech",
+            model: "kokoro",
+            voiceId: "onyx",
+            apiKey: "sk-oa-secret",
+          },
+        }),
+      }) as any
+    );
+    assert.equal(oaRes.status, 200);
+    assert.equal(oaRes.headers.get("X-TTS-Clone-Used"), "true");
+    assert.equal(oaRes.headers.get("X-TTS-Engine"), "voice-clone-openai_compat");
+    assert.equal(capturedOpenAiBodies[0]?.model, "kokoro");
+    assert.equal(capturedOpenAiBodies[0]?.voice, "onyx");
+    assert.equal(capturedOpenAiBodies[0]?.input, "Thử OpenAI TTS");
+
+    const gcRes = await POST(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Thử Google Cloud TTS",
+          role: "khanh_vy",
+          clone: {
+            enabled: true,
+            provider: "google_cloud",
+            endpointUrl: "https://gcloud.example.com/v1/text:synthesize",
+            voiceId: "vi-VN-Neural2-A",
+            apiKey: "gc-secret",
+          },
+        }),
+      }) as any
+    );
+    assert.equal(gcRes.status, 200);
+    assert.equal(gcRes.headers.get("X-TTS-Clone-Used"), "true");
+    assert.equal(gcRes.headers.get("X-TTS-Engine"), "voice-clone-google_cloud");
+
+    const fptRes = await POST(
+      new Request("http://localhost:3000/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Thử FPT AI TTS",
+          role: "ngoc_huy",
+          clone: {
+            enabled: true,
+            provider: "fpt_ai",
+            endpointUrl: "https://fpt.example.com/hmi/tts/v5",
+            voiceId: "leminh",
+            apiKey: "fpt-secret",
+          },
+        }),
+      }) as any
+    );
+    assert.equal(fptRes.status, 200);
+    assert.equal(fptRes.headers.get("X-TTS-Clone-Used"), "true");
+    assert.equal(fptRes.headers.get("X-TTS-Engine"), "voice-clone-fpt_ai");
+  } finally {
+    globalThis.fetch = origFetch;
+    resetTtsCacheForTesting();
   }
 });

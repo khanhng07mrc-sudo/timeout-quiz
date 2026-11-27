@@ -3648,11 +3648,46 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <button
             type="button"
             onClick={() => call("vcnv:showGrid")}
-            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer"
+            className={`w-full py-1.5 rounded-lg text-white text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer transition ${
+              !v.gridRevealed
+                ? "bg-amber-600 hover:bg-amber-500 ring-2 ring-amber-300/80 animate-pulse"
+                : "bg-cyan-600 hover:bg-cyan-500"
+            }`}
           >
-            <span>⭐</span>
-            <span>Mở Các Hàng Ngang</span>
+            <span>{v.gridRevealed ? "✓" : "⭐"}</span>
+            <span>{v.gridRevealed ? "Đã Mở Các Hàng Ngang" : "Mở Các Hàng Ngang (Lên đồ họa)"}</span>
           </button>
+          <div className="px-1.5 py-1 rounded-lg bg-white/5 border border-white/10">
+            <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+              <span>Người chọn hàng ngang (Lượt {v.selectorTurnCount ?? 1}):</span>
+              <span className="text-cyan-300 font-bold">
+                {v.selectorSeat != null ? (state.seats[v.selectorSeat]?.name || `TS ${v.selectorSeat + 1}`) : "Tự động"}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {activeSeats(state).map((s) => {
+                const isSel = v.selectorSeat === s.id;
+                const isElim = v.eliminatedSeats.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => call("vcnv:setSelectorSeat", { seat: s.id })}
+                    title={`Đặt ${s.name} chọn hàng ngang`}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                      isSel
+                        ? "bg-cyan-500/30 border-cyan-400 text-cyan-200"
+                        : isElim
+                        ? "bg-rose-950/30 border-rose-500/20 text-rose-400/60"
+                        : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                    }`}
+                  >
+                    TS{s.id + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {[0, 1, 2, 3].map((rIdx) => {
             const rowAns = v.rows[rIdx]?.answer || "";
             const lc = v.rows[rIdx]?.letterCount || cleanVcnvWord(rowAns).length || "?";

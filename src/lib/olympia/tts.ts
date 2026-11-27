@@ -234,7 +234,7 @@ export const DEFAULT_OLYMPIA_SCRIPTS: CustomTtsScriptConfig = {
     khoiDongSolo: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động! Người đầu tiên bước vào lượt thi cá nhân là bạn {tenThiSinh} đến từ trường {tenTruong}. Bạn sẽ có 6 câu hỏi để ghi những điểm số đầu tiên. Chúc bạn thật tự tin, bình tĩnh và có một màn khởi động thành công rực rỡ!",
     khoiDongShared: "Và bây giờ là lượt thi Khởi Động chung! Các bạn thí sinh hãy chuẩn bị sẵn sàng tay trên bàn phím chuông, chúc cả 4 bạn sẽ có một màn khởi động thật suôn sẻ, bứt phá và giành được thật nhiều điểm số!",
     khoiDong: "Và ngay bây giờ, chúng ta sẽ cùng bước vào phần thi đầu tiên mang tên Khởi Động!",
-    vuotChuongNgaiVat: "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật! Thử thách của chúng ta ngày hôm nay là một Chướng ngại vật gồm {soChuCai} chữ cái. Mỗi câu trả lời đúng ở các hàng ngang sẽ mở ra một góc hình ảnh gợi ý. Chúc 4 thí sinh thi đấu thật tập trung và bản lĩnh!",
+    vuotChuongNgaiVat: "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật! Hôm nay, các thí sinh phải vượt qua một Chướng ngại vật và tìm ra một từ chìa khóa gồm có {soChuCai} {donViTuKhoa}. Chúc các bạn thi đấu thật tập trung và bản lĩnh!",
     tangToc: "Cơ hội nâng cao điểm số và tạo ra bước ngoặt đang chờ đón 4 thí sinh ở phần thi thứ ba: Tăng tốc! Có 4 câu hỏi với thời gian suy nghĩ lần lượt là 10, 20, 30 và 40 giây. Các bạn hãy tận dụng tối đa từng phần trăm giây để giành lấy số điểm tối đa 40, 30, 20 và 10 điểm nhé!",
     veDich: "Và bây giờ là phần thi quyết định, phần thi cuối cùng của trận đấu: Về Đích! Nơi thể hiện bản lĩnh, chiến thuật và ý chí kiên định của các nhà leo núi. Điểm số hoàn toàn có thể thay đổi sau từng câu hỏi!",
     cauHoiPhu: "Do có sự bằng điểm ở vị trí phân định, chúng ta sẽ bước vào phần thi Câu hỏi phụ để tìm ra người chiến thắng xứng đáng!",
@@ -2679,7 +2679,7 @@ function makeSanitizedPayloadCacheKey(payload: Record<string, unknown>): string 
   });
 }
 
-function detectClientAudioMime(buf: ArrayBuffer): "audio/wav" | "audio/mpeg" {
+function detectClientAudioMime(buf: ArrayBuffer): "audio/wav" | "audio/mpeg" | "audio/ogg" {
   const bytes = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
   if (
     bytes.length >= 4 &&
@@ -2689,6 +2689,15 @@ function detectClientAudioMime(buf: ArrayBuffer): "audio/wav" | "audio/mpeg" {
     bytes[3] === 0x46
   ) {
     return "audio/wav";
+  }
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x4f &&
+    bytes[1] === 0x67 &&
+    bytes[2] === 0x67 &&
+    bytes[3] === 0x53
+  ) {
+    return "audio/ogg";
   }
   return "audio/mpeg";
 }
@@ -2718,7 +2727,7 @@ async function fetchServerTtsAudio(
     transportConfig.timeoutMs !== undefined
       ? transportConfig.timeoutMs
       : DEFAULT_TIMEOUT_MS;
-  const timeoutMs = clonePayload && baseTimeoutMs > 0 ? Math.max(baseTimeoutMs, 6500) : baseTimeoutMs;
+  const timeoutMs = clonePayload && baseTimeoutMs > 0 ? Math.max(baseTimeoutMs, 11000) : baseTimeoutMs;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   activeAbortController = controller;
 
@@ -3727,6 +3736,8 @@ export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): Pr
     } else if (options?.segKind === "solo" || options?.seatId !== undefined) {
       targetKey = "khoiDongSolo";
     }
+  } else if (round === "vcnv") {
+    targetKey = "vuotChuongNgaiVat";
   }
 
   const customIntro =
@@ -3735,9 +3746,21 @@ export function speakRoundIntroTTS(round: string, options?: SpeakTTSOptions): Pr
   const intro = ROUND_INTRO_LINES[targetKey] || ROUND_INTRO_LINES[round];
   if (!customIntro && !intro) return Promise.resolve(false);
 
-  let text = customIntro || intro.text;
-  if (options?.vars) {
-    text = interpolateTemplate(text, options.vars);
+  const vcnvDefaultWithKeyword =
+    round === "vcnv" && !customIntro && options?.vars?.soChuCai
+      ? "Chào mừng quý vị và các bạn đến với phần thi thứ hai: Vượt chướng ngại vật! Hôm nay, các thí sinh phải vượt qua một Chướng ngại vật với độ dài {soChuCai} {donViTuKhoa}. Chúc các bạn thi đấu thật tập trung và bản lĩnh!"
+      : undefined;
+
+  let text = customIntro || vcnvDefaultWithKeyword || intro.text;
+  const mergedVars =
+    round === "vcnv"
+      ? {
+          donViTuKhoa: "chữ cái",
+          ...(options?.vars || {}),
+        }
+      : options?.vars;
+  if (mergedVars) {
+    text = interpolateTemplate(text, mergedVars);
   }
   const role = options?.role || intro?.role || "khanh_vy";
   return speakOlympiaTTSAsync(text, {
@@ -4238,21 +4261,95 @@ export function buildKhoiDongTurnBridgeSegment(options: {
   };
 }
 
+function getVietnameseOrdinalLabel(turnCount?: number): string {
+  const n = Math.max(1, Math.round(turnCount || 1));
+  if (n === 1) return "đầu tiên";
+  if (n === 2) return "thứ hai";
+  if (n === 3) return "thứ ba";
+  if (n === 4) return "thứ tư";
+  if (n === 5) return "thứ năm";
+  return `thứ ${n}`;
+}
+
+export function buildKhoiDongFinalScoreTransitionSegment(): DualMcScriptSegment {
+  return {
+    role: "khanh_vy",
+    kind: "round_transition",
+    pauseAfterMs: 0,
+    text: "Lượt thi Khởi Động cuối cùng đã khép lại! Hãy cùng xem ngay sau đây các thí sinh đang giành được bao nhiêu điểm và có thành tích ra sao sau phần thi đầu tiên!",
+  };
+}
+
+export function buildVcnvGridRevealBridgeSegments(options?: {
+  selectorName?: string;
+  selectorSeat?: number | null;
+  turnCount?: number;
+}): DualMcScriptSegment[] {
+  const cleanSelector = options?.selectorName ? getContestantSpokenName(options.selectorName) : "";
+  const ordinal = getVietnameseOrdinalLabel(options?.turnCount ?? 1);
+  const segs: DualMcScriptSegment[] = [
+    {
+      role: "ngoc_huy",
+      kind: "round_transition",
+      pauseAfterMs: 120,
+      text: "Sau đây là các hàng ngang gợi ý cho các thí sinh!",
+    },
+  ];
+  if (cleanSelector) {
+    segs.push({
+      role: "khanh_vy",
+      kind: "round_transition",
+      seatId: options?.selectorSeat ?? undefined,
+      pauseAfterMs: 0,
+      text:
+        (options?.turnCount ?? 1) <= 1
+          ? `Người đầu tiên lựa chọn hàng ngang là bạn ${cleanSelector}!`
+          : `Thí sinh lựa chọn hàng ngang ${ordinal} là bạn ${cleanSelector}!`,
+    });
+  }
+  return segs;
+}
+
 export function buildVcnvRowBridgeSegment(options: {
-  mode: "selecting" | "grid_return";
+  mode: "grid_reveal" | "selecting" | "question_lead" | "grid_return";
   rowIdx?: number;
   letterCount?: number;
+  unit?: "chữ cái" | "chữ số" | "ký tự";
+  selectorName?: string;
+  selectorSeat?: number | null;
+  turnCount?: number;
 }): DualMcScriptSegment {
+  const cleanSelector = options.selectorName ? getContestantSpokenName(options.selectorName) : "";
+  const ordinal = getVietnameseOrdinalLabel(options.turnCount);
+
+  if (options.mode === "grid_reveal") {
+    return buildVcnvGridRevealBridgeSegments(options)[0];
+  }
+
   if (options.mode === "grid_return") {
     return {
       role: "khanh_vy",
       kind: "breather",
+      seatId: options.selectorSeat ?? undefined,
       pauseAfterMs: 0,
-      text: "Chúng ta hãy cùng tiếp tục lựa chọn hàng ngang gợi ý tiếp theo để sớm giải mã Chướng Ngại Vật!",
+      text: cleanSelector
+        ? `Chúng ta hãy cùng tiếp tục quay trở lại bảng hàng ngang gợi ý. Thí sinh lựa chọn hàng ngang ${ordinal} là bạn ${cleanSelector}!`
+        : "Chúng ta hãy cùng tiếp tục lựa chọn hàng ngang gợi ý tiếp theo để sớm giải mã Chướng Ngại Vật!",
     };
   }
+
   const rowIdx = options.rowIdx ?? 0;
   const role: DualMcRole = rowIdx % 2 === 0 ? "khanh_vy" : "ngoc_huy";
+
+  if (options.mode === "question_lead") {
+    return {
+      role,
+      kind: "round_transition",
+      pauseAfterMs: 0,
+      text: "Với nội dung câu hỏi như sau:",
+    };
+  }
+
   if (rowIdx === 4) {
     return {
       role,
@@ -4261,16 +4358,101 @@ export function buildVcnvRowBridgeSegment(options: {
       text: "Và bây giờ là câu hỏi gợi ý cuối cùng tại ô trung tâm của Vượt Chướng Ngại Vật!",
     };
   }
+  const unit = options.unit || "chữ cái";
   const lenText =
     options.letterCount && options.letterCount > 0
-      ? ` gồm ${options.letterCount} chữ cái`
+      ? ` gồm ${options.letterCount} ${unit}`
       : "";
+  const bySelector = cleanSelector ? ` do bạn ${cleanSelector} lựa chọn` : "";
   return {
     role,
     kind: "round_transition",
+    seatId: options.selectorSeat ?? undefined,
     pauseAfterMs: 0,
-    text: `Hàng ngang số ${rowIdx + 1}${lenText} đã được lựa chọn. Xin mời câu hỏi gợi ý dành cho các thí sinh!`,
+    text: `Hàng ngang số ${rowIdx + 1}${lenText}${bySelector} đã được lựa chọn!`,
   };
+}
+
+export function buildTangTocFinalSuspenseSegment(): DualMcScriptSegment {
+  return {
+    role: "khanh_vy",
+    kind: "hype",
+    pauseAfterMs: 0,
+    text: "Thời gian suy nghĩ của câu hỏi Tăng Tốc cuối cùng đã khép lại! Số điểm tối đa ở câu hỏi thứ tư này sẽ tạo ra bước ngoặt cực kỳ quan trọng trước khi chúng ta bước vào phần thi Về Đích. Hãy cùng hồi hộp chờ xem kết quả ngay sau đây!",
+  };
+}
+
+export interface ScoreAwardEntry {
+  seatId: number;
+  name: string;
+  points: number;
+  noAnswer?: boolean;
+}
+
+function formatGroupedContestantPhrase(names: string[]): string {
+  const clean = names.map(getContestantSpokenName).filter(Boolean);
+  if (clean.length === 0) return "";
+  if (clean.length === 1) return `bạn ${clean[0]}`;
+  if (clean.length === 2) return `hai bạn ${clean[0]} và ${clean[1]}`;
+  if (clean.length === 3) return `ba bạn ${clean[0]}, ${clean[1]} và ${clean[2]}`;
+  return `${clean.length} bạn ${clean.slice(0, -1).join(", ")} và ${clean[clean.length - 1]}`;
+}
+
+export function buildGroupedScoreAwardAnnouncement(
+  entries: ScoreAwardEntry[],
+  options: {
+    round: "vcnv" | "tangToc";
+    rowIdx?: number;
+  }
+): string {
+  if (!entries || entries.length === 0) return "";
+
+  const tiers = new Map<number, string[]>();
+  for (const e of entries) {
+    const pts = Math.max(0, Math.round(e.points || 0));
+    const list = tiers.get(pts) ?? [];
+    list.push(e.name || `Thí sinh ${e.seatId + 1}`);
+    tiers.set(pts, list);
+  }
+
+  const positiveTiers = Array.from(tiers.entries())
+    .filter(([pts]) => pts > 0)
+    .sort((a, b) => b[0] - a[0]);
+  const zeroNames = tiers.get(0) ?? [];
+
+  if (options.round === "vcnv") {
+    if (positiveTiers.length === 0) {
+      return options.rowIdx === 4
+        ? "Rất tiếc chưa có thí sinh nào ghi thêm điểm ở câu hỏi ô trung tâm!"
+        : "Rất tiếc chưa có thí sinh nào ghi thêm điểm ở hàng ngang vừa rồi.";
+    }
+    const [pts, winNames] = positiveTiers[0];
+    const winPhrase = formatGroupedContestantPhrase(winNames);
+    const sameVerb = winNames.length > 1 ? "cùng ghi thêm" : "ghi thêm";
+    const base = `Chúc mừng ${winPhrase} đã trả lời chính xác và ${sameVerb} ${pts} điểm!`;
+    if (zeroNames.length > 0 && zeroNames.length <= 2) {
+      return `${base} ${formatGroupedContestantPhrase(zeroNames)} chưa ghi thêm điểm.`;
+    }
+    return base;
+  }
+
+  // Tăng Tốc grouped scores (40 / 30 / 20 / 10 / 0)
+  if (positiveTiers.length === 0) {
+    return "Ở câu hỏi Tăng tốc vừa rồi, rất tiếc chưa có thí sinh nào ghi thêm điểm.";
+  }
+
+  const clauses = positiveTiers.map(([pts, names], idx) => {
+    const phrase = formatGroupedContestantPhrase(names);
+    const sameVerb = names.length > 1 ? "cùng ghi thêm" : "ghi thêm";
+    const speedTag = idx === 0 && names.length === 1 ? " nhanh nhất" : "";
+    return `${phrase}${speedTag} ${sameVerb} ${pts} điểm`;
+  });
+
+  if (zeroNames.length > 0) {
+    clauses.push(`${formatGroupedContestantPhrase(zeroNames)} chưa ghi thêm điểm`);
+  }
+
+  return `Tổng kết điểm câu Tăng Tốc vừa rồi: ${clauses.join(", ")}.`;
 }
 
 export function buildTangTocBridgeSegment(options: {
@@ -6318,7 +6500,8 @@ export async function speakCnvBellsQueue(
 export function formatCnvVerdictSpoken(
   isCorrect: boolean,
   contestantNameOrNames: string | string[],
-  keyword?: string
+  keyword?: string,
+  pointsAwarded?: number
 ): string {
   const names = Array.isArray(contestantNameOrNames)
     ? contestantNameOrNames.map(getContestantSpokenName).filter(Boolean)
@@ -6327,9 +6510,13 @@ export function formatCnvVerdictSpoken(
   if (isCorrect) {
     const cleanName = names[0] || "bạn";
     const kw = keyword ? summarizeOlympiaAnswer(keyword) : "";
+    const ptsText =
+      typeof pointsAwarded === "number" && pointsAwarded > 0
+        ? ` Bạn ${cleanName} xuất sắc ghi thêm ${pointsAwarded} điểm!`
+        : "";
     return `Chúc mừng bạn ${cleanName} đã trả lời chính xác Chướng ngại vật! ${
       kw ? `Từ khóa là: ${kw}!` : ""
-    }`.trim();
+    }${ptsText}`.trim();
   }
 
   if (names.length >= 2) {

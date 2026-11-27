@@ -4470,6 +4470,53 @@ test("O22 End-to-End Audio Lifecycle: show_intro, lobby hot-switch, entrance, al
   assert.ok(sandboxSrc.includes("initialDisplayRulesetForCode"), "Sandbox Display iframe URL must stay stable across system:setRuleset hot-switches");
 });
 
+test("VCNV Studio-First opening, selector rotation, row grade metadata & CNV pointsAwarded", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start", {}, 1000);
+  act(g, "intro:skip", {}, 1500);
+  act(g, "banner:skip", {}, 2000);
+
+  // Studio-first opening: gridRevealed starts false, selectorSeat starts at 0
+  assert.equal(g.state.vcnv?.gridRevealed, false);
+  assert.equal(g.state.vcnv?.gridRevealCount, 0);
+  assert.equal(g.state.vcnv?.selectorSeat, 0);
+  assert.equal(g.state.vcnv?.selectorTurnCount, 1);
+
+  // Host clicks "Mở Các Hàng Ngang"
+  act(g, "vcnv:showGrid", {}, 2500);
+  assert.equal(g.state.vcnv?.gridRevealed, true);
+  assert.equal(g.state.vcnv?.gridRevealCount, 1);
+
+  // Host can manually override selector seat
+  act(g, "vcnv:setSelectorSeat", { seat: 2 }, 2600);
+  assert.equal(g.state.vcnv?.selectorSeat, 2);
+
+  // Selecting row 0 and grading advances turn and records lastRowGrade
+  act(g, "vcnv:selectRow", { row: 0 }, 2700);
+  act(g, "vcnv:openQuestion", {}, 2800);
+  act(g, "vcnv:correct", { seatIds: [0, 2] }, 2900);
+  assert.equal(g.state.vcnv?.lastRowGrade?.row, 0);
+  assert.equal(g.state.vcnv?.lastRowGrade?.correct, true);
+  assert.deepEqual(g.state.vcnv?.lastRowGrade?.awardedSeats, [0, 2]);
+  assert.equal(g.state.vcnv?.selectorSeat, 3);
+  assert.equal(g.state.vcnv?.selectorTurnCount, 2);
+
+  // Wrong CNV on current selector rotates away from eliminated seat
+  assert.equal(g.playerBuzz(3, 3000).ok, true);
+  act(g, "vcnv:wrongCNV", { seat: 3 }, 3100);
+  assert.ok(g.state.vcnv?.eliminatedSeats.includes(3));
+  assert.equal(g.state.vcnv?.selectorSeat, 0);
+
+  // Correct CNV includes pointsAwarded in ttsCommand.meta
+  act(g, "vcnv:clearBells", { force: true }, 3200);
+  assert.equal(g.playerBuzz(1, 3300).ok, true);
+  act(g, "vcnv:correctCNV", { seat: 1 }, 3400);
+  assert.equal(g.state.ttsCommand?.action, "cnv_result");
+  assert.equal(g.state.ttsCommand?.meta?.isCorrect, true);
+  assert.equal(typeof g.state.ttsCommand?.meta?.pointsAwarded, "number");
+  assert.ok((g.state.ttsCommand?.meta?.pointsAwarded as number) > 0);
+});
+
 // Import Smart TTS test suite
 import "./tts.test";
 

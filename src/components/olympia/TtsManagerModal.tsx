@@ -1362,6 +1362,15 @@ function McVoiceCloneSection({
   onDeleteProfile: (profileId: string) => Promise<void>;
 }) {
   const [sampleTitle, setSampleTitle] = useState("");
+  const [probeState, setProbeState] = useState<{
+    loading: boolean;
+    engine?: string;
+    voice?: string;
+    cloneUsed?: string;
+    fallbackReason?: string;
+    latencyMs?: number;
+    error?: string;
+  }>({ loading: false });
   const enabled = Boolean(clone?.enabled);
   const provider: McVoiceCloneProvider = clone?.provider || "local_profile";
   const borderCls = accent === "rose" ? "border-rose-500/35 bg-rose-950/35" : "border-sky-500/35 bg-sky-950/35";
@@ -1377,13 +1386,98 @@ function McVoiceCloneSection({
     });
   };
 
+  const applyProviderDefaults = (nextProvider: McVoiceCloneProvider) => {
+    const isMale = role === "ngoc_huy";
+    if (nextProvider === "openai_compat") {
+      patchClone({
+        provider: nextProvider,
+        endpointUrl: clone?.endpointUrl || "https://api.openai.com/v1/audio/speech",
+        model: clone?.model || "tts-1",
+        voiceId: clone?.voiceId || (isMale ? "onyx" : "nova"),
+        responseFormat: clone?.responseFormat || "mp3",
+      });
+    } else if (nextProvider === "fpt_ai") {
+      patchClone({
+        provider: nextProvider,
+        endpointUrl: clone?.endpointUrl || "https://api.fpt.ai/hmi/tts/v5",
+        voiceId: clone?.voiceId || (isMale ? "leminh" : "banmai"),
+      });
+    } else if (nextProvider === "viettel_ai") {
+      patchClone({
+        provider: nextProvider,
+        endpointUrl: clone?.endpointUrl || "https://viettelai.vn/tts/speech_synthesis",
+        voiceId: clone?.voiceId || (isMale ? "hn-quynhanh" : "hn-quynhanh"),
+      });
+    } else if (nextProvider === "zalo_ai") {
+      patchClone({
+        provider: nextProvider,
+        endpointUrl: clone?.endpointUrl || "https://api.zalo.ai/v1/tts/synthesize",
+        voiceId: clone?.voiceId || (isMale ? "4" : "1"),
+      });
+    } else if (nextProvider === "google_cloud") {
+      patchClone({
+        provider: nextProvider,
+        endpointUrl: clone?.endpointUrl || "https://texttospeech.googleapis.com/v1/text:synthesize",
+        voiceId: clone?.voiceId || (isMale ? "vi-VN-Neural2-D" : "vi-VN-Neural2-A"),
+      });
+    } else {
+      patchClone({ provider: nextProvider });
+    }
+  };
+
+  const handleTestExternalModel = async () => {
+    setProbeState({ loading: true });
+    const started = performance.now();
+    try {
+      const sampleText =
+        role === "ngoc_huy"
+          ? "Xin chào quý vị, tôi là MC Ngọc Huy đang thử giọng model ngoài."
+          : "Xin chào quý vị, tôi là MC Khánh Vy đang thử giọng model ngoài.";
+      const res = await fetch("/api/olympia/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: sampleText,
+          role,
+          lang: "vi",
+          rate: clone?.speed ?? 1.15,
+          clone: {
+            ...clone,
+            enabled: true,
+            provider,
+          },
+        }),
+      });
+      const latencyMs = Math.round(performance.now() - started);
+      if (!res.ok) {
+        setProbeState({ loading: false, error: `HTTP ${res.status}`, latencyMs });
+        return;
+      }
+      const engine = res.headers.get("X-TTS-Engine") || "unknown";
+      const voice = res.headers.get("X-TTS-Voice") || "unknown";
+      const cloneUsed = res.headers.get("X-TTS-Clone-Used") || "false";
+      const fallbackReason = res.headers.get("X-TTS-Fallback-Reason") || undefined;
+      setProbeState({ loading: false, engine, voice, cloneUsed, fallbackReason, latencyMs });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play().catch(() => {});
+    } catch (err) {
+      setProbeState({
+        loading: false,
+        error: err instanceof Error ? err.message : "Lỗi kết nối model ngoài",
+      });
+    }
+  };
+
   return (
     <div className={`rounded-lg border ${borderCls} p-3 space-y-2.5 text-xs`}>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <span className={`font-bold ${badgeCls}`}>🧬 Giọng Clone (Voice Cloning)</span>
+          <span className={`font-bold ${badgeCls}`}>🧬 Giọng Clone & Model TTS Ngoài</span>
           <p className="text-[11px] text-slate-400">
-            Tự động dùng giọng {role === "khanh_vy" ? "Nữ" : "Nam"} mặc định nếu chưa cấu hình hoặc service lỗi.
+            Hỗ trợ OpenAI / Kokoro / F5-TTS / VieNeu-TTS, FPT.AI, Viettel, Zalo, Google Cloud, ElevenLabs, Fish Audio. Tự fallback về {role === "khanh_vy" ? "Nữ" : "Nam"} Edge nếu lỗi.
           </p>
         </div>
         <label className="inline-flex items-center gap-1.5 cursor-pointer font-bold text-slate-200">
@@ -1408,16 +1502,21 @@ function McVoiceCloneSection({
       {enabled && (
         <div className="space-y-2.5 pt-1 border-t border-slate-700/60">
           <div>
-            <label className="text-slate-300 font-bold block mb-1">Nguồn / Engine Voice Clone:</label>
+            <label className="text-slate-300 font-bold block mb-1">Nguồn / Engine Voice Clone & Model ngoài:</label>
             <select
               value={provider}
-              onChange={(e) => patchClone({ provider: e.target.value as McVoiceCloneProvider })}
+              onChange={(e) => applyProviderDefaults(e.target.value as McVoiceCloneProvider)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 text-xs"
             >
-              <option value="local_profile">Mẫu giọng Local (Tự khớp F0 / tải file .wav/.mp3)</option>
+              <option value="openai_compat">OpenAI-Compatible (/v1/audio/speech: OpenAI, Kokoro, F5-TTS, VieNeu-TTS, AllTalk)</option>
+              <option value="fpt_ai">FPT.AI TTS v5 (Tiếng Việt: banmai, leminh, minhquang...)</option>
+              <option value="viettel_ai">Viettel AI Text-to-Speech</option>
+              <option value="zalo_ai">Zalo AI Text-to-Speech</option>
+              <option value="google_cloud">Google Cloud Text-to-Speech (Neural2 / WaveNet)</option>
               <option value="elevenlabs">ElevenLabs Voice Cloning API</option>
               <option value="fish_audio">Fish Audio Voice Cloning API</option>
-              <option value="custom_http">Custom HTTP Endpoint (Tự host / OpenAI-compatible)</option>
+              <option value="custom_http">Custom HTTP Endpoint (JSON audio_url / base64 / Binary Audio)</option>
+              <option value="local_profile">Mẫu giọng Local (Tự khớp F0 / tải file .wav/.mp3)</option>
             </select>
           </div>
 
@@ -1529,33 +1628,114 @@ function McVoiceCloneSection({
             </div>
           ) : (
             <div className="space-y-2">
-              {provider === "custom_http" && (
+              {(provider === "openai_compat" ||
+                provider === "custom_http" ||
+                provider === "fpt_ai" ||
+                provider === "viettel_ai" ||
+                provider === "zalo_ai" ||
+                provider === "google_cloud") && (
                 <div>
                   <label className="text-slate-300 font-bold block mb-1">Endpoint URL:</label>
                   <input
                     type="url"
                     value={clone?.endpointUrl ?? ""}
                     onChange={(e) => patchClone({ endpointUrl: e.target.value })}
-                    placeholder="https://voice-clone.example.com/tts"
+                    placeholder={
+                      provider === "openai_compat"
+                        ? "https://api.openai.com/v1/audio/speech (hoặc http://127.0.0.1:8880/v1/audio/speech)"
+                        : provider === "fpt_ai"
+                        ? "https://api.fpt.ai/hmi/tts/v5"
+                        : provider === "viettel_ai"
+                        ? "https://viettelai.vn/tts/speech_synthesis"
+                        : provider === "zalo_ai"
+                        ? "https://api.zalo.ai/v1/tts/synthesize"
+                        : provider === "google_cloud"
+                        ? "https://texttospeech.googleapis.com/v1/text:synthesize"
+                        : "https://your-tts-server.example.com/tts"
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 text-xs"
                   />
+                </div>
+              )}
+              {provider === "openai_compat" && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Model:</label>
+                    <input
+                      type="text"
+                      value={clone?.model ?? ""}
+                      onChange={(e) => patchClone({ model: e.target.value })}
+                      placeholder="tts-1 / kokoro / f5-tts"
+                      className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Định dạng:</label>
+                    <select
+                      value={clone?.responseFormat ?? "mp3"}
+                      onChange={(e) =>
+                        patchClone({ responseFormat: e.target.value as "mp3" | "wav" | "opus" })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs"
+                    >
+                      <option value="mp3">mp3</option>
+                      <option value="wav">wav</option>
+                      <option value="opus">opus</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Tốc độ model:</label>
+                    <input
+                      type="number"
+                      min={0.5}
+                      max={2.0}
+                      step={0.05}
+                      value={clone?.speed ?? ""}
+                      placeholder="Mặc định theo vòng"
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : undefined;
+                        patchClone({ speed: val && Number.isFinite(val) ? val : undefined });
+                      }}
+                      className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs"
+                    />
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-slate-300 font-bold block mb-1">
-                    {provider === "fish_audio" ? "Reference / Model ID:" : "Voice ID:"}
+                    {provider === "fish_audio"
+                      ? "Reference / Model ID:"
+                      : provider === "zalo_ai"
+                      ? "Speaker ID (1=Nữ, 4=Nam):"
+                      : provider === "google_cloud"
+                      ? "Voice Name (vd: vi-VN-Neural2-D):"
+                      : "Voice ID:"}
                   </label>
                   <input
                     type="text"
                     value={clone?.voiceId ?? ""}
                     onChange={(e) => patchClone({ voiceId: e.target.value })}
-                    placeholder="vd: 21m00Tcm4TlvDq8ikWAM"
+                    placeholder={
+                      provider === "openai_compat"
+                        ? role === "ngoc_huy"
+                          ? "onyx / alloy"
+                          : "nova / shimmer"
+                        : provider === "fpt_ai"
+                        ? role === "ngoc_huy"
+                          ? "leminh / minhquang"
+                          : "banmai / thuminh"
+                        : provider === "google_cloud"
+                        ? role === "ngoc_huy"
+                          ? "vi-VN-Neural2-D"
+                          : "vi-VN-Neural2-A"
+                        : "vd: 21m00Tcm4TlvDq8ikWAM"
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">API Key (tùy chọn):</label>
+                  <label className="text-slate-300 font-bold block mb-1">API Key / Token (tùy chọn):</label>
                   <input
                     type="password"
                     value={clone?.apiKey ?? ""}
@@ -1567,6 +1747,41 @@ function McVoiceCloneSection({
               </div>
             </div>
           )}
+
+          <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              disabled={probeState.loading}
+              onClick={() => void handleTestExternalModel()}
+              className="px-3 py-1.5 rounded-lg bg-cyan-600/80 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-[11px] cursor-pointer transition"
+            >
+              {probeState.loading ? "⏳ Đang gọi model..." : "🧪 Test Model Ngoài & Phát thử"}
+            </button>
+            {probeState.error && (
+              <span className="text-[11px] text-rose-300 font-semibold">
+                Lỗi: {probeState.error}
+              </span>
+            )}
+            {probeState.engine && (
+              <div className="text-[11px] flex flex-wrap items-center gap-1.5">
+                <span
+                  className={`px-1.5 py-0.5 rounded font-mono font-bold ${
+                    probeState.cloneUsed === "true"
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
+                      : "bg-amber-500/20 text-amber-300 border border-amber-400/40"
+                  }`}
+                >
+                  {probeState.engine}
+                </span>
+                <span className="text-slate-400 font-mono">{probeState.latencyMs}ms</span>
+                {probeState.fallbackReason && (
+                  <span className="text-amber-300 font-mono">
+                    (Fallback: {probeState.fallbackReason})
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

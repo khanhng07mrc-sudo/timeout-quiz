@@ -2040,7 +2040,7 @@ export function resolveRightScreenDisplayMode(
       const anyRowTouched = Boolean(v?.rows?.some((r) => r.opened || r.wrong));
       if (
         !v ||
-        (v.phase === "grid" &&
+        (!v.gridRevealed &&
           (v.currentRow ?? -1) < 0 &&
           !v.answersRevealed &&
           (!v.bells || v.bells.length === 0) &&

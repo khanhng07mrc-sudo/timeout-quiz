@@ -12,7 +12,7 @@ import type {
 export type TtsRole = "khanh_vy" | "ngoc_huy";
 export type TtsLang = "vi" | "en";
 export type TtsLangInput = TtsLang | "auto";
-export type TtsAudioContentType = "audio/mpeg" | "audio/wav";
+export type TtsAudioContentType = "audio/mpeg" | "audio/wav" | "audio/ogg";
 
 export const DEFAULT_SERVER_TTS_RATE = 1.20;
 export const MIN_SERVER_TTS_RATE = 0.5;
@@ -20,8 +20,13 @@ export const MAX_SERVER_TTS_RATE = 2.0;
 
 export const CLONE_PROVIDERS: readonly McVoiceCloneProvider[] = [
   "local_profile",
+  "openai_compat",
   "elevenlabs",
   "fish_audio",
+  "fpt_ai",
+  "viettel_ai",
+  "zalo_ai",
+  "google_cloud",
   "custom_http",
 ];
 
@@ -47,8 +52,13 @@ export type TtsEngine =
   | "google-translate-tts"
   | "google-translate-tts-dsp"
   | "voice-clone-local_profile"
+  | "voice-clone-openai_compat"
   | "voice-clone-elevenlabs"
   | "voice-clone-fish_audio"
+  | "voice-clone-fpt_ai"
+  | "voice-clone-viettel_ai"
+  | "voice-clone-zalo_ai"
+  | "voice-clone-google_cloud"
   | "voice-clone-custom_http";
 
 export interface SynthesizeTtsResult {
@@ -116,17 +126,17 @@ const EDGE_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0";
 
 const MAX_TEXT_LENGTH = 2000;
-const WS_TIMEOUT_MS = 2400;
-const FIRST_AUDIO_STALL_MS = 1300;
-const HANDSHAKE_TIMEOUT_MS = 1100;
+const WS_TIMEOUT_MS = 4500;
+const FIRST_AUDIO_STALL_MS = 2400;
+const HANDSHAKE_TIMEOUT_MS = 2200;
 const MAX_CONCURRENT_WS = 8;
-const EDGE_DEGRADED_COOLDOWN_MS = 5 * 60 * 1000;
+const EDGE_DEGRADED_COOLDOWN_MS = 45 * 1000;
 const GOOGLE_TTS_MAX_CHARS = 175;
-const GOOGLE_TTS_TIMEOUT_MS = 2200;
+const GOOGLE_TTS_TIMEOUT_MS = 2600;
 const MAX_CONCURRENT_FFMPEG = 2;
-const FFMPEG_DSP_TIMEOUT_MS = 4500;
+const FFMPEG_DSP_TIMEOUT_MS = 5000;
 const FFMPEG_PROBE_TIMEOUT_MS = 1500;
-const CLONE_FETCH_TIMEOUT_MS = 4500;
+const CLONE_FETCH_TIMEOUT_MS = 9500;
 const MAX_VOICE_SAMPLE_READ_BYTES = 15 * 1024 * 1024;
 
 let edgeDegradedUntil = 0;
@@ -515,15 +525,37 @@ function normalizeCloneConfig(raw: unknown): McVoiceCloneConfig | undefined {
     typeof c.provider === "string"
       ? (c.provider as McVoiceCloneProvider)
       : ("local_profile" as McVoiceCloneProvider);
+  const rawCustomHeaders =
+    c.customHeaders && typeof c.customHeaders === "object" && !Array.isArray(c.customHeaders)
+      ? Object.fromEntries(
+          Object.entries(c.customHeaders as Record<string, unknown>)
+            .filter(([k, v]) => typeof k === "string" && k.trim() && typeof v === "string")
+            .slice(0, 12)
+            .map(([k, v]) => [k.trim(), String(v).trim()])
+        )
+      : undefined;
+  const responseFormat =
+    c.responseFormat === "wav" || c.responseFormat === "opus" || c.responseFormat === "mp3"
+      ? c.responseFormat
+      : undefined;
   return {
     enabled: true,
     provider,
     profileId: typeof c.profileId === "string" ? c.profileId.trim() : undefined,
     voiceId: typeof c.voiceId === "string" ? c.voiceId.trim() : undefined,
+    model: typeof c.model === "string" && c.model.trim() ? c.model.trim() : undefined,
+    responseFormat,
+    speed:
+      typeof c.speed === "number" && Number.isFinite(c.speed)
+        ? Math.min(2.0, Math.max(0.5, c.speed))
+        : undefined,
     sampleUrl: typeof c.sampleUrl === "string" ? c.sampleUrl.trim() : undefined,
     sampleName: typeof c.sampleName === "string" ? c.sampleName.trim() : undefined,
     endpointUrl: typeof c.endpointUrl === "string" ? c.endpointUrl.trim() : undefined,
     apiKey: typeof c.apiKey === "string" ? c.apiKey.trim() : undefined,
+    ...(rawCustomHeaders && Object.keys(rawCustomHeaders).length > 0
+      ? { customHeaders: rawCustomHeaders }
+      : {}),
     targetPitchHz:
       typeof c.targetPitchHz === "number" && Number.isFinite(c.targetPitchHz)
         ? c.targetPitchHz
@@ -658,6 +690,15 @@ export function detectAudioContentType(buf: Buffer): TtsAudioContentType | null 
   ) {
     return "audio/wav";
   }
+  if (
+    buf.length >= 28 &&
+    buf[0] === 0x4f &&
+    buf[1] === 0x67 &&
+    buf[2] === 0x67 &&
+    buf[3] === 0x53
+  ) {
+    return "audio/ogg";
+  }
   if (isValidMp3Buffer(buf)) {
     return "audio/mpeg";
   }
@@ -706,6 +747,9 @@ export function buildCloneCacheKey(clone?: McVoiceCloneConfig): string {
     p: clone.provider,
     pid: clone.profileId ?? "",
     vid: clone.voiceId ?? "",
+    m: clone.model ?? "",
+    rf: clone.responseFormat ?? "",
+    sp: clone.speed ?? null,
     s: clone.sampleUrl ?? "",
     ep: clone.endpointUrl ?? "",
     hz: clone.targetPitchHz ?? null,
@@ -1338,13 +1382,15 @@ export function buildAtempoFilterChain(factor: number): string[] {
 function getRoleFilterSettings(role: TtsRole): { rolePitchMul: number; roleEq: string } {
   if (role === "ngoc_huy") {
     return {
-      rolePitchMul: 0.62,
-      roleEq: "highpass=f=75,lowshelf=g=3:f=180,treble=g=-1.5:f=3500",
+      // 0.71 maps 210 Hz source cleanly into clear male broadcast range (~145-150 Hz) without boomy formant crush
+      rolePitchMul: 0.71,
+      roleEq:
+        "highpass=f=85,equalizer=f=190:width_type=o:width=1.2:g=-3,equalizer=f=2800:width_type=o:width=1.4:g=3,treble=g=2:f=4200,acompressor=threshold=-18dB:ratio=2.5:attack=10:release=120",
     };
   }
   return {
     rolePitchMul: 1.04,
-    roleEq: "highpass=f=110,treble=g=1.5:f=3200",
+    roleEq: "highpass=f=110,treble=g=1.8:f=3200,acompressor=threshold=-18dB:ratio=2.2:attack=10:release=120",
   };
 }
 
@@ -1874,12 +1920,13 @@ export function applyRoleDspToWavBuffer(
   const pitchShifted = resamplePcmLinear(samples, pitchMul);
   const timeScaled = timeScalePcmWsola(pitchShifted, sampleRate, tempoMul);
 
-  let eq = applyHighpassBiquad(timeScaled, sampleRate, options.role === "ngoc_huy" ? 75 : 110);
+  let eq = applyHighpassBiquad(timeScaled, sampleRate, options.role === "ngoc_huy" ? 85 : 110);
   if (options.role === "ngoc_huy") {
-    eq = applyShelfBiquad(eq, sampleRate, 180, 3.0, "low");
-    eq = applyShelfBiquad(eq, sampleRate, 3500, -1.5, "high");
+    // Cut boomy 190Hz pitch-shift buildup and boost 2.8kHz speech presence for clear intelligibility
+    eq = applyShelfBiquad(eq, sampleRate, 190, -2.5, "low");
+    eq = applyShelfBiquad(eq, sampleRate, 2800, 2.5, "high");
   } else {
-    eq = applyShelfBiquad(eq, sampleRate, 3200, 1.5, "high");
+    eq = applyShelfBiquad(eq, sampleRate, 3200, 1.8, "high");
   }
   for (let i = 0; i < eq.length; i++) {
     if (eq[i] > 0.99) eq[i] = 0.99;
@@ -1979,6 +2026,119 @@ function validateExternalCloneEndpoint(endpointUrl: string): URL {
     throw new CloneFallbackError("clone-blocked-endpoint");
   }
   return parsed;
+}
+
+async function fetchExternalAudioBufferFromUrl(
+  rawUrl: string,
+  extraHeaders?: Record<string, string>,
+  pollAttempts = 1
+): Promise<{ audio: Buffer; contentType: TtsAudioContentType }> {
+  const parsed = validateExternalCloneEndpoint(rawUrl);
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < Math.max(1, pollAttempts); attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    try {
+      const res = await fetch(parsed.toString(), {
+        method: "GET",
+        headers: extraHeaders,
+        signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        lastErr = new CloneFallbackError(`clone-audio-url-http-${res.status}`);
+        continue;
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      const ct = buf.byteLength >= 44 ? detectAudioContentType(buf) : null;
+      if (ct) {
+        return { audio: buf, contentType: ct };
+      }
+      lastErr = new CloneFallbackError("clone-invalid-audio");
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new CloneFallbackError("clone-invalid-audio");
+}
+
+function tryExtractBase64Audio(rawB64: string): { audio: Buffer; contentType: TtsAudioContentType } | null {
+  const stripped = rawB64.trim().replace(/^data:audio\/[a-zA-Z0-9.+-]+;base64,/, "");
+  if (!stripped || stripped.length < 32) return null;
+  const buf = Buffer.from(stripped, "base64");
+  const ct = buf.byteLength >= 44 ? detectAudioContentType(buf) : null;
+  return ct ? { audio: buf, contentType: ct } : null;
+}
+
+async function parseExternalTtsResponse(
+  res: Response,
+  providerLabel: string,
+  opts?: { pollAsyncUrl?: boolean; fetchHeaders?: Record<string, string> }
+): Promise<{ audio: Buffer; contentType: TtsAudioContentType }> {
+  const ctypeHeader = (res.headers?.get?.("content-type") || "").toLowerCase();
+  const rawBuf = Buffer.from(await res.arrayBuffer());
+
+  if (!ctypeHeader.includes("application/json")) {
+    const directCt = rawBuf.byteLength >= 44 ? detectAudioContentType(rawBuf) : null;
+    if (directCt) {
+      return { audio: rawBuf, contentType: directCt };
+    }
+  }
+
+  let parsedJson: Record<string, unknown> | null = null;
+  try {
+    const text = rawBuf.toString("utf8").trim();
+    if (text.startsWith("{") || text.startsWith("[")) {
+      const obj = JSON.parse(text) as unknown;
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        parsedJson = obj as Record<string, unknown>;
+      }
+    }
+  } catch {
+    parsedJson = null;
+  }
+
+  if (parsedJson) {
+    const b64Candidates = [
+      parsedJson.audioContent,
+      parsedJson.audio_base64,
+      parsedJson.audioBase64,
+      parsedJson.audio,
+      (parsedJson.data as Record<string, unknown> | undefined)?.audio,
+      (parsedJson.data as Record<string, unknown> | undefined)?.audioContent,
+      typeof parsedJson.data === "string" ? parsedJson.data : undefined,
+    ];
+    for (const cand of b64Candidates) {
+      if (typeof cand === "string") {
+        const extracted = tryExtractBase64Audio(cand);
+        if (extracted) return extracted;
+      }
+    }
+
+    const urlCandidates = [
+      parsedJson.audio_url,
+      parsedJson.audioUrl,
+      parsedJson.url,
+      parsedJson.async,
+      (parsedJson.data as Record<string, unknown> | undefined)?.url,
+      (parsedJson.data as Record<string, unknown> | undefined)?.audio_url,
+    ];
+    for (const urlCand of urlCandidates) {
+      if (typeof urlCand === "string" && urlCand.trim()) {
+        return await fetchExternalAudioBufferFromUrl(
+          urlCand.trim(),
+          opts?.fetchHeaders,
+          opts?.pollAsyncUrl ? 6 : 1
+        );
+      }
+    }
+  }
+
+  const fallbackCt = rawBuf.byteLength >= 44 ? detectAudioContentType(rawBuf) : null;
+  if (fallbackCt) {
+    return { audio: rawBuf, contentType: fallbackCt };
+  }
+  throw new CloneFallbackError(`clone-${providerLabel}-invalid-audio`);
 }
 
 async function fetchGoogleRawMp3(cleanText: string, lang: TtsLang): Promise<{ rawChunks: Buffer[]; cleanedMp3: Buffer }> {
@@ -2247,6 +2407,213 @@ async function synthesizeVoiceClone(normalized: NormalizedTtsInput): Promise<{
     };
   }
 
+  if (provider === "openai_compat") {
+    const endpointUrl = (clone.endpointUrl || "https://api.openai.com/v1/audio/speech").trim();
+    const parsedUrl = validateExternalCloneEndpoint(endpointUrl);
+    const apiKey = (clone.apiKey || profile?.apiKey || process.env.OPENAI_API_KEY || "").trim();
+    const voiceId = (
+      clone.voiceId ||
+      profile?.voiceId ||
+      (normalized.role === "ngoc_huy" ? "onyx" : "nova")
+    ).trim();
+    const model = (clone.model || "tts-1").trim();
+    const responseFormat = clone.responseFormat || "mp3";
+    const speed = Math.min(2.0, Math.max(0.5, clone.speed ?? normalized.rate));
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(clone.customHeaders ?? {}),
+    };
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    const res = await fetch(parsedUrl.toString(), {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        input: normalized.cleanText,
+        voice: voiceId,
+        response_format: responseFormat,
+        speed,
+      }),
+      signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new CloneFallbackError(`clone-openai-http-${res.status}`);
+    }
+    const parsed = await parseExternalTtsResponse(res, "openai_compat");
+    return {
+      audio: parsed.audio,
+      engine: "voice-clone-openai_compat",
+      voice: `clone-${sanitizeVoiceLabel(`${model}-${voiceId}`)}`,
+      contentType: parsed.contentType,
+    };
+  }
+
+  if (provider === "fpt_ai") {
+    const endpointUrl = (clone.endpointUrl || "https://api.fpt.ai/hmi/tts/v5").trim();
+    const parsedUrl = validateExternalCloneEndpoint(endpointUrl);
+    const apiKey = (clone.apiKey || profile?.apiKey || process.env.FPT_AI_API_KEY || "").trim();
+    if (!apiKey) {
+      throw new CloneFallbackError("clone-missing-config");
+    }
+    const voiceId = (
+      clone.voiceId ||
+      profile?.voiceId ||
+      (normalized.role === "ngoc_huy" ? "leminh" : "banmai")
+    ).trim();
+    const fptSpeed = Math.max(-3, Math.min(3, Math.round(((clone.speed ?? normalized.rate) - 1.0) * 3)));
+    const res = await fetch(parsedUrl.toString(), {
+      method: "POST",
+      headers: {
+        api_key: apiKey,
+        voice: voiceId,
+        speed: String(fptSpeed),
+        format: "mp3",
+      },
+      body: normalized.cleanText,
+      signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new CloneFallbackError(`clone-fpt-http-${res.status}`);
+    }
+    const parsed = await parseExternalTtsResponse(res, "fpt_ai", { pollAsyncUrl: true });
+    return {
+      audio: parsed.audio,
+      engine: "voice-clone-fpt_ai",
+      voice: `clone-${sanitizeVoiceLabel(voiceId)}`,
+      contentType: parsed.contentType,
+    };
+  }
+
+  if (provider === "viettel_ai") {
+    const endpointUrl = (clone.endpointUrl || "https://viettelai.vn/tts/speech_synthesis").trim();
+    const parsedUrl = validateExternalCloneEndpoint(endpointUrl);
+    const apiKey = (clone.apiKey || profile?.apiKey || process.env.VIETTEL_AI_TOKEN || "").trim();
+    if (!apiKey) {
+      throw new CloneFallbackError("clone-missing-config");
+    }
+    const voiceId = (
+      clone.voiceId ||
+      profile?.voiceId ||
+      (normalized.role === "ngoc_huy" ? "hn-quynhanh" : "hn-quynhanh")
+    ).trim();
+    const res = await fetch(parsedUrl.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token: apiKey,
+      },
+      body: JSON.stringify({
+        text: normalized.cleanText,
+        voice: voiceId,
+        speed: Math.min(1.5, Math.max(0.7, clone.speed ?? normalized.rate)),
+        tts_return_option: 3,
+        without_filter: false,
+      }),
+      signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new CloneFallbackError(`clone-viettel-http-${res.status}`);
+    }
+    const parsed = await parseExternalTtsResponse(res, "viettel_ai");
+    return {
+      audio: parsed.audio,
+      engine: "voice-clone-viettel_ai",
+      voice: `clone-${sanitizeVoiceLabel(voiceId)}`,
+      contentType: parsed.contentType,
+    };
+  }
+
+  if (provider === "zalo_ai") {
+    const endpointUrl = (clone.endpointUrl || "https://api.zalo.ai/v1/tts/synthesize").trim();
+    const parsedUrl = validateExternalCloneEndpoint(endpointUrl);
+    const apiKey = (clone.apiKey || profile?.apiKey || process.env.ZALO_AI_API_KEY || "").trim();
+    if (!apiKey) {
+      throw new CloneFallbackError("clone-missing-config");
+    }
+    const speakerId = (
+      clone.voiceId ||
+      profile?.voiceId ||
+      (normalized.role === "ngoc_huy" ? "4" : "1")
+    ).trim();
+    const formBody = new URLSearchParams({
+      input: normalized.cleanText,
+      speaker_id: speakerId,
+      speed: String(Math.min(1.2, Math.max(0.8, clone.speed ?? normalized.rate))),
+      encode_type: "1",
+    });
+    const res = await fetch(parsedUrl.toString(), {
+      method: "POST",
+      headers: {
+        apikey: apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formBody.toString(),
+      signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new CloneFallbackError(`clone-zalo-http-${res.status}`);
+    }
+    const parsed = await parseExternalTtsResponse(res, "zalo_ai", { pollAsyncUrl: true });
+    return {
+      audio: parsed.audio,
+      engine: "voice-clone-zalo_ai",
+      voice: `clone-${sanitizeVoiceLabel(`zalo-${speakerId}`)}`,
+      contentType: parsed.contentType,
+    };
+  }
+
+  if (provider === "google_cloud") {
+    const apiKey = (clone.apiKey || profile?.apiKey || process.env.GOOGLE_CLOUD_TTS_API_KEY || "").trim();
+    const endpointUrl = (clone.endpointUrl || "https://texttospeech.googleapis.com/v1/text:synthesize").trim();
+    const parsedUrl = validateExternalCloneEndpoint(endpointUrl);
+    if (!apiKey && !clone.endpointUrl) {
+      throw new CloneFallbackError("clone-missing-config");
+    }
+    const voiceName = (
+      clone.voiceId ||
+      profile?.voiceId ||
+      (normalized.lang === "en"
+        ? normalized.role === "ngoc_huy"
+          ? "en-US-Neural2-D"
+          : "en-US-Neural2-F"
+        : normalized.role === "ngoc_huy"
+        ? "vi-VN-Neural2-D"
+        : "vi-VN-Neural2-A")
+    ).trim();
+    const languageCode = voiceName.split("-").slice(0, 2).join("-") || (normalized.lang === "en" ? "en-US" : "vi-VN");
+    const targetUrl = new URL(parsedUrl.toString());
+    if (apiKey && !targetUrl.searchParams.has("key")) {
+      targetUrl.searchParams.set("key", apiKey);
+    }
+    const res = await fetch(targetUrl.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        input: { text: normalized.cleanText },
+        voice: { languageCode, name: voiceName },
+        audioConfig: {
+          audioEncoding: "MP3",
+          speakingRate: Math.min(2.0, Math.max(0.5, clone.speed ?? normalized.rate)),
+        },
+      }),
+      signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new CloneFallbackError(`clone-gcloud-http-${res.status}`);
+    }
+    const parsed = await parseExternalTtsResponse(res, "google_cloud");
+    return {
+      audio: parsed.audio,
+      engine: "voice-clone-google_cloud",
+      voice: `clone-${sanitizeVoiceLabel(voiceName)}`,
+      contentType: parsed.contentType,
+    };
+  }
+
   if (provider === "custom_http") {
     const endpointUrl = (clone.endpointUrl || profile?.endpointUrl || "").trim();
     if (!endpointUrl) {
@@ -2256,39 +2623,44 @@ async function synthesizeVoiceClone(normalized: NormalizedTtsInput): Promise<{
     const apiKey = (clone.apiKey || profile?.apiKey || "").trim();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      ...(clone.customHeaders ?? {}),
     };
     if (apiKey) {
       headers.Authorization = `Bearer ${apiKey}`;
       headers["X-API-Key"] = apiKey;
     }
+    const bodyObj: Record<string, unknown> = {
+      text: normalized.cleanText,
+      input: normalized.cleanText,
+      role: normalized.role,
+      lang: normalized.lang,
+      rate: clone.speed ?? normalized.rate,
+      speed: clone.speed ?? normalized.rate,
+      pitch: normalized.pitch,
+      voice: clone.voiceId ?? profile?.voiceId,
+      voiceId: clone.voiceId ?? profile?.voiceId,
+      ...(clone.model ? { model: clone.model } : {}),
+      ...(clone.responseFormat ? { response_format: clone.responseFormat } : {}),
+      sampleUrl: clone.sampleUrl ?? profile?.sampleUrl,
+    };
     const res = await fetch(parsedUrl.toString(), {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        text: normalized.cleanText,
-        role: normalized.role,
-        lang: normalized.lang,
-        rate: normalized.rate,
-        pitch: normalized.pitch,
-        voiceId: clone.voiceId ?? profile?.voiceId,
-        sampleUrl: clone.sampleUrl ?? profile?.sampleUrl,
-      }),
+      body: JSON.stringify(bodyObj),
       signal: AbortSignal.timeout(CLONE_FETCH_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new CloneFallbackError(`clone-custom-http-${res.status}`);
     }
-    const buf = Buffer.from(await res.arrayBuffer());
-    const ct = buf.byteLength >= 64 ? detectAudioContentType(buf) : null;
-    if (!ct) {
-      throw new CloneFallbackError("clone-invalid-audio");
-    }
-    const label = sanitizeVoiceLabel(clone.voiceId || clone.profileId || "custom");
+    const parsed = await parseExternalTtsResponse(res, "custom_http", {
+      fetchHeaders: apiKey ? { Authorization: `Bearer ${apiKey}`, "X-API-Key": apiKey } : undefined,
+    });
+    const label = sanitizeVoiceLabel(clone.voiceId || clone.profileId || clone.model || "custom");
     return {
-      audio: buf,
+      audio: parsed.audio,
       engine: "voice-clone-custom_http",
       voice: `clone-${label}`,
-      contentType: ct,
+      contentType: parsed.contentType,
     };
   }
 
@@ -2385,8 +2757,13 @@ async function synthesizeWithSkewRetry(normalized: NormalizedTtsInput): Promise<
       try {
         return await synthesizeOnce(wsParams);
       } catch (err) {
+        // Retry once on transient WebSocket 403 / timeout / stall before falling back
+        const msg = err instanceof Error ? err.message : "";
         const typed = err as { statusCode?: number } | null;
-        if (typed?.statusCode === 403) {
+        if (
+          typed?.statusCode === 403 ||
+          /timed out|stalled|ECONNRESET|ETIMEDOUT|socket hang up/i.test(msg)
+        ) {
           return await synthesizeOnce(wsParams);
         }
         throw err;

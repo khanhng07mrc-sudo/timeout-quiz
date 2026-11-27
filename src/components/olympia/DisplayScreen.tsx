@@ -31,11 +31,13 @@ import {
   AwardsCeremonyLowerThird,
 } from "./Vtv3BroadcastGraphics";
 import { preloadOlympiaIntroVideos } from "@/lib/olympia/assetCache";
+import { getVcnvUnit } from "@/lib/olympia/engine";
 import {
   isTtsEnabled,
   setTtsEnabled,
   speakTTS,
   speakOlympiaTTS,
+  speakOlympiaTTSAsync,
   unlockOlympiaTTS,
   cancelTTS,
   cancelQuestionTTS,
@@ -60,8 +62,13 @@ import {
   buildContestantIntroStepSegment,
   buildPostIntroBreatherScript,
   buildKhoiDongTurnBridgeSegment,
+  buildKhoiDongFinalScoreTransitionSegment,
+  buildVcnvGridRevealBridgeSegments,
   buildVcnvRowBridgeSegment,
   buildTangTocBridgeSegment,
+  buildTangTocFinalSuspenseSegment,
+  buildGroupedScoreAwardAnnouncement,
+  formatCnvVerdictSpoken,
   buildVeDichBridgeSegment,
   buildRoundCompleteBridgeSegment,
   speakDualMcScript,
@@ -456,7 +463,10 @@ export default function DisplayScreen({ code }: { code: string }) {
           season: latestSeasonRef.current,
           vars:
             round === "vcnv" && cur.vcnv
-              ? { soChuCai: cur.vcnv.keywordLength || undefined }
+              ? {
+                  soChuCai: cur.vcnv.keywordLength || undefined,
+                  donViTuKhoa: getVcnvUnit(cur.vcnv.keyword || ""),
+                }
               : undefined,
         }).then((ok) => {
           roundIntroInFlightRef.current = false;
@@ -866,6 +876,42 @@ export default function DisplayScreen({ code }: { code: string }) {
         lastQuestionRef.current = "";
         replayCurrentQuestionTTS();
         break;
+      case "cnv_result": {
+        const isCorrect = Boolean(cmd.meta?.isCorrect);
+        const seatName = String(cmd.meta?.seatName || "");
+        const seatNames = Array.isArray(cmd.meta?.seatNames)
+          ? (cmd.meta!.seatNames as string[])
+          : seatName
+          ? [seatName]
+          : [];
+        const keyword = typeof cmd.meta?.keyword === "string" ? cmd.meta.keyword : undefined;
+        const pointsAwarded =
+          typeof cmd.meta?.pointsAwarded === "number" ? cmd.meta.pointsAwarded : undefined;
+        const baseLine = formatCnvVerdictSpoken(
+          isCorrect,
+          isCorrect ? seatName : seatNames,
+          keyword,
+          isCorrect ? pointsAwarded : undefined
+        );
+        const spokenText = isCorrect
+          ? baseLine
+          : `${baseLine} Các bạn vừa bấm chuông chưa ghi thêm điểm.`;
+        if (ttsActive) {
+          void speakOlympiaTTSAsync(spokenText, {
+            role: "khanh_vy",
+            segment: isCorrect ? "cnv_congratulate" : "cnv_elimination",
+            round: "vcnv",
+            season: effectiveAudioSeason,
+          }).finally(() => {
+            if (isCorrect) {
+              emit("action", { type: "tts:cnvRevealDone", seq: cmd.seq });
+            }
+          });
+        } else if (isCorrect) {
+          emit("action", { type: "tts:cnvRevealDone", seq: cmd.seq });
+        }
+        break;
+      }
       case "final_awards": {
         if (!ttsActive || !state?.seats?.length) break;
         const tier = cmd.meta?.tier as "third" | "second" | "first" | undefined;
@@ -884,7 +930,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         break;
       }
     }
-  }, [isExplicitMuteParam, state?.ttsCommand, state?.awardsState?.tiers, state?.name, ttsActive, state?.seats, effectiveAudioSeason]);
+  }, [isExplicitMuteParam, state?.ttsCommand, state?.awardsState?.tiers, state?.name, ttsActive, state?.seats, effectiveAudioSeason, emit]);
 
   const summarySpokenKeyRef = useRef<string | null>(null);
   const summaryPrefetchedKeyRef = useRef<string | null>(null);
@@ -1256,7 +1302,10 @@ export default function DisplayScreen({ code }: { code: string }) {
         season: effectiveAudioSeason,
         vars:
           expectedRound === "vcnv" && state.vcnv
-            ? { soChuCai: state.vcnv.keywordLength || undefined }
+            ? {
+                soChuCai: state.vcnv.keywordLength || undefined,
+                donViTuKhoa: getVcnvUnit(state.vcnv.keyword || ""),
+              }
             : undefined,
       }).then((ok) => {
         roundIntroInFlightRef.current = false;
@@ -1308,19 +1357,22 @@ export default function DisplayScreen({ code }: { code: string }) {
 
     const round = state.currentRound;
     const expectedBannerSeq = state.bannerSeq ?? 0;
+    type BridgeSeg = ReturnType<typeof buildTangTocBridgeSegment>;
     const speakBridgeOnce = (
       key: string,
-      seg: ReturnType<typeof buildTangTocBridgeSegment> | null,
+      seg: BridgeSeg | BridgeSeg[] | null,
       opts?: { trackKdRecovery?: boolean; expectedSegIdx?: number }
     ) => {
       if (!seg || spokenBridgeKeysRef.current.has(key)) return;
+      const segList = Array.isArray(seg) ? seg : [seg];
+      if (segList.length === 0) return;
       spokenBridgeKeysRef.current.add(key);
       const stopSeq = explicitStopSeqRef.current;
       if (opts?.trackKdRecovery) {
         kdBridgeNeedsRecoveryRef.current = false;
         kdBridgeInFlightKeyRef.current = key;
       }
-      void speakDualMcScriptAsync([seg], {
+      void speakDualMcScriptAsync(segList, {
         season: effectiveAudioSeason,
         preferServer: true,
         queueAfterActive: true,
@@ -1392,22 +1444,58 @@ export default function DisplayScreen({ code }: { code: string }) {
       }
     }
 
-    // 3. VCNV row selecting & grid return bridging
+    // 3. VCNV grid reveal ("Mở Các Hàng Ngang"), row selecting & grid return bridging
     if (round === "vcnv" && state.vcnv) {
       const v = state.vcnv;
+      const selectorSeat = v.selectorSeat;
+      const selectorName =
+        selectorSeat != null ? state.seats[selectorSeat]?.name : undefined;
+      const turnCount = v.selectorTurnCount ?? 1;
+
       if (v.phase === "selecting" && v.currentRow >= 0) {
-        const rowAns = v.currentRow === 4 ? v.centerQuestion?.a : v.rows?.[v.currentRow]?.answer;
-        const letterCount = rowAns ? parseVcnvAnswer(rowAns).primary.replace(/\s+/g, "").length : 0;
+        const rowAns =
+          v.currentRow === 4
+            ? v.centerQuestion?.a
+            : v.rows?.[v.currentRow]?.answer;
+        const unit = getVcnvUnit(rowAns || "");
+        const letterCount =
+          v.currentRow < 4 && v.rows?.[v.currentRow]?.letterCount
+            ? v.rows[v.currentRow].letterCount
+            : rowAns
+            ? parseVcnvAnswer(rowAns).primary.replace(/\s+/g, "").length
+            : 0;
         speakBridgeOnce(
           `vcnv-select-${v.currentRow}`,
-          buildVcnvRowBridgeSegment({ mode: "selecting", rowIdx: v.currentRow, letterCount })
+          buildVcnvRowBridgeSegment({
+            mode: "selecting",
+            rowIdx: v.currentRow,
+            letterCount,
+            unit,
+            selectorName,
+            selectorSeat,
+            turnCount,
+          })
         );
-      } else if (v.phase === "grid" && v.currentRow < 0) {
+      } else if (v.phase === "grid" && v.currentRow < 0 && v.gridRevealed) {
         const openedCount = (v.rows || []).filter((r) => r.opened || r.wrong).length;
-        if (openedCount > 0 && openedCount < 4) {
+        if (openedCount === 0 && (v.gridRevealCount ?? 0) > 0) {
+          speakBridgeOnce(
+            "vcnv-grid-reveal",
+            buildVcnvGridRevealBridgeSegments({
+              selectorName,
+              selectorSeat,
+              turnCount,
+            })
+          );
+        } else if (openedCount > 0 && openedCount < 4) {
           speakBridgeOnce(
             `vcnv-grid-after-${openedCount}`,
-            buildVcnvRowBridgeSegment({ mode: "grid_return" })
+            buildVcnvRowBridgeSegment({
+              mode: "grid_return",
+              selectorName,
+              selectorSeat,
+              turnCount,
+            })
           );
         }
       }
@@ -1528,6 +1616,10 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.vcnv?.phase,
     state?.vcnv?.currentRow,
     state?.vcnv?.rows,
+    state?.vcnv?.gridRevealed,
+    state?.vcnv?.gridRevealCount,
+    state?.vcnv?.selectorSeat,
+    state?.vcnv?.selectorTurnCount,
     state?.tangToc?.phase,
     state?.tangToc?.qIdx,
     state?.veDich?.phase,
@@ -1561,7 +1653,12 @@ export default function DisplayScreen({ code }: { code: string }) {
       const curIdx = state.vcnv.currentRow;
       const isCenter = curIdx === 4;
       const rawQ = isCenter ? (state.vcnv.centerQuestion?.q || "") : (state.vcnv.rows[curIdx]?.hint || "");
-      currentQ = stripVcnvLetterCount(rawQ);
+      const baseQ = stripVcnvLetterCount(rawQ);
+      currentQ = baseQ
+        ? /^Với nội dung/i.test(baseQ)
+          ? baseQ
+          : `Với nội dung câu hỏi như sau: ${baseQ}`
+        : "";
     } else if (state.currentRound === "tangToc" && state.tangToc?.phase === "question") {
       const tt = state.tangToc;
       currentQ = tt.questions[tt.qIdx]?.q || "";
@@ -1623,7 +1720,10 @@ export default function DisplayScreen({ code }: { code: string }) {
       const rawPrompt = curRow === 4 ? v.centerQuestion?.q : (curRow >= 0 && curRow < 4 ? v.rows?.[curRow]?.hint : undefined);
       const cleanPrompt = rawPrompt ? stripVcnvLetterCount(rawPrompt) : "";
       if (cleanPrompt && v.phase === "selecting") {
-        prefetchOlympiaTtsAudio(cleanPrompt, {
+        const prefetchedQ = /^Với nội dung/i.test(cleanPrompt)
+          ? cleanPrompt
+          : `Với nội dung câu hỏi như sau: ${cleanPrompt}`;
+        prefetchOlympiaTtsAudio(prefetchedQ, {
           season: effectiveTtsSeason,
           round: "vcnv",
           rowIdx: curRow,
@@ -1772,6 +1872,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     let speechText = "";
     let speechRole: "khanh_vy" | "ngoc_huy" = "ngoc_huy";
     let delayMs = 600;
+    let followUpSegments: ReturnType<typeof buildTangTocFinalSuspenseSegment>[] = [];
 
     // 1. Khởi Động: Turn Finish or Segment Done
     if (state.currentRound === "khoiDong" && state.khoiDong) {
@@ -1779,6 +1880,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       const segIdx = kd.segIdx ?? 0;
       const curSeg = kd.segments?.[segIdx];
       const isSolo = curSeg?.kind === "solo";
+      const isFinalKdTurn = segIdx + 1 >= (kd.segments?.length || 1);
 
       // Segment finished or global timer expired
       if (kd.phase === "segmentDone" || (curSeg?.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0)) {
@@ -1792,6 +1894,9 @@ export default function DisplayScreen({ code }: { code: string }) {
             speechText = `Thời gian dành cho lượt thi đã kết thúc. Bạn ${contestantName} đã hoàn thành lượt Khởi Động với ${contestantScore} điểm!`;
           } else {
             speechText = "Thời gian dành cho lượt thi Khởi Động chung đã kết thúc!";
+          }
+          if (isFinalKdTurn) {
+            followUpSegments = [buildKhoiDongFinalScoreTransitionSegment()];
           }
         }
       }
@@ -1810,7 +1915,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       }
     }
 
-    // 3. Tăng Tốc: Question Thinking Timer Expiration
+    // 3. Tăng Tốc: Question Thinking Timer Expiration (Q4 triggers dramatic suspense bridge after timer ends)
     else if (state.currentRound === "tangToc" && state.tangToc) {
       const tt = state.tangToc;
       if (tt.phase === "question" && tt.timer && tt.timer.startedAt == null && tt.timer.remainingMs <= 0) {
@@ -1819,6 +1924,9 @@ export default function DisplayScreen({ code }: { code: string }) {
           speechRole = "ngoc_huy";
           speechText = "Đã hết thời gian!";
           delayMs = 400;
+          if (tt.qIdx === 3) {
+            followUpSegments = [buildTangTocFinalSuspenseSegment()];
+          }
         }
       }
     }
@@ -1854,14 +1962,34 @@ export default function DisplayScreen({ code }: { code: string }) {
     if (timeoutKey && speechText && !handledTimeoutsRef.current.has(timeoutKey)) {
       handledTimeoutsRef.current.add(timeoutKey);
       if (timeoutDelayTimerRef.current) clearTimeout(timeoutDelayTimerRef.current);
+      const curFollowUps = followUpSegments;
+      const isTangTocQ4 = state.currentRound === "tangToc" && state.tangToc?.qIdx === 3;
       timeoutDelayTimerRef.current = setTimeout(() => {
         timeoutDelayTimerRef.current = null;
-        speakOlympiaTTS(speechText, {
-          role: speechRole,
-          round: state.currentRound || undefined,
-          season: effectiveAudioSeason,
-          segment: "question",
-        });
+        if (curFollowUps.length > 0) {
+          void speakDualMcScriptAsync(
+            [
+              {
+                role: speechRole,
+                kind: "breather",
+                pauseAfterMs: isTangTocQ4 ? 1200 : 250,
+                text: speechText,
+              },
+              ...curFollowUps,
+            ],
+            {
+              season: effectiveAudioSeason,
+              preferServer: true,
+            }
+          );
+        } else {
+          speakOlympiaTTS(speechText, {
+            role: speechRole,
+            round: state.currentRound || undefined,
+            season: effectiveAudioSeason,
+            segment: "question",
+          });
+        }
       }, delayMs);
     }
   }, [
@@ -2093,10 +2221,82 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.seats,
   ]);
 
-  // Vocalize result confirmation ("Chính xác!") or concise summarized answer
+  // Vocalize result confirmation ("Chính xác!") or concise summarized answer + VCNV/Tăng Tốc grouped points
   const prevVerdictRef = useRef<string | null>(null);
+  const prevVcnvRowGradeSeqRef = useRef<number>(0);
+  const prevTtGradedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!state || !ttsActive) return;
+    if (!state) {
+      prevVcnvRowGradeSeqRef.current = 0;
+      prevTtGradedKeyRef.current = null;
+      return;
+    }
+    if (!ttsActive) return;
+
+    // VCNV row / center question grading grouped score callout
+    if (state.currentRound === "vcnv" && state.vcnv?.lastRowGrade) {
+      const g = state.vcnv.lastRowGrade;
+      if (g.seq > prevVcnvRowGradeSeqRef.current) {
+        prevVcnvRowGradeSeqRef.current = g.seq;
+        const entries = activeSeats(state).map((s) => ({
+          seatId: s.id,
+          name: s.name || `Thí sinh ${s.id + 1}`,
+          points: g.awardedSeats.includes(s.id) ? g.pointsEach : 0,
+        }));
+        const scoreAnnouncement = buildGroupedScoreAwardAnnouncement(entries, {
+          round: "vcnv",
+          rowIdx: g.row,
+        });
+        if (scoreAnnouncement) {
+          const vcnvHost = resolveTurnHosts("vcnv", g.row).readingHost;
+          speakOlympiaTTS(scoreAnnouncement, {
+            round: "vcnv",
+            role: vcnvHost,
+            segment: "result",
+            rowIdx: g.row,
+            season: effectiveAudioSeason,
+            queueAfterActive: true,
+          });
+        }
+      }
+    }
+
+    // Tăng Tốc grading grouped score callout
+    if (state.currentRound === "tangToc" && state.tangToc?.phase === "graded") {
+      const tt = state.tangToc;
+      const gKey = `tt-grade-${tt.qIdx}`;
+      if (gKey !== prevTtGradedKeyRef.current) {
+        prevTtGradedKeyRef.current = gKey;
+        const rankMap = new Map<number, (typeof tt.ranking)[number]>();
+        for (const r of tt.ranking || []) {
+          rankMap.set(r.seat, r);
+        }
+        const entries = activeSeats(state).map((s) => {
+          const item = rankMap.get(s.id);
+          const pts = item && !item.wrong && !item.noAnswer ? (item.points ?? 0) : 0;
+          return {
+            seatId: s.id,
+            name: s.name || `Thí sinh ${s.id + 1}`,
+            points: pts,
+            noAnswer: item?.noAnswer,
+          };
+        });
+        const scoreAnnouncement = buildGroupedScoreAwardAnnouncement(entries, {
+          round: "tangToc",
+        });
+        if (scoreAnnouncement) {
+          const ttHost = resolveTurnHosts("tangToc", tt.qIdx).coHost;
+          speakOlympiaTTS(scoreAnnouncement, {
+            round: "tangToc",
+            role: ttHost,
+            segment: "result",
+            qIdx: tt.qIdx,
+            season: effectiveAudioSeason,
+            queueAfterActive: true,
+          });
+        }
+      }
+    }
 
     // Khởi Động verdict
     if (state.currentRound === "khoiDong" && state.khoiDong?.lastVerdict) {
@@ -2158,6 +2358,11 @@ export default function DisplayScreen({ code }: { code: string }) {
     state?.cauHoiPhu?.phase,
     state?.cauHoiPhu?.qIdx,
     state?.cauHoiPhu?.buzzedSeat,
+    state?.vcnv?.lastRowGrade,
+    state?.tangToc?.phase,
+    state?.tangToc?.qIdx,
+    state?.tangToc?.ranking,
+    state?.seats,
     effectiveAudioSeason,
   ]);
 
@@ -2200,7 +2405,15 @@ export default function DisplayScreen({ code }: { code: string }) {
   const isLowerThird = !showFullscreen;
   const isOverlayHidden = cameraState.isOverlayHidden;
   const activeRoundContent = hasActiveRoundContent(state);
-  const isVcnvPureStudio = Boolean(state.showStageGraphics);
+  const isVcnvUnrevealedStudio =
+    state.currentRound === "vcnv" &&
+    Boolean(state.vcnv) &&
+    !state.vcnv?.gridRevealed &&
+    (state.vcnv?.currentRow ?? -1) < 0 &&
+    !state.vcnv?.answersRevealed &&
+    (!state.vcnv?.bells || state.vcnv.bells.length === 0) &&
+    !state.vcnv?.rows?.some((r) => r.opened || r.wrong);
+  const isVcnvPureStudio = Boolean(state.showStageGraphics) || isVcnvUnrevealedStudio;
   const isVcnvQuadView =
     state.stage === "playing" &&
     !state.banner &&

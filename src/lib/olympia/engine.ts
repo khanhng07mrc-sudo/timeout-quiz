@@ -527,6 +527,33 @@ export class OlympiaGame {
       };
     }
   }
+  private rotateVcnvSelectorSeat(v: VcnvState, advanceTurn: boolean) {
+    const active = this.activeSeatIds;
+    if (active.length === 0) return;
+    const eligible = active.filter((id) => !v.eliminatedSeats.includes(id));
+    const pool = eligible.length > 0 ? eligible : active;
+    if (advanceTurn) {
+      const curIdx = v.selectorSeat != null ? pool.indexOf(v.selectorSeat) : -1;
+      v.selectorSeat =
+        curIdx >= 0 ? pool[(curIdx + 1) % pool.length] : (pool[0] ?? 0);
+      v.selectorTurnCount = (v.selectorTurnCount ?? 1) + 1;
+    } else if (v.selectorSeat == null || !pool.includes(v.selectorSeat)) {
+      const curActiveIdx = v.selectorSeat != null ? active.indexOf(v.selectorSeat) : -1;
+      if (curActiveIdx >= 0) {
+        let picked: number | undefined;
+        for (let offset = 1; offset <= active.length; offset++) {
+          const cand = active[(curActiveIdx + offset) % active.length];
+          if (pool.includes(cand)) {
+            picked = cand;
+            break;
+          }
+        }
+        v.selectorSeat = picked ?? pool[0] ?? 0;
+      } else {
+        v.selectorSeat = pool[0] ?? 0;
+      }
+    }
+  }
   private commitPendingCnvWin(now: number) {
     const pending = this.state.pendingCnvWin;
     if (!pending) return;
@@ -1034,6 +1061,11 @@ export class OlympiaGame {
           piecesRevealed: [false, false, false, false, false],
           solvedBy: null,
           rowResults: {},
+          gridRevealed: false,
+          gridRevealCount: 0,
+          selectorSeat: active[0] ?? 0,
+          selectorTurnCount: 1,
+          rowGradeSeq: 0,
         };
         break;
       }
@@ -3166,11 +3198,21 @@ export class OlympiaGame {
     switch (type) {
       case "vcnv:showGrid": {
         v.phase = "grid";
+        v.gridRevealed = true;
+        v.gridRevealCount = (v.gridRevealCount ?? 0) + 1;
+        this.rotateVcnvSelectorSeat(v, false);
         this.cue("2_VuotChuongNgaiVat/show_row");
+        return OK;
+      }
+      case "vcnv:setSelectorSeat": {
+        const seat = Number(a.seat);
+        if (!this.seat(seat)) return fail("Thí sinh không hợp lệ");
+        v.selectorSeat = seat;
         return OK;
       }
       case "vcnv:openQuestion": {
         if (row < 0) return fail("Chưa chọn hàng");
+        v.gridRevealed = true;
         v.phase = "question";
         this.cue("2_VuotChuongNgaiVat/open_question");
         return OK;
@@ -3201,6 +3243,12 @@ export class OlympiaGame {
       case "vcnv:selectRow": {
         const i = Number(a.row);
         if (!(i >= 0 && i <= 4)) return fail("Hàng không hợp lệ");
+        v.gridRevealed = true;
+        if (a.seat != null && this.seat(Number(a.seat))) {
+          v.selectorSeat = Number(a.seat);
+        } else {
+          this.rotateVcnvSelectorSeat(v, false);
+        }
         if (i === 4) {
           const all4RowsSelected =
             v.rows.length >= 4 &&
@@ -3335,6 +3383,17 @@ export class OlympiaGame {
           verdict: "correct",
           scoreChanges: changes,
         });
+        v.rowGradeSeq = (v.rowGradeSeq ?? 0) + 1;
+        v.lastRowGrade = {
+          row,
+          seq: v.rowGradeSeq,
+          correct: awarded.length > 0,
+          awardedSeats: [...awarded],
+          pointsEach: rs.vcnv.rowPoints,
+        };
+        if (row < 4) {
+          this.rotateVcnvSelectorSeat(v, true);
+        }
         v.phase = "grid";
         v.answersRevealed = false;
         pauseTimer(v.timer, now);
@@ -3352,6 +3411,17 @@ export class OlympiaGame {
         }
         this.recordOpenedQuestion(qText);
         v.rowResults[row] = [];
+        v.rowGradeSeq = (v.rowGradeSeq ?? 0) + 1;
+        v.lastRowGrade = {
+          row,
+          seq: v.rowGradeSeq,
+          correct: false,
+          awardedSeats: [],
+          pointsEach: rs.vcnv.rowPoints,
+        };
+        if (row < 4) {
+          this.rotateVcnvSelectorSeat(v, true);
+        }
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
           const ax = v.answers[x];
           const ay = v.answers[y];
@@ -3429,6 +3499,8 @@ export class OlympiaGame {
         if (st.ttsSettings?.enabled !== false) {
           const seq = this.nextTtsSeq();
           const seatName = this.seatName(seat);
+          const realOpenedRows = v.rows.filter((r) => r.opened).length;
+          const pointsAwarded = cnvPointsFor(rs, realOpenedRows, Boolean(v.centerOpened));
           st.pendingCnvWin = {
             seatId: seat,
             seatName,
@@ -3446,6 +3518,7 @@ export class OlympiaGame {
               seatId: seat,
               seatName,
               keyword: v.keyword,
+              pointsAwarded,
             },
           };
           return OK;
@@ -3473,6 +3546,7 @@ export class OlympiaGame {
           (b as any).judgedAt = judgeTime;
           if (!v.eliminatedSeats.includes(b.seat)) v.eliminatedSeats.push(b.seat);
         });
+        this.rotateVcnvSelectorSeat(v, false);
 
         const buzzers: TranscriptBuzzerItem[] = v.bells.map((b, idx) => ({
           order: idx + 1,
@@ -3529,6 +3603,7 @@ export class OlympiaGame {
           v.eliminatedSeats.push(seat);
           this.logMsg(`🔒 Đã khóa quyền chơi VCNV của ${this.seatName(seat)}`);
         }
+        this.rotateVcnvSelectorSeat(v, false);
         return OK;
       }
       case "vcnv:unlockAllSeats": {

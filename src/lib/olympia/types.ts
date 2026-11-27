@@ -458,6 +458,24 @@ export interface VcnvState {
   keywordLength?: number;
   lastJudgedWrongAt?: number;
   revealCount?: number;
+  /** True only after Host clicks "Mở Các Hàng Ngang" (Studio-first opening shows 3D studio first) */
+  gridRevealed?: boolean;
+  /** Incrementing counter for each grid reveal ("Mở Các Hàng Ngang") */
+  gridRevealCount?: number;
+  /** Seat currently designated to choose the next horizontal row */
+  selectorSeat?: number | null;
+  /** 1-based ordinal counter of horizontal row selections made/active in this round */
+  selectorTurnCount?: number;
+  /** Incrementing event counter emitted each time a horizontal row/center question is graded */
+  rowGradeSeq?: number;
+  /** Metadata of last graded VCNV row or center question for exact grouped-score TTS */
+  lastRowGrade?: {
+    row: number;
+    seq: number;
+    correct: boolean;
+    awardedSeats: number[];
+    pointsEach: number;
+  };
 }
 
 export interface TangTocRankingItem {
@@ -724,17 +742,30 @@ export type TtsCommandAction =
   | "custom"
   | "stop";
 
-export type McVoiceCloneProvider = "local_profile" | "elevenlabs" | "fish_audio" | "custom_http";
+export type McVoiceCloneProvider =
+  | "local_profile"
+  | "elevenlabs"
+  | "fish_audio"
+  | "openai_compat"
+  | "fpt_ai"
+  | "viettel_ai"
+  | "zalo_ai"
+  | "google_cloud"
+  | "custom_http";
 
 export interface McVoiceCloneConfig {
   enabled: boolean;
   provider: McVoiceCloneProvider;
   profileId?: string;
   voiceId?: string;
+  model?: string;
+  responseFormat?: "mp3" | "wav" | "opus";
+  speed?: number;
   sampleUrl?: string;
   sampleName?: string;
   endpointUrl?: string;
   apiKey?: string;
+  customHeaders?: Record<string, string>;
   targetPitchHz?: number;
   pitchRatio?: number;
   updatedAt?: number;

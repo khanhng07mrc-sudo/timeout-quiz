@@ -726,14 +726,18 @@ test("R10.3: Podiums mounts CenterMcDesk and MC presenters coaxially with Hexago
   );
 });
 
-test("R10.3b: Wing Acoustic Baffles & Room-Start Wing Ceiling Spotlights conceal and illuminate backstage waiting wings", () => {
+test("R10.3b: Extra Side Doors Removed cleanly while Waiting Figures stay concealed (t >= -0.05) & Wing Ceiling Spotlights remain active", () => {
   assert.ok(
     podiumsContent.includes("2.35 + queueSpreadX") && podiumsContent.includes("12.90 + queueIdx * 0.42"),
-    "Contestants waiting pre-entrance must stand deep behind Left/Right wings (|X| >= 2.35m, Z >= 12.90m)"
+    "Contestants waiting pre-entrance must remain positioned in deep Left/Right wings (|X| >= 2.35m, Z >= 12.90m)"
   );
   assert.ok(
-    studioLightingContent.includes("[2.69, 2.97, 3.66]") && studioLightingContent.includes("[-2.84, 2.97, 3.66]"),
-    "Left and Right wing acoustic baffles must bridge portal outer arcs to logo stanchions"
+    !studioLightingContent.includes("[2.69, 2.97, 3.66]") && !studioLightingContent.includes("[-2.84, 2.97, 3.66]"),
+    "Extra black wing doors beside portal edges must be completely removed"
+  );
+  assert.ok(
+    podiumsContent.includes("root.visible = t >= -0.05;"),
+    "Pre-entrance waiting figures must stay hidden before stepping out at t >= -0.05"
   );
   assert.ok(
     studioLightingContent.includes("wing-ceiling-light-") && studioLightingContent.includes("Math.max(0.85, liveFactor)"),

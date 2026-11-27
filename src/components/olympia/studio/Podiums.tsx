@@ -6526,6 +6526,7 @@ export function PersistentContestantEntity({
     const isThisContestantInVeDichTurn = isVdActive && seatId === activeVdSeat;
 
     if (isThisContestantInVeDichTurn) {
+      root.visible = true;
       const curTurn = vd?.turnIdx ?? 0;
       const curPhase = vd?.phase ?? "idle";
       const mode = curPhase === "seatDone" ? "seatDone" : vd?.onStage ? "onStage" : "idle";
@@ -6588,6 +6589,7 @@ export function PersistentContestantEntity({
 
     // ── 2. SUMMARY GESTURES (Match finished) ──
     if (state?.summaryState?.active) {
+      root.visible = true;
       root.position.set(deskWorldX, deskWorldY, deskWorldZ);
       root.rotation.y = deskRotY;
       if (lastWalkingRef.current) {
@@ -6632,6 +6634,7 @@ export function PersistentContestantEntity({
 
     // ── 2.5 AWARDS CEREMONY (Walk from booth to Victory Podium) ──
     if (state?.awardsState?.active) {
+      root.visible = true;
       const aw = state.awardsState;
       const walkStart = aw.seatWalkStartedAt?.[seatId];
       const isCalled = walkStart != null;
@@ -6700,6 +6703,7 @@ export function PersistentContestantEntity({
     );
 
     if (hasEntranceCompleted || isCompetitionRound) {
+      root.visible = true;
       root.position.set(deskWorldX, deskWorldY, deskWorldZ);
       root.rotation.y = deskRotY;
       if (lastWalkingRef.current) {
@@ -6730,6 +6734,8 @@ export function PersistentContestantEntity({
     const firstPhi = Math.PI / 2 - targetCfg.rotY;
     const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfgShifted, firstPhi, totalSeats);
 
+    // Conceal queued figures completely before their wing step-in (t >= -0.05) since side baffles are removed
+    root.visible = t >= -0.05;
     root.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
     root.rotation.y = traj.rotY;
 

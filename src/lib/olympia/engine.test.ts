@@ -3332,6 +3332,54 @@ test("MC walkout and Opening Audio Lifecycle & Khởi Động O23-O26 no timer b
   assert.ok(graphicsSrc.includes("classicQFontSizeClass"), "TangTocQuestionGraphic Classic must adaptively size question typography");
 });
 
+test("O22 hot-switch & BGM continuity, first-buzz fast-path prewarm, & Classic Arial Bold (no Arial Black)", () => {
+  const g = game("O26", ["khoiDong", "veDich"], 4, { seatCount: 4 });
+  g.joinSeat("A", "ka");
+  g.joinSeat("B", "kb");
+  g.joinSeat("C", "kc");
+  g.joinSeat("D", "kd");
+  act(g, "game:start", {}, 1000);
+  act(g, "round:force", { round: "khoiDong" }, 1200);
+  act(g, "banner:skip", {}, 1400);
+
+  // Hot-switch ruleset from O26 -> O22 before round starts: segments & globalTimer must rebuild cleanly
+  act(g, "system:setRuleset", { rulesetId: "O22" }, 1600);
+  assert.equal(g.state.rulesetId, "O22");
+  assert.equal(g.state.khoiDong!.segments.length, 3, "O22 must have 3 general turns");
+  assert.equal(g.state.khoiDong!.segments[0].globalMs, 30000, "O22 Q1 Turn 1 must be 30s");
+  assert.equal(g.state.khoiDong!.globalTimer?.totalMs, 30000);
+
+  // Start Turn 1: wait 3.5s, open Q1 -> 30s BGM starts once
+  act(g, "kd:start", {}, 2000);
+  g.tick(5600);
+  act(g, "kd:next", {}, 6000);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/30s");
+  const cueIdAfterQ1 = g.state.cue?.id;
+
+  // Second kd:next while 30s clock is still running must NOT emit a new BGM cue or restart 30s track
+  act(g, "kd:skip", {}, 7000);
+  act(g, "kd:next", {}, 7500);
+  assert.equal(g.state.cue?.id, cueIdAfterQ1, "Subsequent kd:next must not emit a new cue or restart running 30s BGM");
+
+  // Pausing & resuming kd:timer in O22 must emit pause_bgm & resume_bgm instead of restarting 30s.mp3
+  act(g, "kd:timer", {}, 8000);
+  assert.equal(g.state.cue?.kind, "pause_bgm" as any);
+  act(g, "kd:timer", {}, 9000);
+  assert.equal(g.state.cue?.kind, "resume_bgm" as any);
+
+  // Verify hooks, HostConsole, and globals.css contracts
+  const hooksSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/hooks.ts"), "utf-8");
+  assert.ok(hooksSrc.includes("fastRoutingGraphRef"), "hooks.ts must reuse ChannelRoutingGraph across buzzes");
+  assert.ok(hooksSrc.includes("FIRST_EAGER_COUNT"), "hooks.ts must eagerly prewarm priority buzzer cues at 0ms");
+  assert.ok(hooksSrc.includes('if (cue.kind === ("pause_bgm" as any))'), "hooks.ts must handle pause_bgm before empty-sound stop");
+
+  const hostSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/HostConsole.tsx"), "utf-8");
+  assert.ok(hostSrc.includes('kd.segments.some((s) => s.kind === "solo")'), "HostConsole must render Lượt 1/2/3 selectors for O22/O23");
+
+  const cssSrc = fs.readFileSync(path.resolve(process.cwd(), "src/app/globals.css"), "utf-8");
+  assert.ok(cssSrc.includes(".font-classic-arial .font-black"), "Classic Arial must cap weight at 700 Bold to avoid Arial Black");
+});
+
 test("Audio-First Buzzer Pipeline (0ms AudioBuffer + 1-2 frame visual defer) & Fixed VCNV Bell Overlay", () => {
   // 1. Priority cue classification
   assert.equal(isPriorityInstantCue("1_KhoiDong/bell_ring"), true);

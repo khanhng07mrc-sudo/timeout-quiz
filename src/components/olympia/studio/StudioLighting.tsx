@@ -3340,39 +3340,6 @@ export function AudienceAmphitheater({
           <primitive object={portalAmberNeonMat} attach="material" />
         </mesh>
 
-        {/* Sleek Wing Acoustic Baffle Walls (conceal pre-entrance contestants behind Left/Right Portal wings) */}
-        {/* Left Wing Baffle (X = +2.02..+3.36m, Y = 1.97..3.97m, Z_local = 3.66 -> Z_world = 12.16m) */}
-        <group position={[2.69, 2.97, 3.66]}>
-          <mesh>
-            <boxGeometry args={[1.34, 2.00, 0.10]} />
-            <primitive object={portalDarkSpacerMat} attach="material" />
-          </mesh>
-          <mesh position={[0, 1.00, -0.055]}>
-            <boxGeometry args={[1.34, 0.025, 0.02]} />
-            <primitive object={portalAmberNeonMat} attach="material" />
-          </mesh>
-          <mesh position={[0, -0.99, -0.055]}>
-            <boxGeometry args={[1.34, 0.025, 0.02]} />
-            <primitive object={portalCyanNeonMat} attach="material" />
-          </mesh>
-        </group>
-
-        {/* Right Wing Baffle (X = -3.66..-2.02m, Y = 1.97..3.97m, Z_local = 3.66 -> Z_world = 12.16m) */}
-        <group position={[-2.84, 2.97, 3.66]}>
-          <mesh>
-            <boxGeometry args={[1.64, 2.00, 0.10]} />
-            <primitive object={portalDarkSpacerMat} attach="material" />
-          </mesh>
-          <mesh position={[0, 1.00, -0.055]}>
-            <boxGeometry args={[1.64, 0.025, 0.02]} />
-            <primitive object={portalAmberNeonMat} attach="material" />
-          </mesh>
-          <mesh position={[0, -0.99, -0.055]}>
-            <boxGeometry args={[1.64, 0.025, 0.02]} />
-            <primitive object={portalCyanNeonMat} attach="material" />
-          </mesh>
-        </group>
-
         {/* Overhead Ceiling Downlights & Soft Volumetric Cones over Left/Right Wing Waiting Zones (Active from Room Start / Lobby) */}
         {[2.65, -2.65].map((wingX) => {
           const wingRoomFactor = Math.max(0.85, liveFactor);

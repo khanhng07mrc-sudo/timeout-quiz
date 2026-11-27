@@ -1682,10 +1682,69 @@ export class OlympiaGame {
         const rawRs = ((a.ruleset as string) || (a.rulesetId as string) || "") as RulesetId;
         const nextRs = RULESETS[rawRs];
         if (!nextRs) return fail("Mùa thi không hợp lệ: " + rawRs);
+        const prevAudioSeason = this.ruleset.audioSeason;
         this.ruleset = nextRs;
         st.rulesetId = nextRs.id;
+        if (nextRs.id === "O22" && !st.o22Quarter) {
+          st.o22Quarter = 1;
+        }
         if (!this.config.chpQuestionLimit) {
           st.chpQuestionLimit = defaultChpQuestionLimitForRuleset(nextRs.id);
+        }
+        // Re-sync unstarted/idle round config so hot-switching to/from O22 or O13-O21 never keeps mismatched timers/BGM
+        if (st.khoiDong && (!st.khoiDong.started || st.khoiDong.qIdx < 0 || st.khoiDong.phase === "intro")) {
+          const active = this.activeSeatIds;
+          const rawSegs =
+            nextRs.id === "O22"
+              ? turnsO22(st.o22Quarter ?? 1)
+              : nextRs.khoiDong.segments(Math.max(2, active.length));
+          const segs: KdSegmentDef[] = rawSegs.map((seg) =>
+            seg.kind === "solo" && seg.seat != null
+              ? { ...seg, seat: active[seg.seat] ?? seg.seat, label: seg.label }
+              : seg
+          );
+          st.khoiDong.segments = segs;
+          st.khoiDong.segIdx = 0;
+          st.khoiDong.qIdx = -1;
+          st.khoiDong.phase = "intro";
+          st.khoiDong.questionRevealed = false;
+          st.khoiDong.timer = mkTimer(segs[0]?.perQuestionMs ?? 5000);
+          st.khoiDong.globalTimer = segs[0]?.globalMs ? mkTimer(segs[0].globalMs) : null;
+          st.khoiDong.buzzedSeat = null;
+          st.khoiDong.buzzOpen = false;
+          st.khoiDong.buzzUnlockAt = undefined;
+          st.khoiDong.noBuzzWrongUnlockAt = undefined;
+          st.khoiDong.lockedSeats = [];
+          st.khoiDong.nextLockedSeats = [];
+          st.khoiDong.currentBgmTrack = undefined;
+          st.khoiDong.bgm3UsedInTurn = false;
+          if (segs[0] && !segs[0].globalMs) {
+            const preQ = this.kdPoolQuestion(st.khoiDong, segs[0]);
+            st.khoiDong.current = preQ
+              ? {
+                  q: preQ.q,
+                  a: preQ.a,
+                  subject: preQ.subject,
+                  explanation: preQ.explanation,
+                  hint: preQ.hint,
+                  kdZone: preQ.kdZone,
+                  vdZone: preQ.vdZone,
+                  media: preQ.media,
+                  mediaType: preQ.mediaType,
+                }
+              : null;
+          } else {
+            st.khoiDong.current = null;
+          }
+        }
+        if (st.vcnv && st.vcnv.phase === "grid" && st.vcnv.currentRow < 0) {
+          st.vcnv.timer = mkTimer(nextRs.vcnv.rowTimerMs);
+        }
+        if (st.tangToc && st.tangToc.phase === "idle") {
+          st.tangToc.timer = mkTimer(nextRs.tangToc.timers[0]);
+        }
+        if (prevAudioSeason !== nextRs.audioSeason && st.stage === "playing" && (!st.khoiDong?.started || st.khoiDong.qIdx < 0)) {
+          this.cue("", "stop");
         }
         this.logMsg(`Đã đổi mùa thi sang: ${nextRs.label || nextRs.id}`);
         return OK;
@@ -2515,16 +2574,18 @@ export class OlympiaGame {
           if (wasStarted && kd.globalTimer) {
             const rId = this.ruleset.id;
             const aSeason = this.ruleset.audioSeason;
-            if (!timerRunning(kd.globalTimer)) {
+            const wasRunningGlobal = timerRunning(kd.globalTimer);
+            if (!wasRunningGlobal) {
               startTimer(kd.globalTimer, now);
-            }
-            if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
-              this.cue("1_KhoiDong/60s", "bgm");
-            } else if (rId === "O22" || aSeason === "O22") {
-              const gMs = seg.globalMs || 60000;
-              if (gMs <= 30000) this.cue("1_KhoiDong/30s", "bgm");
-              else if (gMs <= 60000) this.cue("1_KhoiDong/60s", "bgm");
-              else this.cue("1_KhoiDong/90s", "bgm");
+              if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+                (kd as any).currentBgmTrack = "60s";
+                this.cue("1_KhoiDong/60s", "bgm");
+              } else if (rId === "O22" || aSeason === "O22") {
+                const gMs = seg.globalMs || 60000;
+                const track = gMs <= 30000 ? "30s" : gMs <= 60000 ? "60s" : "90s";
+                (kd as any).currentBgmTrack = track;
+                this.cue(`1_KhoiDong/${track}`, "bgm");
+              }
             }
           } else if (!kd.globalTimer) {
             if (kd.bgmMode === "manual") {
@@ -2647,18 +2708,26 @@ export class OlympiaGame {
           if (timerRunning(kd.globalTimer)) {
             pauseTimer(kd.globalTimer, now);
             kd.buzzOpen = false;
+            this.cue("__pause_bgm__", "pause_bgm" as any);
           } else {
+            const hadStartedGlobal =
+              kd.globalTimer.remainingMs < (seg.globalMs || 60000) && Boolean(kd.currentBgmTrack);
             startTimer(kd.globalTimer, now);
             kd.buzzOpen = !isSolo;
-            const rId = this.ruleset.id;
-            const aSeason = this.ruleset.audioSeason;
-            if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
-              this.cue("1_KhoiDong/60s", "bgm");
-            } else if (rId === "O22" || aSeason === "O22") {
-              const gMs = seg.globalMs || 60000;
-              if (gMs <= 30000) this.cue("1_KhoiDong/30s", "bgm");
-              else if (gMs <= 60000) this.cue("1_KhoiDong/60s", "bgm");
-              else this.cue("1_KhoiDong/90s", "bgm");
+            if (hadStartedGlobal) {
+              this.cue("__resume_bgm__", "resume_bgm" as any);
+            } else {
+              const rId = this.ruleset.id;
+              const aSeason = this.ruleset.audioSeason;
+              if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+                (kd as any).currentBgmTrack = "60s";
+                this.cue("1_KhoiDong/60s", "bgm");
+              } else if (rId === "O22" || aSeason === "O22") {
+                const gMs = seg.globalMs || 60000;
+                const track = gMs <= 30000 ? "30s" : gMs <= 60000 ? "60s" : "90s";
+                (kd as any).currentBgmTrack = track;
+                this.cue(`1_KhoiDong/${track}`, "bgm");
+              }
             }
           }
           return OK;

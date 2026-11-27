@@ -12,6 +12,12 @@
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
 }
 
+/* Cap font-weight at 700 (Arial Bold) so browsers never substitute heavy Arial Black (900) */
+.font-classic-arial .font-black,
+.font-classic-arial.font-black {
+  font-weight: 700 !important;
+}
+
 /* ── SFU Helvetica Condensed Việt Hoá (Typography Bảng Ô Chữ) ── */
 @font-face {
   font-family: 'SFU Helvetica Condensed';

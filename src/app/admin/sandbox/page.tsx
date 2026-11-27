@@ -6960,15 +6960,25 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     } catch {}
   }, []);
 
+  const sandboxAudioUnlockedRef = useRef<boolean>(false);
+  const lastUnlockForwardAtRef = useRef<number>(0);
+
   const forwardUnlock = useCallback(() => {
+    const nowPerf = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (sandboxAudioUnlockedRef.current && nowPerf - lastUnlockForwardAtRef.current < 400) {
+      return;
+    }
+    lastUnlockForwardAtRef.current = nowPerf;
+    sandboxAudioUnlockedRef.current = true;
     try {
       unlockOlympiaTTS();
       const win = displayIframeRef.current?.contentWindow as any;
       if (win) {
         if (typeof win.__OLYMPIA_UNLOCK_AUDIO__ === "function") {
           win.__OLYMPIA_UNLOCK_AUDIO__();
+        } else {
+          win.postMessage({ type: "UNLOCK_AUDIO" }, "*");
         }
-        win.postMessage({ type: "UNLOCK_AUDIO" }, "*");
       }
     } catch {}
   }, []);

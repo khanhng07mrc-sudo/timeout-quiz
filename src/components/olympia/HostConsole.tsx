@@ -3069,25 +3069,46 @@ function KhoiDongDeck({
           </div>
         )}
 
-        {/* Contestant TS1..TSN Buttons */}
+        {/* Contestant TS1..TSN Buttons (for solo rulesets) OR General Turn Buttons (Lượt 1/2/3 for O22 & O23) */}
         <div className="flex items-center gap-1 flex-wrap">
-          {state.seats.map((_, sId) => {
-            const isCur = isSolo && seg.seat === sId;
-            return (
-              <button
-                key={sId}
-                type="button"
-                onClick={() => call("kd:selectSegment", { seatId: sId })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black border transition cursor-pointer ${
-                  isCur
-                    ? "bg-sky-500 text-slate-950 border-sky-400 shadow-md"
-                    : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-                }`}
-              >
-                TS{sId + 1}
-              </button>
-            );
-          })}
+          {kd.segments.some((s) => s.kind === "solo")
+            ? state.seats.map((_, sId) => {
+                const isCur = isSolo && seg.seat === sId;
+                return (
+                  <button
+                    key={sId}
+                    type="button"
+                    onClick={() => call("kd:selectSegment", { seatId: sId })}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black border transition cursor-pointer ${
+                      isCur
+                        ? "bg-sky-500 text-slate-950 border-sky-400 shadow-md"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    TS{sId + 1}
+                  </button>
+                );
+              })
+            : kd.segments.map((turnSeg, idx) => {
+                const isCur = kd.segIdx === idx;
+                const turnLabel = turnSeg.globalMs
+                  ? `Lượt ${idx + 1} (${Math.round(turnSeg.globalMs / 1000)}s)`
+                  : `Lượt ${idx + 1} (${turnSeg.questions}c)`;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => call("kd:selectSegment", { segIdx: idx })}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black border transition cursor-pointer ${
+                      isCur
+                        ? "bg-sky-500 text-slate-950 border-sky-400 shadow-md"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {turnLabel}
+                  </button>
+                );
+              })}
         </div>
 
         {/* Question Counter Badge & Subject Toggle */}

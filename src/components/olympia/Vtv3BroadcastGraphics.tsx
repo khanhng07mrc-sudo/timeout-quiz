@@ -555,13 +555,13 @@ export function BroadcastRoundIntroOverlay({
  */
 export function clampQuestionFont(text: string) {
   const len = text ? text.length : 0;
-  // Fixed standard broadcast question font size for all normal questions
+  // Standard broadcast question font size with Arial Bold (700) to avoid Arial Black substitution
   if (len <= 200) {
-    return "text-xl sm:text-2xl md:text-[27px] lg:text-[29px] xl:text-[31px] 2xl:text-[33px] font-black leading-snug";
+    return "text-xl sm:text-2xl md:text-[27px] lg:text-[29px] xl:text-[31px] 2xl:text-[33px] font-bold leading-snug";
   }
   // Auto-shrink when question is very long to prevent overflowing graphics
   if (len <= 320) {
-    return "text-lg sm:text-xl md:text-[22px] lg:text-[24px] xl:text-[26px] 2xl:text-[28px] font-extrabold leading-normal";
+    return "text-lg sm:text-xl md:text-[22px] lg:text-[24px] xl:text-[26px] 2xl:text-[28px] font-bold leading-normal";
   }
   // Safe minimal broadcast floor for extreme essay-length questions
   return "text-base sm:text-lg md:text-[19px] lg:text-[21px] xl:text-[22px] 2xl:text-[24px] font-bold leading-normal";
@@ -1064,7 +1064,7 @@ export function Vtv3ChalkboardQuestionFrame({
         <div className="relative z-10 flex-1 px-4 sm:px-6 md:px-7 py-2 sm:py-2.5 flex flex-col items-start justify-start text-left font-classic-arial">
           {questionText ? (
             <div
-              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text font-classic-arial ${clampQuestionFont(
+              className={`text-white font-bold leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text font-classic-arial ${clampQuestionFont(
                 questionText
               )}`}
             >
@@ -1928,7 +1928,7 @@ export function ClassicUnifiedLowerThird({
             />
           ) : questionText ? (
             <div
-              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text font-classic-arial ${
+              className={`text-white font-bold leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text font-classic-arial ${
                 isFullscreen
                   ? "text-xl sm:text-2xl md:text-3xl"
                   : clampQuestionFont(questionText)
@@ -3316,7 +3316,7 @@ export function TangTocQuestionGraphic({
             boxShadow: "0 6px 18px rgba(0,0,0,0.85), inset 0 1px 2px rgba(255,255,255,0.25)",
           }}
         >
-          <div className={`font-black text-white leading-snug drop-shadow font-classic-arial ${classicQFontSizeClass}`}>
+          <div className={`font-bold text-white leading-snug drop-shadow font-classic-arial ${classicQFontSizeClass}`}>
             {classicQText}
           </div>
         </div>

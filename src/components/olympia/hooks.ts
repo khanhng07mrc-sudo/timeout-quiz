@@ -39,7 +39,7 @@ function getSharedDecodeAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
   if (!AudioContextClass) return null;
-  if (!sharedDecodeCtx) {
+  if (!sharedDecodeCtx || sharedDecodeCtx.state === "closed") {
     try {
       sharedDecodeCtx = new AudioContextClass();
     } catch {
@@ -670,14 +670,30 @@ export function prewarmBuzzerSounds(season: string = "O26") {
     });
 
   void (async () => {
-    await waitDelayOrIdle(450, true);
+    // Phase 1 (0ms eager prewarm): decode critical priority SFX (bell_ring, correct, wrong, star_of_hope)
+    // immediately so the very first buzz in Khởi Động plays via RAM AudioBuffer with zero stutter.
+    const priorityUrls = pendingUrls.filter((u) => isPriorityInstantCue(u));
+    const secondaryUrls = pendingUrls.filter((u) => !isPriorityInstantCue(u));
+    const FIRST_EAGER_COUNT = Math.min(4, priorityUrls.length);
+    if (FIRST_EAGER_COUNT > 0) {
+      await Promise.allSettled(priorityUrls.slice(0, FIRST_EAGER_COUNT).map((url) => prewarmSfx(url)));
+    }
     const BATCH_SIZE = 3;
-    for (let i = 0; i < pendingUrls.length; i += BATCH_SIZE) {
+    for (let i = FIRST_EAGER_COUNT; i < priorityUrls.length; i += BATCH_SIZE) {
       if (cancelled || runId !== activePrewarmRunId) return;
-      const batch = pendingUrls.slice(i, i + BATCH_SIZE);
-      await Promise.allSettled(batch.map((url) => prewarmSfx(url)));
-      if (i + BATCH_SIZE < pendingUrls.length) {
-        await waitDelayOrIdle(60, false);
+      await Promise.allSettled(priorityUrls.slice(i, i + BATCH_SIZE).map((url) => prewarmSfx(url)));
+      await waitDelayOrIdle(25, false);
+    }
+
+    // Phase 2 (deferred idle prewarm): non-priority round cues & music tracks
+    if (secondaryUrls.length > 0) {
+      await waitDelayOrIdle(350, true);
+      for (let i = 0; i < secondaryUrls.length; i += BATCH_SIZE) {
+        if (cancelled || runId !== activePrewarmRunId) return;
+        await Promise.allSettled(secondaryUrls.slice(i, i + BATCH_SIZE).map((url) => prewarmSfx(url)));
+        if (i + BATCH_SIZE < secondaryUrls.length) {
+          await waitDelayOrIdle(60, false);
+        }
       }
     }
     if (activePrewarmCancel === cancel) {
@@ -719,21 +735,19 @@ export function useOlympiaAudio(
   const pannerGraphMap = useRef<
     WeakMap<HTMLAudioElement, ChannelRoutingGraph & { source: MediaElementAudioSourceNode }>
   >(new WeakMap());
+  const fastRoutingGraphRef = useRef<ChannelRoutingGraph | null>(null);
   const pendingCueRef = useRef<(() => void) | null>(null);
   const isAudioUnlockedRef = useRef(false);
   const isBgmPausedExplicitlyRef = useRef(false);
 
   const getAudioContext = useCallback(() => {
-    if (typeof window === "undefined") return null;
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return null;
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContextClass();
+    const shared = getSharedDecodeAudioContext();
+    if (!shared) return null;
+    audioCtxRef.current = shared;
+    if (shared.state === "suspended") {
+      shared.resume().catch(() => {});
     }
-    if (audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume().catch(() => {});
-    }
-    return audioCtxRef.current;
+    return shared;
   }, []);
 
   /** Dừng và dọn dẹp triệt để 100% tất cả BGM đang phát lẫn các bài hát đang fade-out ngầm */
@@ -1039,6 +1053,7 @@ export function useOlympiaAudio(
       let timeupdateHandler: (() => void) | null = null;
       let metaHandler: (() => void) | null = null;
       let endedHandler: (() => void) | null = null;
+      let playHandler: (() => void) | null = null;
       let timer: ReturnType<typeof setTimeout> | null = null;
 
       const cleanup = () => {
@@ -1058,6 +1073,10 @@ export function useOlympiaAudio(
         if (endedHandler) {
           currentAudio.removeEventListener("ended", endedHandler);
           endedHandler = null;
+        }
+        if (playHandler) {
+          currentAudio.removeEventListener("play", playHandler);
+          playHandler = null;
         }
         activeIntroCleanups.current.delete(cleanup);
       };
@@ -1141,9 +1160,10 @@ export function useOlympiaAudio(
         if (!hasCrossfaded) doCrossfade();
       };
       currentAudio.addEventListener("ended", endedHandler, { once: true });
-      currentAudio.addEventListener("play", () => {
+      playHandler = () => {
         if (!hasCrossfaded) armTimer();
-      });
+      };
+      currentAudio.addEventListener("play", playHandler);
 
       if (isNaN(currentAudio.duration) || !isFinite(currentAudio.duration) || currentAudio.duration <= 0) {
         metaHandler = () => {
@@ -1159,8 +1179,18 @@ export function useOlympiaAudio(
   // Global unlock handler for browser autoplay policies & AudioContext resumption
   const unlockAudio = useCallback(() => {
     const ctx = getAudioContext();
-    if (ctx) {
-      if (ctx.state === "suspended") {
+    const needsCtxResume = Boolean(ctx && ctx.state === "suspended");
+    const needsBgmResume = Boolean(
+      bgm.current && bgm.current.paused && !bgm.current.ended && !isBgmPausedExplicitlyRef.current
+    );
+    const hasPendingCue = Boolean(pendingCueRef.current);
+
+    if (isAudioUnlockedRef.current && !needsCtxResume && !needsBgmResume && !hasPendingCue) {
+      return;
+    }
+
+    if (ctx && !isAudioUnlockedRef.current) {
+      if (needsCtxResume) {
         ctx.resume().catch(() => {});
       }
       try {
@@ -1168,17 +1198,25 @@ export function useOlympiaAudio(
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(ctx.destination);
+        source.onended = () => {
+          try {
+            source.disconnect();
+          } catch {}
+        };
         source.start(0);
       } catch {}
+    } else if (needsCtxResume && ctx) {
+      ctx.resume().catch(() => {});
     }
+
     isAudioUnlockedRef.current = true;
-    if (bgm.current && bgm.current.paused && !bgm.current.ended && !isBgmPausedExplicitlyRef.current) {
+    if (needsBgmResume && bgm.current) {
       if (bgm.current.volume === 0) {
         bgm.current.volume = 0.85;
       }
       bgm.current.play().catch(() => {});
     }
-    if (pendingCueRef.current) {
+    if (hasPendingCue && pendingCueRef.current) {
       const p = pendingCueRef.current;
       pendingCueRef.current = null;
       try {
@@ -1213,12 +1251,10 @@ export function useOlympiaAudio(
     window.addEventListener("message", handleMsg);
     window.addEventListener("pointerdown", handleInteraction, { passive: true });
     window.addEventListener("keydown", handleInteraction, { passive: true });
-    window.addEventListener("click", handleInteraction, { passive: true });
     return () => {
       window.removeEventListener("message", handleMsg);
       window.removeEventListener("pointerdown", handleInteraction);
       window.removeEventListener("keydown", handleInteraction);
-      window.removeEventListener("click", handleInteraction);
     };
   }, [unlockAudio]);
 
@@ -1344,7 +1380,10 @@ export function useOlympiaAudio(
       const ctx = getAudioContext();
       const buffer = ramSfxBufferCache.get(primaryUrl) || ramSfxBufferCache.get(fallbackUrl);
 
-      if (ctx && buffer && ctx.state === "running") {
+      if (ctx && buffer) {
+        if (ctx.state === "suspended") {
+          void ctx.resume().catch(() => {});
+        }
         try {
           const srcNode = ctx.createBufferSource();
           srcNode.buffer = buffer;
@@ -1355,15 +1394,28 @@ export function useOlympiaAudio(
           gainNode.gain.value = 0.85;
           srcNode.connect(gainNode);
 
-          const routing = createChannelRoutingGraph(ctx);
-          gainNode.connect(routing.input);
-          applyChannelRoutingGraph(ctx, routing, activePan, 0.005);
+          if (!fastRoutingGraphRef.current) {
+            fastRoutingGraphRef.current = createChannelRoutingGraph(ctx);
+          }
+          gainNode.connect(fastRoutingGraphRef.current.input);
+          applyChannelRoutingGraph(ctx, fastRoutingGraphRef.current, activePan, 0.005);
+          srcNode.onended = () => {
+            try {
+              srcNode.disconnect();
+              gainNode.disconnect();
+            } catch {}
+          };
           srcNode.start(0);
           return;
         } catch {}
       }
 
-      // Fallback to prewarmed HTMLAudioElement if RAM buffer is still decoding
+      // Trigger background buffer decode if missing so subsequent buzzes always hit RAM 0ms fast-path
+      if (!ramSfxBufferCache.has(primaryUrl)) {
+        void prewarmSfx(primaryUrl);
+      }
+
+      // Fallback to prewarmed HTMLAudioElement; avoid heavy createMediaElementSource hookup on "both" stereo default
       const cached = sfxAudioCache.get(primaryUrl) || sfxAudioCache.get(fallbackUrl);
       const a =
         cached && (cached.paused || cached.ended)
@@ -1379,7 +1431,9 @@ export function useOlympiaAudio(
         (a as any).mozPreservesPitch = false;
         (a as any).webkitPreservesPitch = false;
       }
-      connectPanner(a, activePan);
+      if (activePan !== "both") {
+        connectPanner(a, activePan);
+      }
       registerActive(a);
       a.play().catch(() => {});
     };
@@ -1437,6 +1491,16 @@ export function useOlympiaAudio(
     }
     if (!enabled) return;
 
+    if (cue.kind === ("pause_bgm" as any)) {
+      pauseBgm();
+      return;
+    }
+
+    if (cue.kind === ("resume_bgm" as any)) {
+      resumeBgm();
+      return;
+    }
+
     if (cue.kind === "stop" || !cue.sound) {
       pendingCueRef.current = null;
       stopBgm(true);
@@ -1463,16 +1527,6 @@ export function useOlympiaAudio(
       bgm.current.src.includes(cue.sound.replace(/\.mp3$/, ""))
     ) {
       return; // Continuous playback without restarting
-    }
-
-    if (cue.kind === ("pause_bgm" as any)) {
-      pauseBgm();
-      return;
-    }
-
-    if (cue.kind === ("resume_bgm" as any)) {
-      resumeBgm();
-      return;
     }
 
     // Tuyệt đối không pause BGM ở vòng Khởi Động, Vượt Chướng Ngại Vật và khi đếm 5s cướp điểm Về Đích khi bấm chuông

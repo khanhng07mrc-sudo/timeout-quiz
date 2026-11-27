@@ -1743,8 +1743,27 @@ export class OlympiaGame {
         if (st.tangToc && st.tangToc.phase === "idle") {
           st.tangToc.timer = mkTimer(nextRs.tangToc.timers[0]);
         }
-        if (prevAudioSeason !== nextRs.audioSeason && st.stage === "playing" && (!st.khoiDong?.started || st.khoiDong.qIdx < 0)) {
-          this.cue("", "stop");
+        if (st.veDich && st.veDich.phase === "idle") {
+          const active = this.activeSeatIds;
+          const nextOrder = [...active];
+          if (nextRs.veDich.turnOrderMode === "highest_unplayed" && nextOrder.length > 1) {
+            nextOrder.sort((x, y) => (this.seat(y)?.score ?? 0) - (this.seat(x)?.score ?? 0) || x - y);
+          }
+          st.veDich.order = nextOrder;
+          st.veDich.timer = mkTimer(nextRs.veDich.thinkMs["20"] ?? 15000);
+        }
+        if (prevAudioSeason !== nextRs.audioSeason) {
+          if (st.stage === "lobby" && this.config.playIntroOnCreate !== false) {
+            this.cue("6_NhacKhac/show_intro", "sound");
+          } else if (st.stage === "playing") {
+            if (st.introStandby && st.entranceState?.active) {
+              this.cue("6_NhacKhac/contestant_intro", "sound");
+            } else if (st.introStandby && (!st.khoiDong?.started || st.khoiDong.qIdx < 0)) {
+              this.cue("6_NhacKhac/contest_intro");
+            } else if (!st.khoiDong?.started || st.khoiDong.qIdx < 0) {
+              this.cue("", "stop");
+            }
+          }
         }
         this.logMsg(`Đã đổi mùa thi sang: ${nextRs.label || nextRs.id}`);
         return OK;
@@ -2576,8 +2595,12 @@ export class OlympiaGame {
             const aSeason = this.ruleset.audioSeason;
             const wasRunningGlobal = timerRunning(kd.globalTimer);
             if (!wasRunningGlobal) {
+              const hadStartedGlobal =
+                kd.globalTimer.remainingMs < (seg.globalMs || 60000) && Boolean(kd.currentBgmTrack);
               startTimer(kd.globalTimer, now);
-              if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+              if (hadStartedGlobal) {
+                this.cue("__resume_bgm__", "resume_bgm" as any);
+              } else if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
                 (kd as any).currentBgmTrack = "60s";
                 this.cue("1_KhoiDong/60s", "bgm");
               } else if (rId === "O22" || aSeason === "O22") {

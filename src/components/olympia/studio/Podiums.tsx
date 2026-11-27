@@ -4635,12 +4635,12 @@ export function evaluateContestantEntranceTrajectory(
   const arrivalSec = timing ? timing.arrivalSec : +(ENTRANCE_STAIRS_END_SEC + floorDurationSec).toFixed(2);
   const bowEndSec = timing ? timing.bowEndSec : +(arrivalSec + ENTRANCE_DESK_BOW_SEC).toFixed(2);
 
-  // Door side selection for contestants: deep left/right wing staging behind acoustic baffles
+  // Door side selection for contestants: Left/Right illuminated wing waiting bays clear of the wide portal
   const isDoorLeft = seatId % 2 === 0;
   const queueIdx = Math.floor(seatId / 2);
-  const queueSpreadX = queueIdx * 0.16;
-  const doorX = isDoorLeft ? (2.35 + queueSpreadX) : (-2.35 - queueSpreadX);
-  const doorZ = 12.90 + queueIdx * 0.42;
+  const queueSpreadX = queueIdx * 0.20;
+  const doorX = isDoorLeft ? (2.95 + queueSpreadX) : (-2.95 - queueSpreadX);
+  const doorZ = 12.95 + queueIdx * 0.42;
 
   const startX = doorX;
   const startY = 1.84;
@@ -4658,7 +4658,7 @@ export function evaluateContestantEntranceTrajectory(
   let vel = 0;
 
   if (t < 0) {
-    // Phase 0: Waiting concealed in deep wing backstage bays behind architectural wing baffles
+    // Phase 0: Visible waiting cleanly in Left/Right illuminated wing gallery bays before stepping into portal
     curX = startX;
     curY = startY;
     curZ = startZ;
@@ -6734,8 +6734,8 @@ export function PersistentContestantEntity({
     const firstPhi = Math.PI / 2 - targetCfg.rotY;
     const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfgShifted, firstPhi, totalSeats);
 
-    // Conceal queued figures completely before their wing step-in (t >= -0.05) since side baffles are removed
-    root.visible = t >= -0.05;
+    // Always keep contestant figure visible continuously across all phases (lobby, wing waiting, entrance, rounds, awards)
+    root.visible = true;
     root.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
     root.rotation.y = traj.rotY;
 

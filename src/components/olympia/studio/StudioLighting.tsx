@@ -1745,7 +1745,7 @@ function createBannerCanvas(text: string, bgColor: string, textColor: string): H
  */
 function createAudienceBackdropCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  return paintOlympiaBackdropCanvas(canvas, { width: 4096, height: 1024 });
+  return paintOlympiaBackdropCanvas(canvas, { width: 4096, height: 1848 });
 }
 
 /**
@@ -2767,17 +2767,11 @@ export function AudienceAmphitheater({
       setter(tex);
     };
 
-    loader.load(
-      "/brand/olympia_vtv3_backdrop_ai.jpg",
-      (tex) => trackAndSet(tex, setAiBackdropTex),
-      undefined,
-      () => {
-        if (cancelled || typeof document === "undefined") return;
-        const canvas = createAudienceBackdropCanvas();
-        const fallbackTex = new THREE.CanvasTexture(canvas);
-        trackAndSet(fallbackTex, setAiBackdropTex);
-      }
-    );
+    if (typeof document !== "undefined") {
+      const canvas = createAudienceBackdropCanvas();
+      const backdropTex = new THREE.CanvasTexture(canvas);
+      trackAndSet(backdropTex, setAiBackdropTex);
+    }
     loader.load("/brand/quizorra_logo.png", (tex) => trackAndSet(tex, setQuizorraLogoTex));
     loader.load("/brand/Olympia_logo_2020.webp", (tex) => trackAndSet(tex, setOlympia2020Tex));
 
@@ -2823,17 +2817,19 @@ export function AudienceAmphitheater({
   // - Cung 4 (Trong cùng): Lớn thứ #2 nhưng CAO HƠN (width 0.28m, height 5.20m, theta_top 40.0 deg) - Warm Ivory Lightbox
   // Color: Soft warm ivory/cream TV studio broadcast luminance (NOT trắng loá)
 
-  // Left Cluster (Viewer's Left, X > 0)
-  const leftArc1OuterShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 3.48, 3.70, -28.0, 19.5, 1.95, true), []);
-  const leftArc2SpacerShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 3.40, 3.48, -28.0, 21.0, 1.95, true), []);
-  const leftArc3BlackShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 3.02, 3.40, -28.0, 22.5, 1.95, true), []);
-  const leftArc4InnerShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 2.74, 3.02, -28.0, 40.0, 1.95, true), []);
+  // ── REDESIGNED WIDE ENTRANCE PORTAL ARCHES: ( ( [ (   /\   ) ] ) ) ──
+  // Center opening widened to ~4.20m mid-height (~3.18m floor opening) matching reference photo
+  // Standing cleanly on the top plinth behind Row 7 (Y >= 1.95m, Z = 3.65m) without cramping stairs or mountain vista
+  const leftArc1OuterShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 4.25, 4.49, -27.0, 27.0, 1.95, true), []);
+  const leftArc2SpacerShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 4.17, 4.25, -28.0, 30.0, 1.95, true), []);
+  const leftArc3BlackShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 3.81, 4.17, -29.0, 34.0, 1.95, true), []);
+  const leftArc4InnerShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 3.55, 3.81, -31.0, 42.0, 1.95, true), []);
 
   // Right Cluster (Viewer's Right, X < 0)
-  const rightArc1OuterShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 3.48, 3.70, -28.0, 19.5, 1.95, false), []);
-  const rightArc2SpacerShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 3.40, 3.48, -28.0, 21.0, 1.95, false), []);
-  const rightArc3BlackShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 3.02, 3.40, -28.0, 22.5, 1.95, false), []);
-  const rightArc4InnerShape = useMemo(() => createCircularArcShape(-1.55, 3.25, 2.74, 3.02, -28.0, 40.0, 1.95, false), []);
+  const rightArc1OuterShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 4.25, 4.49, -27.0, 27.0, 1.95, false), []);
+  const rightArc2SpacerShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 4.17, 4.25, -28.0, 30.0, 1.95, false), []);
+  const rightArc3BlackShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 3.81, 4.17, -29.0, 34.0, 1.95, false), []);
+  const rightArc4InnerShape = useMemo(() => createCircularArcShape(-1.45, 3.75, 3.55, 3.81, -31.0, 42.0, 1.95, false), []);
 
   const arc1ExtrudeSettings = useMemo(
     () => ({
@@ -2884,10 +2880,10 @@ export function AudienceAmphitheater({
   );
 
   // Pure Smooth Circular Arc Neon Edge Tubes ((  /\  ))
-  const leftInnerNeonCurve = useMemo(() => createCircularArcCurve(-1.55, 3.25, 2.74, -28.0, 40.0, 3.75, true), []);
-  const leftOuterNeonCurve = useMemo(() => createCircularArcCurve(-1.55, 3.25, 3.48, -28.0, 19.5, 3.75, true), []);
-  const rightInnerNeonCurve = useMemo(() => createCircularArcCurve(-1.55, 3.25, 2.74, -28.0, 40.0, 3.75, false), []);
-  const rightOuterNeonCurve = useMemo(() => createCircularArcCurve(-1.55, 3.25, 3.48, -28.0, 19.5, 3.75, false), []);
+  const leftInnerNeonCurve = useMemo(() => createCircularArcCurve(-1.45, 3.75, 3.55, -31.0, 42.0, 3.75, true), []);
+  const leftOuterNeonCurve = useMemo(() => createCircularArcCurve(-1.45, 3.75, 4.25, -27.0, 27.0, 3.75, true), []);
+  const rightInnerNeonCurve = useMemo(() => createCircularArcCurve(-1.45, 3.75, 3.55, -31.0, 42.0, 3.75, false), []);
+  const rightOuterNeonCurve = useMemo(() => createCircularArcCurve(-1.45, 3.75, 4.25, -27.0, 27.0, 3.75, false), []);
 
   // Dedicated Glossy Black Lacquer Material for Arc 3 (Sơn mài đen bóng, roughness <= 0.10)
   const portalBlackLacquerMat = useMemo(
@@ -3166,7 +3162,7 @@ export function AudienceAmphitheater({
               const rotY = sOffset * 0.025 + (Math.sin(sIdx * 3) * 0.04);
 
               // Row 7 (rIdx === 6) stanchion clearance: clear chairs & figures intersecting Quizorra/Olympia stanchion columns
-              if (rIdx === 6 && Math.abs(Math.abs(sOffset) - 4.10) < 0.65) {
+              if (rIdx === 6 && Math.abs(Math.abs(sOffset) - 4.65) < 0.72) {
                 return null;
               }
 
@@ -3341,7 +3337,7 @@ export function AudienceAmphitheater({
         </mesh>
 
         {/* Overhead Ceiling Downlights & Soft Volumetric Cones over Left/Right Wing Waiting Zones (Active from Room Start / Lobby) */}
-        {[2.65, -2.65].map((wingX) => {
+        {[2.95, -2.95].map((wingX) => {
           const wingRoomFactor = Math.max(0.85, liveFactor);
           return (
             <group key={`wing-ceiling-light-${wingX}`} position={[wingX, 6.25, 4.55]}>
@@ -3403,8 +3399,8 @@ export function AudienceAmphitheater({
         )}
       </group>
 
-      {/* ── OFFICIAL QUIZORRA SPONSOR 3D LIGHTBOX (Viewer's Left at X = +4.10m, Y = 3.45m, Z = 3.75m - FIXED POSITION) ── */}
-      <group position={[4.10, 3.45, 3.75]} rotation={[0, 0, 0]}>
+      {/* ── OFFICIAL QUIZORRA SPONSOR 3D LIGHTBOX (Viewer's Left at X = +4.65m, Y = 3.45m, Z = 3.75m - CLEAR OF WIDE PORTAL) ── */}
+      <group position={[4.65, 3.45, 3.75]} rotation={[0, 0, 0]}>
         {/* Sleek Royal Blue Outer Trim Shell */}
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[2.54, 1.04, 0.10]} />
@@ -3456,8 +3452,8 @@ export function AudienceAmphitheater({
         </mesh>
       </group>
 
-      {/* ── OLYMPIA 2020 3D MEDALLION (Viewer's Right at X = -4.10m, Y = 3.45m, Z = 3.75m - FIXED POSITION, NO GOLD RIM) ── */}
-      <group position={[-4.10, 3.45, 3.75]}>
+      {/* ── OLYMPIA 2020 3D MEDALLION (Viewer's Right at X = -4.65m, Y = 3.45m, Z = 3.75m - CLEAR OF WIDE PORTAL, NO GOLD RIM) ── */}
+      <group position={[-4.65, 3.45, 3.75]}>
         {/* Cylindrical Medallion Body: Frameless Dark Disc per Image 3 */}
         <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.78, 0.78, 0.05, 48]} />

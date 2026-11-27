@@ -1,11 +1,11 @@
 /**
- * Shared Master Broadcast Backdrop Artwork Painter for Đường Lên Đỉnh Olympia S14.
- * Renders a 4096x1024 high-resolution panoramic cyclorama background:
- * - 3-tiered crystalline low-poly Olympia mountain massif (120+ Delaunay triangular facets)
- * - Sweeping wide foothills merging seamlessly into lateral horizon mountain ranges
- * - Graceful S-curve luminous canyon road path with subtle chevron guide waves
- * - Summit sunrise corona halo with 8-pointed golden star and single Olympic pennant flag
- * - 12 comprehensive tech, science, AI, math, and knowledge icons in clean 3D safe corridors
+ * Master Broadcast Backdrop Artwork Painter for Đường Lên Đỉnh Olympia (S14 Reference Parity).
+ * Native 4096 x 1848 resolution (aspect ratio ~2.2165:1 matching the 18.85m x 8.50m cyclorama)
+ * for 1:1 undistorted projection across all broadcast camera angles:
+ * - Deep royal cobalt & electric sapphire atmospheric gradient with radiant lateral horizon glows
+ * - Delicate geometric tech & knowledge constellation rings + circuit web on Left & Right audience wings
+ * - Sharp central faceted wireframe-lit polygonal mountain massif with luminous ascending path & peak flag,
+ *   calibrated vertically & horizontally to sit cleanly inside the redesigned wide entrance portal.
  */
 
 export interface BackdropCanvasOptions {
@@ -18,242 +18,425 @@ export function paintOlympiaBackdropCanvas(
   options: BackdropCanvasOptions = {}
 ): HTMLCanvasElement {
   const w = options.width || 4096;
-  const h = options.height || 1024;
+  const h = options.height || 1848;
   canvas.width = w;
   canvas.height = h;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  // ── 1. DEEP MIDNIGHT COSMIC SAPPHIRE SKY GRADIENT ──
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-  skyGrad.addColorStop(0.00, "#010410"); // Pitch cosmic apex
-  skyGrad.addColorStop(0.20, "#030e2a"); // Deep midnight navy
-  skyGrad.addColorStop(0.50, "#061f52"); // Broadcast sapphire
-  skyGrad.addColorStop(0.80, "#0a2d6c"); // Horizon electric indigo
-  skyGrad.addColorStop(1.00, "#02091c"); // Floor blend
-  ctx.fillStyle = skyGrad;
+  const mx = w / 2;
+
+  // ── 1. DEEP ROYAL COBALT & SAPPHIRE BROADCAST GRADIENT (Reference Image Style) ──
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+  bgGrad.addColorStop(0.00, "#020b26"); // Upper stage ceiling indigo
+  bgGrad.addColorStop(0.26, "#06256e"); // Deep royal sapphire
+  bgGrad.addColorStop(0.56, "#093ba6"); // Vibrant cobalt stage wash
+  bgGrad.addColorStop(0.84, "#062875"); // Mid-backstage navy
+  bgGrad.addColorStop(1.00, "#020d2e"); // Floor perimeter blend
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // ── 2. CONSTELATION FIELD & COSMIC DUST ──
+  // Soft lateral electric-blue stage wing glow halos (framing both sides behind Quizorra & Olympia)
+  const addRadialWash = (cx: number, cy: number, r: number, color0: string, color1: string) => {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, color0);
+    g.addColorStop(1, color1);
+    ctx.fillStyle = g;
+    ctx.fillRect(Math.max(0, cx - r), Math.max(0, cy - r), r * 2, r * 2);
+  };
+
+  addRadialWash(w * 0.19, h * 0.48, w * 0.24, "rgba(37, 99, 235, 0.34)", "rgba(37, 99, 235, 0)");
+  addRadialWash(w * 0.81, h * 0.48, w * 0.24, "rgba(37, 99, 235, 0.34)", "rgba(37, 99, 235, 0)");
+  addRadialWash(mx, h * 0.56, w * 0.22, "rgba(56, 189, 248, 0.30)", "rgba(6, 37, 110, 0)");
+
+  // Subtle horizontal & vertical broadcast light-wall grid sheen (very restrained)
+  ctx.save();
+  ctx.strokeStyle = "rgba(125, 211, 252, 0.045)";
+  ctx.lineWidth = 1.5;
+  for (let gx = 0; gx <= w; gx += 128) {
+    ctx.beginPath();
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, h);
+    ctx.stroke();
+  }
+  for (let gy = 0; gy <= h; gy += 128) {
+    ctx.beginPath();
+    ctx.moveTo(0, gy);
+    ctx.lineTo(w, gy);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Subtle atmospheric bokeh & star particles (fine pinpoint dots matching studio photograph)
   const pseudoRand = (seed: number) => {
-    const x = Math.sin(seed) * 10000;
+    const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
     return x - Math.floor(x);
   };
-  for (let i = 0; i < 480; i++) {
-    const sx = pseudoRand(i * 17.13) * w;
-    const sy = pseudoRand(i * 29.71) * (h * 0.76);
-    const sr = 0.7 + pseudoRand(i * 5.31) * 2.3;
-    const alpha = 0.25 + pseudoRand(i * 3.17) * 0.70;
+  ctx.save();
+  for (let i = 0; i < 340; i++) {
+    const sx = pseudoRand(i + 1) * w;
+    const sy = pseudoRand(i + 301) * (h * 0.86);
+    const sr = 1.0 + pseudoRand(i + 601) * 2.4;
+    const alpha = 0.14 + pseudoRand(i + 901) * 0.42;
     ctx.beginPath();
     ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-    ctx.fillStyle = i % 3 === 0 ? `rgba(254, 240, 138, ${alpha})` : `rgba(224, 242, 254, ${alpha})`;
+    ctx.fillStyle = `rgba(186, 230, 253, ${alpha})`;
     ctx.fill();
   }
-
-  // ── 3. DISTANT HORIZON MOUNTAIN RIDGES (LATERAL WINGS) ──
-  ctx.save();
-  // Left Wing Horizon Ridge
-  const leftHorizonGrad = ctx.createLinearGradient(0, 520, 0, h);
-  leftHorizonGrad.addColorStop(0, "#061a3d");
-  leftHorizonGrad.addColorStop(1, "#020714");
-  ctx.fillStyle = leftHorizonGrad;
-  ctx.beginPath();
-  ctx.moveTo(0, 700);
-  ctx.lineTo(260, 600);
-  ctx.lineTo(540, 650);
-  ctx.lineTo(820, 570);
-  ctx.lineTo(1120, 640);
-  ctx.lineTo(1420, 570);
-  ctx.lineTo(1720, 710);
-  ctx.lineTo(1720, h);
-  ctx.lineTo(0, h);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.moveTo(0, 700); ctx.lineTo(260, 600); ctx.lineTo(540, 650); ctx.lineTo(820, 570); ctx.lineTo(1120, 640); ctx.lineTo(1420, 570); ctx.lineTo(1720, 710);
-  ctx.stroke();
-
-  // Right Wing Horizon Ridge
-  const rightHorizonGrad = ctx.createLinearGradient(0, 520, 0, h);
-  rightHorizonGrad.addColorStop(0, "#061a3d");
-  rightHorizonGrad.addColorStop(1, "#020714");
-  ctx.fillStyle = rightHorizonGrad;
-  ctx.beginPath();
-  ctx.moveTo(2376, 710);
-  ctx.lineTo(2676, 570);
-  ctx.lineTo(2976, 640);
-  ctx.lineTo(3276, 570);
-  ctx.lineTo(3556, 650);
-  ctx.lineTo(3836, 600);
-  ctx.lineTo(w, 700);
-  ctx.lineTo(w, h);
-  ctx.lineTo(2376, h);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.moveTo(2376, 710); ctx.lineTo(2676, 570); ctx.lineTo(2976, 640); ctx.lineTo(3276, 570); ctx.lineTo(3556, 650); ctx.lineTo(3836, 600); ctx.lineTo(w, 700);
-  ctx.stroke();
   ctx.restore();
 
-  // ── 4. 3-TIERED OLYMPIA MOUNTAIN MASSIF & CRYSTALLINE DELAUNAY MESH ──
-  const mx = w / 2; // 2048 center axis
-  const apexY = 305; // Calibrated summit apex (safe in CAM 13 without clipping, Y_world = 5.72m)
+  // ── 2. SUBTLE KNOWLEDGE & TECH NETWORK PATTERN ACROSS LEFT & RIGHT WINGS ──
+  // Thin glowing cyan circular nodes + dotted rings + delicate geometric web lines
+  // Positioned carefully around Quizorra / Olympia wing corridors (Y = 0.20h .. 0.72h)
+  type WingNode = { x: number; y: number; r: number; icon: string };
+  const wingNodes: WingNode[] = [
+    // Left Wing Constellation (x < 0.36w)
+    { x: w * 0.075, y: h * 0.34, r: 58, icon: "compass" },
+    { x: w * 0.135, y: h * 0.22, r: 50, icon: "neural" },
+    { x: w * 0.165, y: h * 0.42, r: 64, icon: "book" },
+    { x: w * 0.115, y: h * 0.59, r: 54, icon: "globe" },
+    { x: w * 0.245, y: h * 0.24, r: 54, icon: "atom" },
+    { x: w * 0.255, y: h * 0.56, r: 62, icon: "gear" },
+    { x: w * 0.320, y: h * 0.37, r: 52, icon: "chip" },
+    { x: w * 0.335, y: h * 0.61, r: 46, icon: "dna" },
 
-  // Radiant Sunrise Corona Bloom behind Summit Apex
-  ctx.save();
-  const sunHalo = ctx.createRadialGradient(mx, apexY, 0, mx, apexY, 520);
-  sunHalo.addColorStop(0.00, "rgba(254, 240, 138, 0.96)");
-  sunHalo.addColorStop(0.18, "rgba(251, 191, 36, 0.68)");
-  sunHalo.addColorStop(0.45, "rgba(56, 189, 248, 0.38)");
-  sunHalo.addColorStop(0.80, "rgba(7, 37, 94, 0.15)");
-  sunHalo.addColorStop(1.00, "rgba(2, 6, 23, 0.0)");
-  ctx.fillStyle = sunHalo;
-  ctx.fillRect(mx - 750, apexY - 260, 1500, 950);
-  ctx.restore();
-
-  // Wide Mountain Foothills Silhouette (Sweeping seamlessly from X = 720 to 3376)
-  ctx.save();
-  const foothillsGrad = ctx.createLinearGradient(0, apexY, 0, h);
-  foothillsGrad.addColorStop(0.0, "#072b68");
-  foothillsGrad.addColorStop(0.4, "#051f4d");
-  foothillsGrad.addColorStop(0.8, "#031435");
-  foothillsGrad.addColorStop(1.0, "#010817");
-  ctx.fillStyle = foothillsGrad;
-  ctx.beginPath();
-  ctx.moveTo(mx, apexY);
-  // Left Slope & Foothill Profile
-  ctx.lineTo(mx - 180, 395);
-  ctx.lineTo(mx - 360, 465); // Left Shoulder Peak
-  ctx.lineTo(mx - 540, 545);
-  ctx.lineTo(mx - 760, 635);
-  ctx.lineTo(mx - 1000, 725);
-  ctx.lineTo(720, 835); // Sweeping left foothill
-  ctx.lineTo(720, h);
-  ctx.lineTo(mx, h);
-  ctx.lineTo(3376, h);
-  ctx.lineTo(3376, 835); // Sweeping right foothill
-  ctx.lineTo(mx + 1000, 725);
-  ctx.lineTo(mx + 760, 635);
-  ctx.lineTo(mx + 540, 545);
-  ctx.lineTo(mx + 360, 465); // Right Shoulder Peak
-  ctx.lineTo(mx + 180, 395);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // Structured Triangular Crystalline Lattice (Delaunay Facets)
-  // Structured lattice nodes spanning the mountain body
-  // Left half nodes (symmetric counterpart will be mirrored for right half)
-  const leftNodes: Array<[number, number]> = [
-    [mx, apexY], // 0: Apex
-    [mx - 90, 370], // 1
-    [mx - 190, 410], // 2
-    [mx - 70, 465], // 3
-    [mx - 220, 480], // 4
-    [mx - 360, 465], // 5: Left shoulder peak
-    [mx - 120, 545], // 6
-    [mx - 280, 560], // 7
-    [mx - 430, 550], // 8
-    [mx - 540, 545], // 9
-    [mx - 140, 635], // 10
-    [mx - 320, 645], // 11
-    [mx - 490, 640], // 12
-    [mx - 650, 630], // 13
-    [mx - 760, 635], // 14
-    [mx - 160, 735], // 15
-    [mx - 360, 740], // 16
-    [mx - 560, 735], // 17
-    [mx - 760, 730], // 18
-    [mx - 1000, 725], // 19
-    [mx - 180, 850], // 20
-    [mx - 400, 850], // 21
-    [mx - 640, 845], // 22
-    [mx - 900, 840], // 23
-    [mx - 1160, 835], // 24
-    [mx - 200, 1024], // 25: Base canyon left
-    [mx - 440, 1024], // 26
-    [mx - 720, 1024], // 27
-    [mx - 1020, 1024], // 28
-    [mx - 1328, 1024], // 29: Far left foothill base
+    // Right Wing Constellation (x > 0.64w)
+    { x: w * 0.665, y: h * 0.61, r: 46, icon: "math" },
+    { x: w * 0.680, y: h * 0.37, r: 52, icon: "award" },
+    { x: w * 0.745, y: h * 0.56, r: 62, icon: "data" },
+    { x: w * 0.755, y: h * 0.24, r: 54, icon: "bulb" },
+    { x: w * 0.835, y: h * 0.42, r: 64, icon: "medal" },
+    { x: w * 0.885, y: h * 0.59, r: 54, icon: "code" },
+    { x: w * 0.865, y: h * 0.22, r: 50, icon: "space" },
+    { x: w * 0.925, y: h * 0.34, r: 58, icon: "flask" },
   ];
 
-  // Right nodes are mirrored across mx with slight organic jitter
+  const wingLinks: Array<[number, number]> = [
+    // Left links
+    [0, 1], [0, 2], [0, 3], [1, 2], [1, 4], [2, 3], [2, 4], [2, 5], [3, 5], [4, 6], [5, 6], [5, 7], [6, 7],
+    // Right links
+    [8, 9], [8, 10], [9, 10], [9, 11], [10, 12], [10, 13], [11, 12], [11, 14], [12, 13], [12, 15], [14, 15], [13, 15],
+  ];
+
+  // Delicate tech circuit lines + micro junction dots
+  ctx.save();
+  ctx.strokeStyle = "rgba(125, 211, 252, 0.24)";
+  ctx.lineWidth = 2.0;
+  for (const [aIdx, bIdx] of wingLinks) {
+    const na = wingNodes[aIdx];
+    const nb = wingNodes[bIdx];
+    ctx.beginPath();
+    ctx.moveTo(na.x, na.y);
+    ctx.lineTo(nb.x, nb.y);
+    ctx.stroke();
+
+    // Small glowing midpoint telemetry dot
+    ctx.fillStyle = "rgba(186, 230, 253, 0.45)";
+    ctx.beginPath();
+    ctx.arc((na.x + nb.x) * 0.5, (na.y + nb.y) * 0.5, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Subtle translucent hex lattice behind the wing icons
+  const drawFaintHex = (hx: number, hy: number, hr: number, alpha: number) => {
+    ctx.save();
+    ctx.strokeStyle = `rgba(125, 211, 252, ${alpha})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const ang = (Math.PI / 3) * k - Math.PI / 6;
+      const px = hx + Math.cos(ang) * hr;
+      const py = hy + Math.sin(ang) * hr;
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  for (const node of wingNodes) {
+    drawFaintHex(node.x + 88, node.y - 72, 34, 0.14);
+    drawFaintHex(node.x - 84, node.y + 78, 28, 0.11);
+  }
+
+  // Render clean subtle tech/knowledge circular medallions
+  for (const b of wingNodes) {
+    ctx.save();
+    // Soft radial halo behind circle
+    const halo = ctx.createRadialGradient(b.x, b.y, b.r * 0.3, b.x, b.y, b.r * 1.6);
+    halo.addColorStop(0, "rgba(56, 189, 248, 0.16)");
+    halo.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer dashed ring
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = "rgba(186, 230, 253, 0.30)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r + 12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Primary luminous ring
+    ctx.strokeStyle = "rgba(125, 211, 252, 0.48)";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Inner fill disc
+    ctx.fillStyle = "rgba(5, 29, 86, 0.55)";
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r - 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crisp translucent white-cyan vector icon inside
+    ctx.strokeStyle = "rgba(224, 242, 254, 0.72)";
+    ctx.fillStyle = "rgba(224, 242, 254, 0.72)";
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const s = b.r * 0.42;
+
+    if (b.icon === "book") {
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + s * 0.7);
+      ctx.bezierCurveTo(b.x - s * 0.45, b.y + s * 0.45, b.x - s * 0.9, b.y + s * 0.6, b.x - s, b.y - s * 0.45);
+      ctx.bezierCurveTo(b.x - s * 0.5, b.y - s * 0.6, b.x - s * 0.25, b.y - s * 0.45, b.x, b.y - s * 0.3);
+      ctx.bezierCurveTo(b.x + s * 0.25, b.y - s * 0.45, b.x + s * 0.5, b.y - s * 0.6, b.x + s, b.y - s * 0.45);
+      ctx.bezierCurveTo(b.x + s * 0.9, b.y + s * 0.6, b.x + s * 0.45, b.y + s * 0.45, b.x, b.y + s * 0.7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y - s * 0.3);
+      ctx.lineTo(b.x, b.y + s * 0.7);
+      ctx.stroke();
+    } else if (b.icon === "atom") {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      for (const ang of [0, Math.PI / 3, -Math.PI / 3]) {
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y, s, s * 0.38, ang, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (b.icon === "chip") {
+      const k = s * 0.65;
+      ctx.strokeRect(b.x - k, b.y - k, k * 2, k * 2);
+      ctx.fillRect(b.x - k * 0.45, b.y - k * 0.45, k * 0.9, k * 0.9);
+      for (const p of [-k * 0.5, 0, k * 0.5]) {
+        ctx.beginPath();
+        ctx.moveTo(b.x + p, b.y - k); ctx.lineTo(b.x + p, b.y - k - 7);
+        ctx.moveTo(b.x + p, b.y + k); ctx.lineTo(b.x + p, b.y + k + 7);
+        ctx.moveTo(b.x - k, b.y + p); ctx.lineTo(b.x - k - 7, b.y + p);
+        ctx.moveTo(b.x + k, b.y + p); ctx.lineTo(b.x + k + 7, b.y + p);
+        ctx.stroke();
+      }
+    } else if (b.icon === "gear") {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, s * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, s * 0.25, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let t = 0; t < 8; t++) {
+        const a = (t * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.moveTo(b.x + Math.cos(a) * s * 0.65, b.y + Math.sin(a) * s * 0.65);
+        ctx.lineTo(b.x + Math.cos(a) * s * 0.92, b.y + Math.sin(a) * s * 0.92);
+        ctx.stroke();
+      }
+    } else if (b.icon === "globe") {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, s * 0.85, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y, s * 0.42, s * 0.85, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x - s * 0.85, b.y);
+      ctx.lineTo(b.x + s * 0.85, b.y);
+      ctx.stroke();
+    } else if (b.icon === "dna") {
+      ctx.beginPath();
+      for (let d = -s * 0.8; d <= s * 0.8; d += 5) {
+        const dx = Math.sin(d * 0.22) * s * 0.55;
+        ctx.moveTo(b.x - dx, b.y + d);
+        ctx.lineTo(b.x + dx, b.y + d);
+      }
+      ctx.stroke();
+    } else if (b.icon === "award" || b.icon === "medal") {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y - s * 0.15, s * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x - s * 0.35, b.y + s * 0.35);
+      ctx.lineTo(b.x - s * 0.45, b.y + s * 0.92);
+      ctx.lineTo(b.x, b.y + s * 0.68);
+      ctx.lineTo(b.x + s * 0.45, b.y + s * 0.92);
+      ctx.lineTo(b.x + s * 0.35, b.y + s * 0.35);
+      ctx.stroke();
+    } else if (b.icon === "bulb") {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y - s * 0.15, s * 0.55, Math.PI * 0.8, Math.PI * 2.2);
+      ctx.lineTo(b.x + s * 0.28, b.y + s * 0.55);
+      ctx.lineTo(b.x - s * 0.28, b.y + s * 0.55);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x - s * 0.22, b.y + s * 0.78);
+      ctx.lineTo(b.x + s * 0.22, b.y + s * 0.78);
+      ctx.stroke();
+    } else if (b.icon === "code") {
+      ctx.beginPath();
+      ctx.moveTo(b.x - s * 0.42, b.y - s * 0.45);
+      ctx.lineTo(b.x - s * 0.85, b.y);
+      ctx.lineTo(b.x - s * 0.42, b.y + s * 0.45);
+      ctx.moveTo(b.x + s * 0.42, b.y - s * 0.45);
+      ctx.lineTo(b.x + s * 0.85, b.y);
+      ctx.lineTo(b.x + s * 0.42, b.y + s * 0.45);
+      ctx.moveTo(b.x + s * 0.16, b.y - s * 0.55);
+      ctx.lineTo(b.x - s * 0.16, b.y + s * 0.55);
+      ctx.stroke();
+    } else if (b.icon === "data") {
+      ctx.fillRect(b.x - s * 0.62, b.y + s * 0.1, s * 0.28, s * 0.55);
+      ctx.fillRect(b.x - s * 0.14, b.y - s * 0.25, s * 0.28, s * 0.90);
+      ctx.fillRect(b.x + s * 0.34, b.y - s * 0.62, s * 0.28, s * 1.27);
+    } else if (b.icon === "neural") {
+      const pts = [[-s * 0.55, -s * 0.45], [-s * 0.55, s * 0.45], [0, -s * 0.62], [0, s * 0.62], [s * 0.62, 0]];
+      for (const [px, py] of pts) {
+        ctx.beginPath();
+        ctx.arc(b.x + px, b.y + py, 3.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(b.x - s * 0.55, b.y - s * 0.45); ctx.lineTo(b.x, b.y - s * 0.62); ctx.lineTo(b.x + s * 0.62, b.y);
+      ctx.moveTo(b.x - s * 0.55, b.y + s * 0.45); ctx.lineTo(b.x, b.y + s * 0.62); ctx.lineTo(b.x + s * 0.62, b.y);
+      ctx.moveTo(b.x, b.y - s * 0.62); ctx.lineTo(b.x, b.y + s * 0.62);
+      ctx.stroke();
+    } else if (b.icon === "math") {
+      ctx.beginPath();
+      ctx.arc(b.x - s * 0.38, b.y, s * 0.34, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x + s * 0.38, b.y, s * 0.34, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (b.icon === "space") {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, s * 0.46, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y, s * 0.95, s * 0.30, -Math.PI / 6, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (b.icon === "flask") {
+      ctx.beginPath();
+      ctx.moveTo(b.x - s * 0.25, b.y - s * 0.72);
+      ctx.lineTo(b.x + s * 0.25, b.y - s * 0.72);
+      ctx.moveTo(b.x - s * 0.20, b.y - s * 0.72);
+      ctx.lineTo(b.x - s * 0.20, b.y - s * 0.25);
+      ctx.lineTo(b.x - s * 0.72, b.y + s * 0.68);
+      ctx.lineTo(b.x + s * 0.72, b.y + s * 0.68);
+      ctx.lineTo(b.x + s * 0.20, b.y - s * 0.25);
+      ctx.lineTo(b.x + s * 0.20, b.y - s * 0.72);
+      ctx.stroke();
+    } else {
+      // compass
+      ctx.beginPath();
+      ctx.arc(b.x, b.y - s * 0.48, s * 0.18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y - s * 0.30);
+      ctx.lineTo(b.x - s * 0.48, b.y + s * 0.75);
+      ctx.moveTo(b.x, b.y - s * 0.30);
+      ctx.lineTo(b.x + s * 0.48, b.y + s * 0.75);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  // ── 3. CENTRAL OLYMPIA WIREFRAME POLYGONAL MOUNTAIN MASSIF (100% Centered Inside Wide Portal) ──
+  // Vertically calibrated for cyclorama Y_world in [-0.20m .. +8.30m]:
+  // Top portal beam sits around Y_world ≈ 6.2m (canvas Y ≈ 460px); landing plinth Y = 1.95m (canvas Y ≈ 1380px).
+  // Center summit peak placed at (mx, 540) so summit flag & glowing halo sit neatly framed below the portal crown!
+  const apexY = Math.round(h * 0.285); // ~527px -> Y_world ~5.88m
+  const baseY = Math.round(h * 0.86);  // ~1589px -> extends behind top landing plinth nicely
+
+  // Crisp cyan-azure halo corona behind the mountain peak (like reference photo!)
+  addRadialWash(mx, apexY + 80, 560, "rgba(56, 189, 248, 0.55)", "rgba(6, 37, 110, 0)");
+  addRadialWash(mx, apexY, 220, "rgba(224, 242, 254, 0.55)", "rgba(56, 189, 248, 0)");
+
+  // Low-poly mountain wireframe vertices covering central doorway vista (X in mx ± 640px)
+  const leftNodes: Array<[number, number]> = [
+    [mx, apexY],              // 0: Main peak
+    [mx - 74, apexY + 112],   // 1: Upper spine left
+    [mx - 155, apexY + 162],  // 2: Left ridge shoulder 1
+    [mx - 58, apexY + 250],   // 3: Upper canyon left
+    [mx - 190, apexY + 285],  // 4: Mid facet left
+    [mx - 310, apexY + 235],  // 5: Secondary left peak
+    [mx - 95, apexY + 395],   // 6: Canyon bend left
+    [mx - 245, apexY + 425],  // 7: Rib node
+    [mx - 390, apexY + 385],  // 8: Shoulder flank
+    [mx - 485, apexY + 465],  // 9: Outer slope
+    [mx - 115, apexY + 560],  // 10: Lower canyon left
+    [mx - 290, apexY + 580],  // 11: Lower ridge left
+    [mx - 455, apexY + 575],  // 12: Foothill rib
+    [mx - 585, apexY + 615],  // 13: Outer foothill peak
+    [mx - 135, apexY + 755],  // 14: Base canyon lip left
+    [mx - 340, apexY + 760],  // 15: Base rib left
+    [mx - 545, apexY + 765],  // 16: Base apron left
+    [mx - 165, baseY],        // 17: Floor canyon left
+    [mx - 405, baseY],        // 18: Floor mid left
+    [mx - 675, baseY],        // 19: Floor outer left
+  ];
+
   const rightNodes: Array<[number, number]> = leftNodes.map(([x, y], idx) => {
     if (idx === 0) return [mx, apexY];
     const dx = mx - x;
-    const jitterY = (idx % 4 - 1.5) * 4;
-    return [mx + dx, y + jitterY];
+    const jitter = idx >= 4 ? ((idx % 3) - 1) * 14 : 0;
+    return [mx + dx, y + jitter];
   });
 
-  // Triangular face indices for the left lattice
-  const triangleFaces: Array<[number, number, number, string, string]> = [
-    // Summit Pyramid (Apex Tier)
+  const faces: Array<[number, number, number, string, string]> = [
     [0, 1, 2, "#38bdf8", "#0284c7"],
-    [0, 2, 5, "#0284c7", "#0369a1"],
-    [1, 3, 2, "#7dd3fc", "#0284c7"],
-    [2, 3, 4, "#0ea5e9", "#0369a1"],
-    [2, 4, 5, "#0284c7", "#075985"],
-    [4, 7, 5, "#0369a1", "#075985"],
-    [5, 7, 8, "#0284c7", "#0c4a6e"],
-    [5, 8, 9, "#0369a1", "#082f49"],
-
-    // Tier 2 (Mid-Mountain Ribs)
-    [3, 6, 4, "#38bdf8", "#0284c7"],
-    [4, 6, 7, "#0ea5e9", "#0369a1"],
-    [7, 6, 11, "#0369a1", "#075985"],
-    [7, 11, 8, "#0284c7", "#075985"],
-    [8, 11, 12, "#0369a1", "#0c4a6e"],
-    [8, 12, 9, "#0284c7", "#082f49"],
-    [9, 12, 13, "#075985", "#082f49"],
-    [9, 13, 14, "#0369a1", "#051f38"],
-
-    // Tier 3 (Lower Slopes & Canyon Walls)
-    [6, 10, 11, "#38bdf8", "#0369a1"],
-    [11, 10, 16, "#0ea5e9", "#075985"],
-    [11, 16, 12, "#0369a1", "#075985"],
-    [12, 16, 17, "#0284c7", "#0c4a6e"],
-    [12, 17, 13, "#0369a1", "#082f49"],
-    [13, 17, 18, "#075985", "#082f49"],
-    [13, 18, 14, "#0284c7", "#051f38"],
-    [14, 18, 19, "#0369a1", "#041528"],
-
-    // Tier 4 (Foothill Apron)
-    [10, 15, 16, "#38bdf8", "#0284c7"],
-    [16, 15, 21, "#0ea5e9", "#0369a1"],
-    [16, 21, 17, "#0369a1", "#075985"],
-    [17, 21, 22, "#0284c7", "#075985"],
-    [17, 22, 18, "#0369a1", "#082f49"],
-    [18, 22, 23, "#075985", "#082f49"],
-    [18, 23, 19, "#0284c7", "#051f38"],
-    [19, 23, 24, "#0369a1", "#041528"],
-
-    // Tier 5 (Base to Floor)
-    [15, 20, 21, "#38bdf8", "#0369a1"],
-    [21, 20, 26, "#0ea5e9", "#075985"],
-    [21, 26, 22, "#0369a1", "#075985"],
-    [22, 26, 27, "#0284c7", "#082f49"],
-    [22, 27, 23, "#0369a1", "#082f49"],
-    [23, 27, 28, "#075985", "#051f38"],
-    [23, 28, 24, "#0284c7", "#051f38"],
-    [24, 28, 29, "#0369a1", "#031020"],
-    [20, 25, 26, "#0ea5e9", "#075985"],
+    [0, 1, 3, "#7dd3fc", "#0ea5e9"],
+    [1, 3, 4, "#0ea5e9", "#0369a1"],
+    [1, 2, 4, "#0284c7", "#0369a1"],
+    [2, 4, 5, "#38bdf8", "#0284c7"],
+    [4, 5, 8, "#0284c7", "#075985"],
+    [3, 4, 6, "#0ea5e9", "#0369a1"],
+    [4, 6, 7, "#0284c7", "#075985"],
+    [4, 7, 8, "#0369a1", "#0c4a6e"],
+    [5, 8, 9, "#0ea5e9", "#0369a1"],
+    [8, 9, 12, "#0284c7", "#075985"],
+    [6, 7, 10, "#38bdf8", "#0284c7"],
+    [7, 10, 11, "#0ea5e9", "#0369a1"],
+    [7, 8, 11, "#0284c7", "#075985"],
+    [8, 11, 12, "#0369a1", "#082f49"],
+    [9, 12, 13, "#0ea5e9", "#075985"],
+    [10, 11, 14, "#0ea5e9", "#0369a1"],
+    [11, 14, 15, "#0284c7", "#075985"],
+    [11, 12, 15, "#0369a1", "#082f49"],
+    [12, 15, 16, "#075985", "#041c3c"],
+    [12, 13, 16, "#0284c7", "#062552"],
+    [14, 15, 17, "#0284c7", "#062552"],
+    [15, 17, 18, "#0369a1", "#041c3c"],
+    [15, 16, 18, "#075985", "#03142e"],
+    [16, 18, 19, "#062552", "#020c22"],
   ];
 
-  // Helper to render triangular facet with multi-stop linear gradient & crystal stroke
-  const drawTriangle = (
+  const drawCrystalFacet = (
     p1: [number, number],
     p2: [number, number],
     p3: [number, number],
     c1: string,
     c2: string,
-    isRight = false
+    isRight: boolean
   ) => {
     ctx.save();
     ctx.beginPath();
@@ -266,455 +449,112 @@ export function paintOlympiaBackdropCanvas(
     const maxX = Math.max(p1[0], p2[0], p3[0]);
     const minY = Math.min(p1[1], p2[1], p3[1]);
     const maxY = Math.max(p1[1], p2[1], p3[1]);
-
-    const grad = ctx.createLinearGradient(
-      isRight ? maxX : minX,
-      minY,
-      isRight ? minX : maxX,
-      maxY
-    );
+    const grad = ctx.createLinearGradient(isRight ? maxX : minX, minY, isRight ? minX : maxX, maxY);
     grad.addColorStop(0, c1);
     grad.addColorStop(1, c2);
+    ctx.globalAlpha = 0.84;
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Subtle crystalline facet outline
-    ctx.strokeStyle = "rgba(186, 230, 253, 0.42)";
-    ctx.lineWidth = 1.4;
+    // Glowing cyan wireframe mesh lines (Signature look in reference photo)
+    ctx.globalAlpha = 1.0;
+    ctx.strokeStyle = "rgba(125, 211, 252, 0.62)";
+    ctx.lineWidth = 2.0;
     ctx.stroke();
     ctx.restore();
   };
 
-  // 1. Draw Left Facets
-  triangleFaces.forEach(([i1, i2, i3, c1, c2]) => {
-    drawTriangle(leftNodes[i1], leftNodes[i2], leftNodes[i3], c1, c2, false);
-  });
+  for (const [a, b, c, c1, c2] of faces) {
+    drawCrystalFacet(leftNodes[a], leftNodes[b], leftNodes[c], c1, c2, false);
+  }
+  for (const [a, b, c, c1, c2] of faces) {
+    const rightC1 = c1 === "#7dd3fc" ? "#38bdf8" : c1 === "#38bdf8" ? "#0ea5e9" : c1;
+    const rightC2 = c2 === "#0ea5e9" ? "#0284c7" : "#062b63";
+    drawCrystalFacet(rightNodes[a], rightNodes[b], rightNodes[c], rightC1, rightC2, true);
+  }
 
-  // 2. Draw Right Facets (Mirrored with adjusted shadow values)
-  triangleFaces.forEach(([i1, i2, i3, c1, c2]) => {
-    // Right flank receives rich cobalt chiaroscuro shading
-    const rightC1 = c1 === "#38bdf8" ? "#0ea5e9" : c1 === "#7dd3fc" ? "#38bdf8" : c1;
-    const rightC2 = c2 === "#0284c7" ? "#0369a1" : c2 === "#0369a1" ? "#075985" : c2;
-    drawTriangle(rightNodes[i1], rightNodes[i2], rightNodes[i3], rightC1, rightC2, true);
-  });
-
-  // 3. Highlighted Mountain Crest Ridges
+  // Luminous vertex nodes on wireframe lattice
   ctx.save();
-  ctx.strokeStyle = "rgba(224, 242, 254, 0.75)";
-  ctx.lineWidth = 2.2;
+  ctx.fillStyle = "#e0f2fe";
   ctx.shadowColor = "#38bdf8";
   ctx.shadowBlur = 10;
-  // Left shoulder crest
-  ctx.beginPath();
-  ctx.moveTo(mx, apexY);
-  ctx.lineTo(leftNodes[2][0], leftNodes[2][1]);
-  ctx.lineTo(leftNodes[5][0], leftNodes[5][1]);
-  ctx.lineTo(leftNodes[9][0], leftNodes[9][1]);
-  ctx.lineTo(leftNodes[14][0], leftNodes[14][1]);
-  ctx.lineTo(leftNodes[19][0], leftNodes[19][1]);
-  ctx.lineTo(leftNodes[24][0], leftNodes[24][1]);
-  ctx.stroke();
-
-  // Right shoulder crest
-  ctx.beginPath();
-  ctx.moveTo(mx, apexY);
-  ctx.lineTo(rightNodes[2][0], rightNodes[2][1]);
-  ctx.lineTo(rightNodes[5][0], rightNodes[5][1]);
-  ctx.lineTo(rightNodes[9][0], rightNodes[9][1]);
-  ctx.lineTo(rightNodes[14][0], rightNodes[14][1]);
-  ctx.lineTo(rightNodes[19][0], rightNodes[19][1]);
-  ctx.lineTo(rightNodes[24][0], rightNodes[24][1]);
-  ctx.stroke();
-  ctx.restore();
-
-  // 4. Glowing Crystalline Vertex Constellation Dots
-  ctx.save();
-  ctx.fillStyle = "#ffffff";
-  ctx.shadowColor = "#38bdf8";
-  ctx.shadowBlur = 8;
-  const majorIndices = [0, 1, 2, 5, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19];
-  majorIndices.forEach((idx) => {
+  for (let i = 0; i < leftNodes.length - 3; i++) {
     ctx.beginPath();
-    ctx.arc(leftNodes[idx][0], leftNodes[idx][1], 3.0, 0, Math.PI * 2);
+    ctx.arc(leftNodes[i][0], leftNodes[i][1], 3.4, 0, Math.PI * 2);
     ctx.fill();
-    if (idx !== 0) {
+    if (i > 0) {
       ctx.beginPath();
-      ctx.arc(rightNodes[idx][0], rightNodes[idx][1], 3.0, 0, Math.PI * 2);
+      ctx.arc(rightNodes[i][0], rightNodes[i][1], 3.4, 0, Math.PI * 2);
       ctx.fill();
     }
-  });
+  }
   ctx.restore();
 
-  // ── 5. ACCURATE LUMINOUS S-CURVE CANYON ROAD ("CON ĐƯỜNG VƯƠN TỚI ĐỈNH NÚI") ──
-  // Smoothly ascending S-curve canyon path tapering naturally from bottom to summit
+  // Graceful winding luminous path ascending the central mountain valley toward summit
   ctx.save();
-  const roadApexY = apexY + 45; // Summit arrival
-  const roadBaseHalfW = 165;
-  const roadApexHalfW = 14;
+  const roadTopY = apexY + 75;
+  const roadGrad = ctx.createLinearGradient(0, baseY, 0, roadTopY);
+  roadGrad.addColorStop(0.0, "rgba(14, 165, 233, 0.85)");
+  roadGrad.addColorStop(0.55, "rgba(56, 189, 248, 0.95)");
+  roadGrad.addColorStop(1.0, "rgba(224, 242, 254, 1.0)");
 
-  // Luminous Path Base Layer (Multi-stop smooth energy gradient)
-  const roadGrad = ctx.createLinearGradient(0, h, 0, roadApexY);
-  roadGrad.addColorStop(0.00, "rgba(2, 132, 199, 0.95)");
-  roadGrad.addColorStop(0.35, "rgba(14, 165, 233, 0.98)");
-  roadGrad.addColorStop(0.70, "rgba(56, 189, 248, 1.00)");
-  roadGrad.addColorStop(0.92, "rgba(224, 242, 254, 1.00)");
-  roadGrad.addColorStop(1.00, "rgba(254, 240, 138, 1.00)");
-
-  // Left & Right S-Curve Outer Boundary Curves
-  // Gentle S-curve: curves slightly right at mid-lower canyon, then left towards peak
   ctx.beginPath();
-  ctx.moveTo(mx - roadBaseHalfW, h);
-  ctx.bezierCurveTo(
-    mx - 140 + 35, 870,
-    mx - 80 - 25, 620,
-    mx - roadApexHalfW, roadApexY
-  );
-  ctx.lineTo(mx + roadApexHalfW, roadApexY);
-  ctx.bezierCurveTo(
-    mx + 80 - 25, 620,
-    mx + 140 + 35, 870,
-    mx + roadBaseHalfW, h
-  );
+  ctx.moveTo(mx - 155, baseY);
+  ctx.bezierCurveTo(mx - 125, baseY - 220, mx + 60, baseY - 460, mx - 18, roadTopY);
+  ctx.lineTo(mx + 18, roadTopY);
+  ctx.bezierCurveTo(mx + 110, baseY - 460, mx + 45, baseY - 220, mx + 155, baseY);
   ctx.closePath();
   ctx.fillStyle = roadGrad;
-  ctx.shadowColor = "#0284c7";
-  ctx.shadowBlur = 28;
+  ctx.shadowColor = "#38bdf8";
+  ctx.shadowBlur = 24;
   ctx.fill();
 
-  // Outer Glowing Neon Ribbons (Cyan `#38bdf8` & Gold `#fbbf24`)
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 4.5;
-  ctx.shadowColor = "#38bdf8";
-  ctx.shadowBlur = 18;
+  ctx.strokeStyle = "rgba(224, 242, 254, 0.92)";
+  ctx.lineWidth = 3.2;
   ctx.beginPath();
-  ctx.moveTo(mx - roadBaseHalfW, h);
-  ctx.bezierCurveTo(
-    mx - 140 + 35, 870,
-    mx - 80 - 25, 620,
-    mx - roadApexHalfW, roadApexY
-  );
+  ctx.moveTo(mx, baseY);
+  ctx.bezierCurveTo(mx - 40, baseY - 220, mx + 85, baseY - 460, mx, roadTopY);
   ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(mx + roadBaseHalfW, h);
-  ctx.bezierCurveTo(
-    mx + 80 - 25, 620,
-    mx + 140 + 35, 870,
-    mx + roadBaseHalfW, h
-  );
-  ctx.stroke();
-
-  // Inner Gold Neon Edge Trim
-  ctx.strokeStyle = "#fef08a";
-  ctx.lineWidth = 1.8;
-  ctx.shadowColor = "#fbbf24";
-  ctx.shadowBlur = 10;
-  ctx.beginPath();
-  ctx.moveTo(mx - roadBaseHalfW + 6, h);
-  ctx.bezierCurveTo(
-    mx - 140 + 35 + 5, 870,
-    mx - 80 - 25 + 3, 620,
-    mx - roadApexHalfW + 2, roadApexY
-  );
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(mx + roadBaseHalfW - 6, h);
-  ctx.bezierCurveTo(
-    mx + 80 - 25 - 5, 870,
-    mx + 140 + 35 - 3, 620,
-    mx + roadApexHalfW - 2, roadApexY
-  );
-  ctx.stroke();
-
-  // 10 Elegant Chevron Guide Markers & Subtle Energy Pulses along the Road
-  for (let s = 1; s <= 10; s++) {
-    const t = s / 11;
-    const pT = Math.pow(t, 1.30); // Perspective non-linear foreshortening
-    const ry = h - pT * (h - roadApexY);
-
-    // Compute center-X along the S-curve
-    // Bezier polynomial evaluation
-    const uT = 1 - pT;
-    const cx =
-      uT * uT * uT * mx +
-      3 * uT * uT * pT * (mx + 35) +
-      3 * uT * pT * pT * (mx - 25) +
-      pT * pT * pT * mx;
-
-    const curHalfW = roadBaseHalfW * (1 - pT) + roadApexHalfW * pT;
-
-    // Upward-pointing subtle Chevron guide mark
-    ctx.strokeStyle = `rgba(254, 240, 138, ${0.45 + pT * 0.45})`;
-    ctx.lineWidth = 2.5 + pT * 1.5;
-    ctx.shadowColor = "#fbbf24";
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.moveTo(cx - curHalfW * 0.72, ry + 6);
-    ctx.lineTo(cx, ry - 4);
-    ctx.lineTo(cx + curHalfW * 0.72, ry + 6);
-    ctx.stroke();
-
-    // Side milestone beacon dots
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(cx - curHalfW + 8, ry, 2.5, 0, Math.PI * 2);
-    ctx.arc(cx + curHalfW - 8, ry, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
   ctx.restore();
 
-  // ── 6. SUMMIT CORONA, 8-POINTED GOLDEN STAR & SINGLE CLEAN PENNANT FLAG ──
+  // Clean sunlit summit beacon & waving pennant flag on exact mountain peak
   ctx.save();
   ctx.translate(mx, apexY);
-  ctx.shadowColor = "#f59e0b";
-  ctx.shadowBlur = 32;
+  ctx.shadowColor = "#7dd3fc";
+  ctx.shadowBlur = 22;
 
-  // Golden 8-Pointed Broadcast Star
+  ctx.strokeStyle = "#e0f2fe";
+  ctx.lineWidth = 3.5;
   ctx.beginPath();
-  for (let i = 0; i < 16; i++) {
-    const r = i % 2 === 0 ? 46 : 20;
-    const angle = (i * Math.PI) / 8 - Math.PI / 2;
-    const px = Math.cos(angle) * r;
-    const py = Math.sin(angle) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
+  ctx.moveTo(0, 6);
+  ctx.lineTo(0, -76);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, -76);
+  ctx.lineTo(66, -58);
+  ctx.lineTo(0, -40);
   ctx.closePath();
   ctx.fillStyle = "#ffffff";
   ctx.fill();
-  ctx.strokeStyle = "#fbbf24";
-  ctx.lineWidth = 3.8;
+  ctx.strokeStyle = "#7dd3fc";
+  ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Single Clean Olympic Flagpole and Pennant Flag at Summit
-  // Slender Golden Flagpole extending upward
-  ctx.strokeStyle = "#fbbf24";
-  ctx.lineWidth = 3.6;
+  // Peak star glint
+  ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.moveTo(0, -28);
-  ctx.lineTo(0, -82);
-  ctx.stroke();
-
-  // Brass finial ball on top of flagpole
-  ctx.fillStyle = "#fef08a";
-  ctx.beginPath();
-  ctx.arc(0, -84, 5.5, 0, Math.PI * 2);
+  ctx.arc(0, 0, 9, 0, Math.PI * 2);
   ctx.fill();
-
-  // Clean White/Cyan Pennant Flag flying dynamically to the right
-  ctx.beginPath();
-  ctx.moveTo(0, -82);
-  ctx.lineTo(58, -69);
-  ctx.lineTo(0, -56);
-  ctx.closePath();
-  ctx.fillStyle = "rgba(240, 249, 255, 0.96)";
-  ctx.shadowColor = "#38bdf8";
-  ctx.shadowBlur = 16;
-  ctx.fill();
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 2.0;
-  ctx.stroke();
   ctx.restore();
 
-  // ── 7. 12 COMPREHENSIVE TECH & KNOWLEDGE ICONS (UNOBSTRUCTED 3D SAFE ZONES) ──
-  // Calibrated outside the projection footprints of Quizorra Sign (X=1220..1650, Y=310..660)
-  // and Olympia Medallion (X=2440..2870, Y=310..660) to avoid any clipping!
-  const badges = [
-    // Left Wing (Technology & Natural Sciences)
-    { x: 240, y: 290, title: "AI & CHIP", type: "chip" },
-    { x: 640, y: 210, title: "MẠNG NƠ-RON", type: "neural" },
-    { x: 480, y: 510, title: "LẬP TRÌNH", type: "code" },
-    { x: 960, y: 320, title: "VẬT LÝ HẠT", type: "atom" },
-    { x: 860, y: 620, title: "HÓA HỌC", type: "chem" },
-    { x: 1380, y: 200, title: "SINH HỌC", type: "dna" }, // Elevated above Quizorra Sign!
-
-    // Right Wing (Mathematics, Space, Engineering & Humanities)
-    { x: 2716, y: 200, title: "TOÁN HỌC", type: "math" }, // Elevated above Olympia Medallion!
-    { x: 3136, y: 320, title: "THIÊN VĂN", type: "space" },
-    { x: 3456, y: 210, title: "DỮ LIỆU SỐ", type: "data" },
-    { x: 3616, y: 510, title: "CƠ KHÍ & ROBOT", type: "gear" },
-    { x: 3236, y: 620, title: "TRI THỨC", type: "book" },
-    { x: 3856, y: 290, title: "ĐỈNH CAO", type: "torch" },
-  ];
-
-  // Interconnecting Constellation Mesh Lines
-  ctx.save();
-  ctx.strokeStyle = "rgba(56, 189, 248, 0.38)";
-  ctx.lineWidth = 1.8;
-  const leftLinks = [[0, 1], [1, 2], [2, 4], [1, 3], [3, 4], [3, 5]];
-  leftLinks.forEach(([a, b]) => {
-    ctx.beginPath();
-    ctx.moveTo(badges[a].x, badges[a].y);
-    ctx.lineTo(badges[b].x, badges[b].y);
-    ctx.stroke();
-  });
-
-  const rightLinks = [[6, 7], [7, 8], [7, 10], [8, 9], [9, 11], [10, 9]];
-  rightLinks.forEach(([a, b]) => {
-    ctx.beginPath();
-    ctx.moveTo(badges[a].x, badges[a].y);
-    ctx.lineTo(badges[b].x, badges[b].y);
-    ctx.stroke();
-  });
-  ctx.restore();
-
-  // Render Each Badge Node
-  badges.forEach((b) => {
-    ctx.save();
-    // Outer Neon Glow Ring
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.88)";
-    ctx.lineWidth = 3.0;
-    ctx.shadowColor = "#38bdf8";
-    ctx.shadowBlur = 18;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 48, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Dashed Outer Orbital Ring
-    ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = "rgba(125, 211, 252, 0.45)";
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 56, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Inner Warm Gold Accent Ring
-    ctx.strokeStyle = "rgba(251, 191, 36, 0.75)";
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 40, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Dark Translucent Core Plate
-    ctx.fillStyle = "rgba(3, 14, 44, 0.88)";
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 39, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Crisp White/Cyan Subject Graphic
-    ctx.strokeStyle = "#ffffff";
-    ctx.fillStyle = "#ffffff";
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.shadowColor = "#38bdf8";
-    ctx.shadowBlur = 10;
-
-    if (b.type === "chip") {
-      // AI Processor Chip with Circuit Pins
-      ctx.strokeRect(b.x - 13, b.y - 13, 26, 26);
-      ctx.fillRect(b.x - 6, b.y - 6, 12, 12);
-      for (let p = -9; p <= 9; p += 9) {
-        ctx.beginPath(); ctx.moveTo(b.x + p, b.y - 13); ctx.lineTo(b.x + p, b.y - 18); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(b.x + p, b.y + 13); ctx.lineTo(b.x + p, b.y + 18); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(b.x - 13, b.y + p); ctx.lineTo(b.x - 18, b.y + p); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(b.x + 13, b.y + p); ctx.lineTo(b.x + 18, b.y + p); ctx.stroke();
-      }
-    } else if (b.type === "code") {
-      // Code Brackets < / >
-      ctx.beginPath();
-      ctx.moveTo(b.x - 9, b.y - 11); ctx.lineTo(b.x - 18, b.y); ctx.lineTo(b.x - 9, b.y + 11);
-      ctx.moveTo(b.x - 2, b.y + 13); ctx.lineTo(b.x + 3, b.y - 13);
-      ctx.moveTo(b.x + 9, b.y - 11); ctx.lineTo(b.x + 18, b.y); ctx.lineTo(b.x + 9, b.y + 11);
-      ctx.stroke();
-    } else if (b.type === "neural") {
-      // Synaptic Neural Network
-      const nodes = [[-12, -9], [-12, 9], [0, -13], [0, 13], [13, 0]];
-      nodes.forEach(([nx, ny]) => {
-        ctx.beginPath(); ctx.arc(b.x + nx, b.y + ny, 3.2, 0, Math.PI * 2); ctx.fill();
-      });
-      ctx.beginPath();
-      ctx.moveTo(b.x - 12, b.y - 9); ctx.lineTo(b.x, b.y - 13); ctx.lineTo(b.x + 13, b.y);
-      ctx.moveTo(b.x - 12, b.y + 9); ctx.lineTo(b.x, b.y + 13); ctx.lineTo(b.x + 13, b.y);
-      ctx.moveTo(b.x, b.y - 13); ctx.lineTo(b.x, b.y + 13);
-      ctx.stroke();
-    } else if (b.type === "atom") {
-      // Bohr Atom & Quantum Orbits
-      ctx.beginPath(); ctx.arc(b.x, b.y, 4.0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(b.x, b.y, 22, 8, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(b.x, b.y, 22, 8, Math.PI / 3, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(b.x, b.y, 22, 8, -Math.PI / 3, 0, Math.PI * 2); ctx.stroke();
-    } else if (b.type === "chem") {
-      // Laboratory Reaction Flask
-      ctx.beginPath();
-      ctx.moveTo(b.x - 5, b.y - 15); ctx.lineTo(b.x + 5, b.y - 15);
-      ctx.moveTo(b.x - 4, b.y - 15); ctx.lineTo(b.x - 4, b.y - 5);
-      ctx.lineTo(b.x - 15, b.y + 13); ctx.lineTo(b.x + 15, b.y + 13);
-      ctx.lineTo(b.x + 4, b.y - 5); ctx.lineTo(b.x + 4, b.y - 15);
-      ctx.stroke();
-      ctx.beginPath(); ctx.arc(b.x - 3, b.y + 7, 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(b.x + 4, b.y + 3, 1.8, 0, Math.PI * 2); ctx.fill();
-    } else if (b.type === "dna") {
-      // DNA Double Helix Ladder
-      ctx.beginPath();
-      for (let d = -14; d <= 14; d += 4) {
-        const dy = d;
-        const dx = Math.sin(d * 0.32) * 11;
-        ctx.arc(b.x + dx, b.y + dy, 1.8, 0, Math.PI * 2);
-        ctx.arc(b.x - dx, b.y + dy, 1.8, 0, Math.PI * 2);
-        ctx.moveTo(b.x - dx, b.y + dy); ctx.lineTo(b.x + dx, b.y + dy);
-      }
-      ctx.stroke();
-    } else if (b.type === "math") {
-      // Infinity & Golden Ratio Loop
-      ctx.beginPath();
-      ctx.arc(b.x - 8, b.y, 6.5, 0.4 * Math.PI, 1.6 * Math.PI);
-      ctx.bezierCurveTo(b.x - 2, b.y - 7, b.x + 2, b.y + 7, b.x + 8, b.y + 6.5);
-      ctx.arc(b.x + 8, b.y, 6.5, 0.4 * Math.PI, -0.4 * Math.PI, true);
-      ctx.bezierCurveTo(b.x + 2, b.y - 7, b.x - 2, b.y + 7, b.x - 8, b.y + 6.5);
-      ctx.stroke();
-    } else if (b.type === "space") {
-      // Saturn Planet with Ring
-      ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(b.x, b.y, 22, 6.5, -Math.PI / 6, 0, Math.PI * 2); ctx.stroke();
-    } else if (b.type === "gear") {
-      // Mechanical Precision Gears
-      ctx.beginPath(); ctx.arc(b.x - 6, b.y - 4, 7.5, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(b.x - 6, b.y - 4, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(b.x + 7, b.y + 5, 6.5, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(b.x + 7, b.y + 5, 2.2, 0, Math.PI * 2); ctx.fill();
-    } else if (b.type === "data") {
-      // Digital Data Analytics
-      ctx.fillRect(b.x - 13, b.y + 2, 5.5, 11);
-      ctx.fillRect(b.x - 5, b.y - 5, 5.5, 18);
-      ctx.fillRect(b.x + 3, b.y - 13, 5.5, 26);
-      ctx.beginPath();
-      ctx.moveTo(b.x - 13, b.y); ctx.lineTo(b.x - 2, b.y - 7); ctx.lineTo(b.x + 7, b.y - 15);
-      ctx.stroke();
-    } else if (b.type === "book") {
-      // Open Book of Humanities & Wisdom
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y + 11);
-      ctx.bezierCurveTo(b.x - 7, b.y + 7, b.x - 14, b.y + 9, b.x - 16, b.y - 7);
-      ctx.bezierCurveTo(b.x - 10, b.y - 9, b.x - 5, b.y - 7, b.x, b.y - 5);
-      ctx.bezierCurveTo(b.x + 5, b.y - 7, b.x + 10, b.y - 9, b.x + 16, b.y - 7);
-      ctx.bezierCurveTo(b.x + 14, b.y + 9, b.x + 7, b.y + 7, b.x, b.y + 11);
-      ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.x, b.y - 5); ctx.lineTo(b.x, b.y + 11); ctx.stroke();
-    } else if (b.type === "torch") {
-      // Olympia Torch & Victory Flame
-      ctx.beginPath();
-      ctx.moveTo(b.x - 3.5, b.y + 13); ctx.lineTo(b.x - 6, b.y - 2); ctx.lineTo(b.x + 6, b.y - 2); ctx.lineTo(b.x + 3.5, b.y + 13);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(b.x - 5, b.y - 3);
-      ctx.bezierCurveTo(b.x - 9, b.y - 11, b.x - 2, b.y - 17, b.x, b.y - 20);
-      ctx.bezierCurveTo(b.x + 3.5, b.y - 15, b.x + 9, b.y - 11, b.x + 5, b.y - 3);
-      ctx.closePath();
-      ctx.fillStyle = "#fbbf24";
-      ctx.fill();
-    }
-
-    // Badge Title Below
-    ctx.font = "bold 12px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#bae6fd";
-    ctx.fillText(b.title, b.x, b.y + 72);
-    ctx.restore();
-  });
+  // Atmospheric cool cyan mist veil across lower base so mountain merges smoothly behind stairs
+  const mistGrad = ctx.createLinearGradient(0, h * 0.68, 0, h);
+  mistGrad.addColorStop(0, "rgba(6, 37, 110, 0)");
+  mistGrad.addColorStop(0.65, "rgba(4, 24, 72, 0.55)");
+  mistGrad.addColorStop(1, "rgba(2, 13, 46, 0.95)");
+  ctx.fillStyle = mistGrad;
+  ctx.fillRect(0, h * 0.68, w, h * 0.32);
 
   return canvas;
 }

@@ -4340,6 +4340,136 @@ test("R2: emitTtsStop fires on explicit interrupts (kd:skip/finishTurn/selectSeg
   assert.ok(g.state.ttsCommand!.seq > seqAfterNextSeg);
 });
 
+test("O22 End-to-End Audio Lifecycle: show_intro, lobby hot-switch, entrance, all rounds, & disk asset parity", () => {
+  const o22AudioRoot = path.resolve(process.cwd(), "public/olympia-audio/O22");
+  const assertO22Asset = (sound?: string) => {
+    assert.ok(sound, "Expected non-empty cue sound");
+    if (sound === "__pause_bgm__" || sound === "__resume_bgm__") return;
+    const mp3Path = path.join(o22AudioRoot, `${sound}.mp3`);
+    assert.ok(fs.existsSync(mp3Path), `Missing O22 audio file on disk: ${mp3Path}`);
+    assert.ok(fs.statSync(mp3Path).size > 2000, `O22 audio asset is empty/corrupt: ${mp3Path}`);
+  };
+
+  // 1. Hot-switch in lobby from O26 -> O22 must re-cue O22 show_intro
+  const gLobby = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich", "cauHoiPhu"], 4, { seatCount: 4 });
+  gLobby.joinSeat("A", "ka");
+  gLobby.joinSeat("B", "kb");
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/show_intro");
+  const initialCueId = gLobby.state.cue!.id;
+  act(gLobby, "system:setRuleset", { rulesetId: "O22" }, 500);
+  assert.equal(gLobby.state.rulesetId, "O22");
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/show_intro");
+  assert.notEqual(gLobby.state.cue?.id, initialCueId, "Hot-switching lobby ruleset to O22 must emit fresh show_intro cue");
+  assertO22Asset(gLobby.state.cue?.sound);
+
+  // 2. Opening & Chào sân (game:start -> contest_intro -> entrance:start -> contestant_intro -> skip)
+  act(gLobby, "game:start", {}, 1000);
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/contest_intro");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "entrance:start", {}, 1500);
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/contestant_intro");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "entrance:skip", {}, 2000);
+
+  // 3. Khởi Động O22 (ready -> open_question -> 30s -> pause_bgm -> kd:next resume_bgm -> bell -> correct -> finish_turn)
+  act(gLobby, "round:force", { round: "khoiDong" }, 2500);
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/section_intro");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "banner:skip", {}, 3000);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/start_round");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "kd:start", {}, 3500);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/ready");
+  assertO22Asset(gLobby.state.cue?.sound);
+  gLobby.tick(7100);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/open_question");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "kd:next", {}, 7500);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/30s");
+  assertO22Asset(gLobby.state.cue?.sound);
+  // Pause timer -> pause_bgm; resume timer -> resume_bgm; kd:next on Q2+ must NOT restart 30s from 0:00
+  act(gLobby, "kd:timer", {}, 9000);
+  assert.equal(gLobby.state.cue?.kind, "pause_bgm" as any);
+  act(gLobby, "kd:timer", {}, 9500);
+  assert.equal(gLobby.state.cue?.kind, "resume_bgm" as any);
+  act(gLobby, "kd:next", {}, 10000);
+  assert.notEqual(gLobby.state.cue?.sound, "1_KhoiDong/30s");
+  assert.equal(gLobby.playerBuzz(0, 12000).ok, true);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/bell_ring");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "kd:correct", {}, 12500);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/correct");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "kd:finishTurn", {}, 13000);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/finish_turn");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "kd:selectSegment", { segIdx: 1 }, 13500);
+  act(gLobby, "kd:start", {}, 14000);
+  gLobby.tick(17600);
+  act(gLobby, "kd:next", {}, 18000);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/60s");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "kd:finishTurn", {}, 18500);
+  act(gLobby, "kd:selectSegment", { segIdx: 2 }, 19000);
+  act(gLobby, "kd:start", {}, 19500);
+  gLobby.tick(23100);
+  act(gLobby, "kd:next", {}, 23500);
+  assert.equal(gLobby.state.cue?.sound, "1_KhoiDong/90s");
+  assertO22Asset(gLobby.state.cue?.sound);
+
+  // 4. VCNV, Tăng Tốc, Về Đích (40đ Q1 -> 30s_tick), Câu hỏi phụ, Tổng kết, Trao giải
+  act(gLobby, "round:force", { round: "vcnv" }, 24000);
+  act(gLobby, "banner:skip", {}, 24500);
+  assertO22Asset(gLobby.state.cue?.sound); // 2_VuotChuongNgaiVat/start_round
+  act(gLobby, "vcnv:selectRow", { row: 0 }, 25000);
+  assertO22Asset(gLobby.state.cue?.sound); // choose_row
+  act(gLobby, "vcnv:openQuestion", {}, 25500);
+  assertO22Asset(gLobby.state.cue?.sound); // open_question
+  act(gLobby, "vcnv:timer", {}, 26000);
+  assertO22Asset(gLobby.state.cue?.sound); // 15s_tick
+
+  act(gLobby, "round:force", { round: "tangToc" }, 27000);
+  act(gLobby, "banner:skip", {}, 27500);
+  assertO22Asset(gLobby.state.cue?.sound); // 3_TangToc/start_round
+  act(gLobby, "tt:next", {}, 28000);
+  act(gLobby, "tt:show", {}, 28500);
+  assertO22Asset(gLobby.state.cue?.sound); // show_question
+  act(gLobby, "tt:timer", {}, 29000);
+  assert.equal(gLobby.state.cue?.sound, "3_TangToc/tick_10s");
+  assertO22Asset(gLobby.state.cue?.sound);
+
+  act(gLobby, "round:force", { round: "veDich" }, 30000);
+  act(gLobby, "banner:skip", {}, 30500);
+  assertO22Asset(gLobby.state.cue?.sound); // 4_VeDich/start_round
+  act(gLobby, "vd:onStage", {}, 31000);
+  assertO22Asset(gLobby.state.cue?.sound); // 4_VeDich/on_stage
+  act(gLobby, "vd:confirmPackage", { points: [20, 40] }, 31500);
+  assertO22Asset(gLobby.state.cue?.sound); // 4_VeDich/open_question
+  act(gLobby, "vd:startQuestion", {}, 32000);
+  act(gLobby, "vd:correct", {}, 32200);
+  act(gLobby, "vd:startQuestion", {}, 32500);
+  act(gLobby, "vd:timer", {}, 33000);
+  assert.equal(gLobby.state.cue?.sound, "4_VeDich/30s_tick");
+  assertO22Asset(gLobby.state.cue?.sound);
+
+  act(gLobby, "game:end", {}, 34000);
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/ending_music");
+  assertO22Asset(gLobby.state.cue?.sound);
+  act(gLobby, "summary:start", {}, 34500);
+  act(gLobby, "awards:start", {}, 35000);
+  assert.equal(gLobby.state.cue?.sound, "6_NhacKhac/prize_award");
+  assertO22Asset(gLobby.state.cue?.sound);
+
+  // 5. Verify hooks & sandbox structural contracts for O22 audio reliability
+  const hooksSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/hooks.ts"), "utf-8");
+  assert.ok(hooksSrc.includes('if (activePan === "both" && !pannerGraphMap.current.has(a))'), "Default 'both' channel must keep native audio unlocked before AudioContext resume");
+  assert.ok(hooksSrc.includes("const allowO26Fallback = season === \"O26\";"), "Fast cue path must never substitute O26 RAM cache for O22 sounds");
+  assert.ok(hooksSrc.includes("isSameLobbyIntroDifferentSeason"), "Hooks must replay show_intro when real socket season differs from cached sessionStorage");
+
+  const sandboxSrc = fs.readFileSync(path.resolve(process.cwd(), "src/app/admin/sandbox/page.tsx"), "utf-8");
+  assert.ok(sandboxSrc.includes("initialDisplayRulesetForCode"), "Sandbox Display iframe URL must stay stable across system:setRuleset hot-switches");
+});
+
 // Import Smart TTS test suite
 import "./tts.test";
 

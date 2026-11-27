@@ -6963,9 +6963,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const sandboxAudioUnlockedRef = useRef<boolean>(false);
   const lastUnlockForwardAtRef = useRef<number>(0);
 
-  const forwardUnlock = useCallback(() => {
+  const forwardUnlock = useCallback((forceOrEvent?: boolean | unknown) => {
+    const force = forceOrEvent === true;
     const nowPerf = typeof performance !== "undefined" ? performance.now() : Date.now();
-    if (sandboxAudioUnlockedRef.current && nowPerf - lastUnlockForwardAtRef.current < 400) {
+    if (!force && sandboxAudioUnlockedRef.current && nowPerf - lastUnlockForwardAtRef.current < 400) {
       return;
     }
     lastUnlockForwardAtRef.current = nowPerf;
@@ -6982,6 +6983,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       }
     } catch {}
   }, []);
+
+  const initialDisplayRulesetForCode = useMemo(() => olympiaRulesetId, [code]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -12356,10 +12359,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 <ScaledDisplayFrame
                   key={code}
                   iframeRef={displayIframeRef}
-                  src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1&ruleset=${olympiaRulesetId}&season=${RULESETS[olympiaRulesetId as RulesetId]?.audioSeason || "O26"}`}
+                  src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1&ruleset=${initialDisplayRulesetForCode}&season=${RULESETS[initialDisplayRulesetForCode as RulesetId]?.audioSeason || "O26"}`}
                   title="Display Viewport"
                   allow="autoplay *; fullscreen *; camera; microphone; display-capture"
-                  onLoad={forwardUnlock}
+                  onLoad={() => forwardUnlock(true)}
                 />
               </div>
             </div>

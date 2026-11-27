@@ -161,6 +161,11 @@ const GROUPS_O22: SoundGroup[] = [
       { id: "4_VeDich/10s_tick", name: "Nhạc nền suy nghĩ 10s (câu 10đ)" },
       { id: "4_VeDich/15s_tick", name: "Nhạc nền suy nghĩ 15s (câu 20đ)" },
       { id: "4_VeDich/20s_tick", name: "Nhạc nền suy nghĩ 20s (câu 30đ)" },
+      { id: "4_VeDich/30s_tick", name: "Nhạc nền suy nghĩ 30s (câu 40đ)" },
+      { id: "4_VeDich/20s_practice", name: "Nhạc nền thực hành 20s" },
+      { id: "4_VeDich/30s_practice", name: "Nhạc nền thực hành 30s" },
+      { id: "4_VeDich/40s_practice", name: "Nhạc nền thực hành 40s" },
+      { id: "4_VeDich/60s_practice", name: "Nhạc nền thực hành 60s" },
       { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
       { id: "4_VeDich/host_steal_call", name: "📢 Thoại: Mời các bạn còn lại" },
       { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
@@ -210,6 +215,11 @@ const GROUPS_O13_21: SoundGroup[] = [
       { id: "4_VeDich/10s_tick", name: "Nhạc nền suy nghĩ 10s (câu 10đ)" },
       { id: "4_VeDich/15s_tick", name: "Nhạc nền suy nghĩ 15s (câu 20đ)" },
       { id: "4_VeDich/20s_tick", name: "Nhạc nền suy nghĩ 20s (câu 30đ)" },
+      { id: "4_VeDich/30s_tick", name: "Nhạc nền suy nghĩ 30s (câu 40đ)" },
+      { id: "4_VeDich/20s_practice", name: "Nhạc nền thực hành 20s" },
+      { id: "4_VeDich/30s_practice", name: "Nhạc nền thực hành 30s" },
+      { id: "4_VeDich/40s_practice", name: "Nhạc nền thực hành 40s" },
+      { id: "4_VeDich/60s_practice", name: "Nhạc nền thực hành 60s" },
       { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
       { id: "4_VeDich/host_steal_call", name: "📢 Thoại: Mời các bạn còn lại" },
       { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
@@ -247,6 +257,14 @@ export default function OlympiaAudioManagerDrawer({
     if (audioSeason === "O13-21" || (audioSeason as string) === "O13-15" || (audioSeason as string) === "O16-21") return "O13-21";
     return "O26";
   });
+
+  useEffect(() => {
+    if (!open) return;
+    if (audioSeason === "O24-25") setActiveTab("O24-25");
+    else if (audioSeason === "O22" || audioSeason === "O23") setActiveTab("O22");
+    else if (audioSeason === "O13-21" || (audioSeason as string) === "O13-15" || (audioSeason as string) === "O16-21") setActiveTab("O13-21");
+    else setActiveTab("O26");
+  }, [open, audioSeason]);
 
   const [channel, setChannel] = useState<"both" | "left" | "right">(() => {
     if (typeof window !== "undefined") {
@@ -294,6 +312,7 @@ export default function OlympiaAudioManagerDrawer({
   // Uses persistent WebAudio graph with smooth 15ms gain ramps to switch channels mid-playback with ZERO interruption
   const connectPanner = useCallback(
     (a: HTMLAudioElement, ch: "both" | "left" | "right") => {
+      if (ch === "both" && !pannerGraphMap.current.has(a)) return;
       const ctx = getAudioContext();
       if (!ctx) return;
       try {

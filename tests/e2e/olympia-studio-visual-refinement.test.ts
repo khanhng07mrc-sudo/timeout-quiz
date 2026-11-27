@@ -726,18 +726,34 @@ test("R10.3: Podiums mounts CenterMcDesk and MC presenters coaxially with Hexago
   );
 });
 
-test("R10.3b: Extra Side Doors Removed cleanly while Waiting Figures stay concealed (t >= -0.05) & Wing Ceiling Spotlights remain active", () => {
+test("R10.3b: Continuous Contestant Visibility, Redesigned Wide Portal & Rebuilt Undistorted 2.22:1 Backdrop", () => {
+  const backdropArtworkContent = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/studio/backdropArtwork.ts"),
+    "utf-8"
+  );
   assert.ok(
-    podiumsContent.includes("2.35 + queueSpreadX") && podiumsContent.includes("12.90 + queueIdx * 0.42"),
-    "Contestants waiting pre-entrance must remain positioned in deep Left/Right wings (|X| >= 2.35m, Z >= 12.90m)"
+    podiumsContent.includes("2.95 + queueSpreadX") && podiumsContent.includes("12.95 + queueIdx * 0.42"),
+    "Contestants waiting pre-entrance must stand clearly on illuminated Left/Right wing waiting bays (|X| >= 2.95m, Z >= 12.95m)"
   );
   assert.ok(
     !studioLightingContent.includes("[2.69, 2.97, 3.66]") && !studioLightingContent.includes("[-2.84, 2.97, 3.66]"),
-    "Extra black wing doors beside portal edges must be completely removed"
+    "Extra black wing doors beside portal edges must stay completely removed"
   );
   assert.ok(
-    podiumsContent.includes("root.visible = t >= -0.05;"),
-    "Pre-entrance waiting figures must stay hidden before stepping out at t >= -0.05"
+    !podiumsContent.includes("root.visible = t >= -0.05;") && podiumsContent.includes("root.visible = true;"),
+    "Contestant figures must remain continuously root.visible = true across ALL phases without popping/hiding"
+  );
+  assert.ok(
+    studioLightingContent.includes("createCircularArcShape(-1.45, 3.75, 3.55, 3.81, -31.0, 42.0, 1.95") &&
+    studioLightingContent.includes("<group position={[4.65, 3.45, 3.75]}") &&
+    studioLightingContent.includes("<group position={[-4.65, 3.45, 3.75]}>"),
+    "Portal arches must feature wide central opening (~4.20m belly / ~3.18m floor) with Quizorra & Olympia flanking clear at ±4.65m"
+  );
+  assert.ok(
+    !studioLightingContent.includes("olympia_vtv3_backdrop_ai.jpg") &&
+    studioLightingContent.includes("paintOlympiaBackdropCanvas(canvas, { width: 4096, height: 1848 })") &&
+    backdropArtworkContent.includes("options.height || 1848"),
+    "Cyclorama backdrop must rebuild natively at 4096x1848 (~2.22:1 undistorted aspect) without legacy stretched AI JPG"
   );
   assert.ok(
     studioLightingContent.includes("wing-ceiling-light-") && studioLightingContent.includes("Math.max(0.85, liveFactor)"),

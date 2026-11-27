@@ -537,7 +537,35 @@ export function getPrewarmBuzzerUrls(season: string = "O26"): string[] {
     `/olympia-audio/${effectiveSeason}/3_TangToc/tick_20s.mp3`,
     `/olympia-audio/${effectiveSeason}/3_TangToc/tick_30s.mp3`,
   ];
-  if (effectiveSeason !== "O26") {
+  if (effectiveSeason === "O22") {
+    rawList.push(
+      `/olympia-audio/O22/6_NhacKhac/contestant_intro.mp3`,
+      `/olympia-audio/O22/6_NhacKhac/section_intro.mp3`,
+      `/olympia-audio/O22/1_KhoiDong/start_round.mp3`,
+      `/olympia-audio/O22/1_KhoiDong/ready.mp3`,
+      `/olympia-audio/O22/1_KhoiDong/30s.mp3`,
+      `/olympia-audio/O22/1_KhoiDong/60s.mp3`,
+      `/olympia-audio/O22/1_KhoiDong/90s.mp3`,
+      `/olympia-audio/O22/1_KhoiDong/finish_turn.mp3`,
+      `/olympia-audio/O22/2_VuotChuongNgaiVat/start_round.mp3`,
+      `/olympia-audio/O22/2_VuotChuongNgaiVat/15s_tick.mp3`,
+      `/olympia-audio/O22/3_TangToc/start_round.mp3`,
+      `/olympia-audio/O22/3_TangToc/tick_10s.mp3`,
+      `/olympia-audio/O22/3_TangToc/tick_20s.mp3`,
+      `/olympia-audio/O22/3_TangToc/tick_30s.mp3`,
+      `/olympia-audio/O22/3_TangToc/tick_40s.mp3`,
+      `/olympia-audio/O22/4_VeDich/start_round.mp3`,
+      `/olympia-audio/O22/4_VeDich/on_stage.mp3`,
+      `/olympia-audio/O22/4_VeDich/choose_package.mp3`,
+      `/olympia-audio/O22/4_VeDich/15s_tick.mp3`,
+      `/olympia-audio/O22/4_VeDich/20s_tick.mp3`,
+      `/olympia-audio/O22/4_VeDich/30s_tick.mp3`,
+      `/olympia-audio/O22/4_VeDich/5s_steal.mp3`,
+      `/olympia-audio/O22/5_CauHoiPhu/15s_tick.mp3`,
+      `/olympia-audio/O22/6_NhacKhac/summary.mp3`,
+      `/olympia-audio/O22/6_NhacKhac/prize_award.mp3`
+    );
+  } else if (effectiveSeason !== "O26") {
     rawList.push(
       `/olympia-audio/${effectiveSeason}/3_TangToc/tick_10s.mp3`,
       `/olympia-audio/${effectiveSeason}/3_TangToc/tick_40s.mp3`
@@ -720,6 +748,7 @@ export function useOlympiaAudio(
     "O26";
 
   const lastCue = useRef<number | null>(null);
+  const lastSeasonRef = useRef<string | null>(null);
   const hasPlayedIntroLobbyRef = useRef(false);
   const pendingShowIntroRef = useRef(false); // set when show_intro fired before audioSeason arrived
   const bgm = useRef<HTMLAudioElement | null>(null);
@@ -797,33 +826,44 @@ export function useOlympiaAudio(
     }
   }, []);
 
-  const fadeOutAndStopBgm = useCallback(
-    (durationMs: number = 1200) => {
-      const toFade = Array.from(activeBgmSet.current);
-      if (bgm.current && !toFade.includes(bgm.current)) toFade.push(bgm.current);
-      if (toFade.length === 0) return;
+  const fadeOutAndStopBgm = useCallback((durationMs: number = 1200) => {
+    const toFade = Array.from(activeBgmSet.current);
+    if (bgm.current && !toFade.includes(bgm.current)) toFade.push(bgm.current);
+    if (toFade.length === 0) return;
 
-      const steps = 20;
-      const stepMs = Math.max(15, Math.floor(durationMs / steps));
-      let step = 0;
-      const timer = setInterval(() => {
-        step++;
-        const factor = Math.max(0, 1 - step / steps);
+    const steps = 20;
+    const stepMs = Math.max(15, Math.floor(durationMs / steps));
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      const factor = Math.max(0, 1 - step / steps);
+      toFade.forEach((a) => {
+        // Skip elements that were already replaced as active bgm.current by a newer cue
+        if (a === bgm.current && step > 1 && factor <= 0) return;
+        try {
+          a.volume = a.volume * factor;
+        } catch {}
+      });
+      if (step >= steps) {
+        clearInterval(timer);
+        activeFadeTimers.current.delete(timer);
+        // Dispose ONLY the captured old fade targets, never killing newly started bgm.current!
         toFade.forEach((a) => {
+          if (bgm.current === a) {
+            bgm.current = null;
+          }
           try {
-            a.volume = a.volume * factor;
+            a.pause();
+            a.currentTime = 0;
+            a.src = "";
           } catch {}
+          activeBgmSet.current.delete(a);
+          activeAudioSet.current.delete(a);
         });
-        if (step >= steps) {
-          clearInterval(timer);
-          activeFadeTimers.current.delete(timer);
-          killAllBgmAudio();
-        }
-      }, stepMs);
-      activeFadeTimers.current.add(timer);
-    },
-    [killAllBgmAudio]
-  );
+      }
+    }, stepMs);
+    activeFadeTimers.current.add(timer);
+  }, []);
 
   const stopBgm = useCallback(
     (immediate: boolean = false) => {
@@ -1002,6 +1042,11 @@ export function useOlympiaAudio(
         getStoredOlympiaAudioChannel() ||
         channel ||
         "both";
+      // Keep native stereo HTMLAudio output for default "both" when not yet wired through WebAudio
+      // so initial autoplay before AudioContext unlock can never be muted by a suspended AudioContext.
+      if (activePan === "both" && !pannerGraphMap.current.has(a)) {
+        return;
+      }
       const ctx = getAudioContext();
       if (!ctx) return;
       try {
@@ -1117,9 +1162,9 @@ export function useOlympiaAudio(
       };
 
       const fallbackDuration = currentAudio.src.includes("contestant_intro")
-        ? 38.4
+        ? (currentAudio.src.includes("/O22/") ? 27.56 : 38.4)
         : currentAudio.src.includes("show_intro")
-        ? 37.1
+        ? (currentAudio.src.includes("/O22/") ? 32.14 : 37.1)
         : CONTEST_INTRO_DURATION_SEC;
 
       const armTimer = () => {
@@ -1378,7 +1423,8 @@ export function useOlympiaAudio(
         "both";
 
       const ctx = getAudioContext();
-      const buffer = ramSfxBufferCache.get(primaryUrl) || ramSfxBufferCache.get(fallbackUrl);
+      const allowO26Fallback = season === "O26";
+      const buffer = ramSfxBufferCache.get(primaryUrl) || (allowO26Fallback ? ramSfxBufferCache.get(fallbackUrl) : undefined);
 
       if (ctx && buffer) {
         if (ctx.state === "suspended") {
@@ -1416,7 +1462,7 @@ export function useOlympiaAudio(
       }
 
       // Fallback to prewarmed HTMLAudioElement; avoid heavy createMediaElementSource hookup on "both" stereo default
-      const cached = sfxAudioCache.get(primaryUrl) || sfxAudioCache.get(fallbackUrl);
+      const cached = sfxAudioCache.get(primaryUrl) || (allowO26Fallback ? sfxAudioCache.get(fallbackUrl) : undefined);
       const a =
         cached && (cached.paused || cached.ended)
           ? cached
@@ -1442,7 +1488,7 @@ export function useOlympiaAudio(
     return () => {
       fastCueListeners.delete(handleFastCue);
     };
-  }, [enabled, audioSeason, channel, getAudioContext, pauseBgm, connectPanner, registerActive, state?.manualAudioMode]);
+  }, [enabled, resolvedSeason, audioSeason, state?.rulesetId, channel, getAudioContext, pauseBgm, connectPanner, registerActive, state?.manualAudioMode]);
 
   useEffect(() => {
     const cue = state?.cue;
@@ -1457,11 +1503,19 @@ export function useOlympiaAudio(
     }
     const isIntroTrackEarly = isIntroOrMusicTrack(cue.sound);
     const isBgmCueEarly = cue.kind === "bgm" || isIntroTrackEarly;
+    const isSameLobbyIntroDifferentSeason = Boolean(
+      lastCue.current === cue.id &&
+      cue.sound === "6_NhacKhac/show_intro" &&
+      state?.stage === "lobby" &&
+      lastSeasonRef.current &&
+      lastSeasonRef.current !== resolvedSeason
+    );
 
-    if (lastCue.current == null) {
+    if (lastCue.current == null || isSameLobbyIntroDifferentSeason) {
       lastCue.current = cue.id;
-      // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên
-      if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby" && !hasPlayedIntroLobbyRef.current) {
+      lastSeasonRef.current = resolvedSeason;
+      // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên (hoặc khi season thực khác sessionStorage cache)
+      if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby" && (!hasPlayedIntroLobbyRef.current || isSameLobbyIntroDifferentSeason)) {
         if (!enabled || (!audioSeason && !state?.rulesetId)) {
           // audioSeason chưa đến hoặc audio chưa bật → đánh dấu chờ, sẽ phát khi đủ điều kiện
           pendingShowIntroRef.current = true;
@@ -1475,6 +1529,7 @@ export function useOlympiaAudio(
         return; // do not replay SFX on first sync
       }
     } else {
+      lastSeasonRef.current = resolvedSeason;
       if (cue.id === lastCue.current) {
         if (!bgm.current || bgm.current.ended) return;
         if (isBgmPausedExplicitlyRef.current) return;
@@ -1593,12 +1648,27 @@ export function useOlympiaAudio(
       registerActive(a);
 
       a.onerror = () => {
-        // Always using base stereo file; on error fall back to O26 only if not in O13-21 ruleset.
-        if (fallback && s !== "O26" && !s.includes("O13-21")) {
-          play("O26", false);
-        } else if (/tick_(?:10|40)s/.test(cue.sound)) {
-          const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
+        // First try resolving closest valid timer track inside the same season (e.g., arrange/match duration in O22)
+        const vdTickMatch = /^4_VeDich\/(\d+)s_tick$/.exec(cue.sound);
+        const vdPracticeMatch = /^4_VeDich\/(\d+)s_practice$/.exec(cue.sound);
+        let altSound: string | null = null;
+        if (/tick_(?:10|40)s/.test(cue.sound)) {
+          altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
+        } else if (vdTickMatch) {
+          const sec = Number(vdTickMatch[1]);
+          const valid = s === "O26" ? [10, 15, 20] : [10, 15, 20, 30];
+          const nearest = valid.reduce((prev, cur) => (Math.abs(cur - sec) < Math.abs(prev - sec) ? cur : prev), valid[0]);
+          if (nearest !== sec) altSound = `4_VeDich/${nearest}s_tick`;
+        } else if (vdPracticeMatch) {
+          const sec = Number(vdPracticeMatch[1]);
+          const valid = [20, 30, 40, 60];
+          const nearest = valid.reduce((prev, cur) => (Math.abs(cur - sec) < Math.abs(prev - sec) ? cur : prev), valid[0]);
+          if (nearest !== sec) altSound = `4_VeDich/${nearest}s_practice`;
+        }
+
+        if (altSound) {
           const alt = new Audio(withOlympiaAudioVersion(`/olympia-audio/${s}/${altSound}.mp3`));
+          connectPanner(alt, currentChannel);
           registerActive(alt);
           if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
           else {
@@ -1611,6 +1681,11 @@ export function useOlympiaAudio(
               }
             });
           }
+          return;
+        }
+        // Only fall back to O26 when same-season asset/clamped alternative truly doesn't exist (and keep O13-21 isolated)
+        if (fallback && s !== "O26" && !s.includes("O13-21")) {
+          play("O26", false);
         }
       };
 
@@ -1664,8 +1739,10 @@ export function useOlympiaAudio(
   }, [
     state?.cue,
     state?.stage,
+    state?.rulesetId,
     state?.seatCount,
     state?.seats?.length,
+    resolvedSeason,
     audioSeason,
     enabled,
     channel,
@@ -1729,11 +1806,15 @@ export function useOlympiaAudio(
     if (!effectiveSeason || !pendingShowIntroRef.current || !enabled) return;
     pendingShowIntroRef.current = false;
     hasPlayedIntroLobbyRef.current = true;
+    lastSeasonRef.current = effectiveSeason;
     if (state?.stage && state.stage !== "lobby") return;
     const season = effectiveSeason;
+    const userPrefChannel = typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) : null;
+    const currentChannel = userPrefChannel || channel || "both";
     const tryPlay = (s: string) => {
-      const a = new Audio(`/olympia-audio/${s}/6_NhacKhac/show_intro.mp3`);
+      const a = new Audio(withOlympiaAudioVersion(`/olympia-audio/${s}/6_NhacKhac/show_intro.mp3`));
       a.volume = 0.85;
+      connectPanner(a, currentChannel);
       registerActiveFromIntro(a);
       crossfadeToBgm(a, BGM_CROSSFADE_MS, false, true);
       // show_intro plays strictly ONCE without looping
@@ -1748,7 +1829,7 @@ export function useOlympiaAudio(
       a.addEventListener("error", cleanup, { once: true });
     };
     tryPlay(season);
-  }, [audioSeason, enabled, state?.stage, crossfadeToBgm, setupIntroSeamlessLoop]);
+  }, [audioSeason, state?.rulesetId, resolvedSeason, channel, enabled, state?.stage, crossfadeToBgm, connectPanner]);
 }
 
 export function useStableToken(): string {

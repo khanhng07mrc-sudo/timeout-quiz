@@ -133,8 +133,8 @@ const SHELL_CSS = `
 .v3a-closing .v3a-content { animation: v3a-swap 0.25s reverse forwards; }
 .v3a-swap { animation: v3a-swap 0.45s ease-out both; }
 @keyframes v3a-buzz {
-  from { filter: brightness(1) drop-shadow(0 0 3px rgba(255,40,40,0.7)); }
-  to   { filter: brightness(1.28) drop-shadow(0 0 12px rgba(255,60,60,1)); }
+  from { opacity: 1; }
+  to   { opacity: 0.78; filter: brightness(1.25); }
 }
 .v3a-buzz { animation: v3a-buzz 0.3s infinite alternate; }
 `;

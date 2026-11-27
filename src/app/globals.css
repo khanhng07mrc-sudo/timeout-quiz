@@ -4,6 +4,22 @@
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 }
 
+@font-face {
+  font-family: "UTM Avo";
+  src: local("UTM Avo"), url("/fonts/UTM_Avo.ttf") format("truetype");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "UTM Avo";
+  src: local("UTM Avo Bold"), local("UTM AvoBold"), url("/fonts/UTM_AvoBold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 .font-v3-avo {
   font-family: "UTM Avo", "Montserrat", "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 }

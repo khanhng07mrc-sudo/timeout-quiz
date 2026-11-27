@@ -776,6 +776,74 @@ test("R10.4: Curved Math Wall right chevron aligns slant angles and Y=2.72m knuc
   );
 });
 
+test("R10.5: Standing Arms Down, Unified Backdrop Mountain, Fixed V3 UTM Avo Frame, Zero First-Buzz Stall & Right Screen Audience Mirror", () => {
+  const backdropArtworkContent = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/studio/backdropArtwork.ts"),
+    "utf-8"
+  );
+  const v3GraphicsContent = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/Vtv3BroadcastGraphics.tsx"),
+    "utf-8"
+  );
+  const globalsCssContent = fs.readFileSync(
+    path.join(rootDir, "src/app/globals.css"),
+    "utf-8"
+  );
+  const hooksContent = fs.readFileSync(
+    path.join(rootDir, "src/components/olympia/hooks.ts"),
+    "utf-8"
+  );
+
+  // 1. Standing relaxed arms-down posture behind grandstand portal & off-desk
+  assert.ok(
+    podiumsContent.includes('posture?: "standing" | "desk"') &&
+    podiumsContent.includes("const isStandingPosture = posture === \"standing\";") &&
+    !podiumsContent.includes('"open_arms",\n    ];'),
+    "ContestantFigure must default to relaxed hanging arms in standing posture and omit sideways open_arms entrance flair"
+  );
+
+  // 2. Unified continuous mountain mesh + symmetric wings + 4-curve switchbacks
+  assert.ok(
+    backdropArtworkContent.includes("M_VERTS") &&
+    backdropArtworkContent.includes("M_TRIS") &&
+    backdropArtworkContent.includes("switchbackWaypoints") &&
+    backdropArtworkContent.includes("leftNodesSpec"),
+    "Backdrop must use unified continuous triangulated mountain massif, symmetric wing links, and serpentine switchback path"
+  );
+
+  // 3. Bundled UTM Avo font, fixed V3 Lower-Third dimensions, decoupled text chamber, and compact font sizing
+  assert.ok(
+    fs.existsSync(path.join(rootDir, "public/fonts/UTM_Avo.ttf")) &&
+    fs.existsSync(path.join(rootDir, "public/fonts/UTM_AvoBold.ttf")) &&
+    globalsCssContent.includes('url("/fonts/UTM_AvoBold.ttf")'),
+    "UTM Avo & UTM Avo Bold must be bundled in public/fonts and registered via @font-face"
+  );
+  assert.ok(
+    v3GraphicsContent.includes("const H = isVeDich ? 216 : 206;") &&
+    v3GraphicsContent.includes("latchedRunAnimRef") &&
+    v3GraphicsContent.includes("text-[17px] sm:text-[18px] md:text-[19px] leading-snug font-bold") &&
+    !v3GraphicsContent.includes("fontFamily: \"'Plus Jakarta Sans', system-ui, -apple-system, sans-serif\""),
+    "EconovaLowerThirdV3 must use fixed H dimensions, latched runAnim, compact question typography, and true UTM Avo in SlantedTabLabel"
+  );
+
+  // 4. Eliminate buzz #1 shader recompile (<pointLight> conditional) + eager routing graph pre-init + cheap CSS pulse
+  assert.ok(
+    !podiumsContent.includes("Dual Point Lights on Buzzer Trigger") &&
+    podiumsContent.includes("SharedBuzzerAccentLight") &&
+    hooksContent.includes("fastRoutingGraphRef.current = createChannelRoutingGraph(ctx)") &&
+    !v3GraphicsContent.includes("drop-shadow(0 0 10px rgba(255, 56, 56, 0.9))"),
+    "First-buzz path must keep pointLight count constant, eagerly pre-allocate WebAudio graph, and avoid animated CSS drop-shadow"
+  );
+
+  // 5. Right LED Screen Audience Mirror & revealed-only question accuracy
+  assert.ok(
+    centralLedWallContent.includes("renderAudienceLowerThirdMirrorToCanvas") &&
+    centralLedWallContent.includes("renderVeDichPackageGridMirrorToCanvas") &&
+    centralLedWallContent.includes("state.khoiDong.questionRevealed"),
+    "Right LED Screen must mirror audience display across rounds with revealed-only question accuracy and fitted text sizing"
+  );
+});
+
 console.log("\n================================================================================");
 console.log(`TOTAL REFINEMENT TESTS: ${passCount + failCount}`);
 console.log(`PASSED: ${passCount}`);

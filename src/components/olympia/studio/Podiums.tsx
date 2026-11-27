@@ -1587,6 +1587,7 @@ export function ContestantFigure({
   gestureProgress = 0,
   gestureProgressRef,
   isBuzzed = false,
+  posture = "desk",
 }: {
   seatId: number;
   position?: [number, number, number];
@@ -1598,6 +1599,7 @@ export function ContestantFigure({
   gestureProgress?: number;
   gestureProgressRef?: React.RefObject<number>;
   isBuzzed?: boolean;
+  posture?: "standing" | "desk";
 }) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
@@ -1678,50 +1680,61 @@ export function ContestantFigure({
       if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
       if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
 
-      // 1. Authentic Desk Workstation Posture Baseline:
-      // Contestant stands behind podium at Z = -0.42m, facing desk at Z = -0.28m to -0.10m.
-      // Left arm rests along padded wrist rest / armrest on the table.
-      // Right arm rests on wrist rest with hand over keyboard, subtle typing micro-cadence.
-      // When buzzer is pressed (isBuzzed), right arm reaches over to red buzzer dome at X = +0.26m.
-      // Head tilts down ~14 deg looking directly at glowing laptop screen, scanning question text.
+      // 1. Baseline Idle Posture:
+      // - "standing": Upright natural posture with arms relaxed vertically straight down alongside thighs
+      //   (used behind grandstand doorway wings before entrance, Về Đích standing stage, & awards podium).
+      // - "desk": Authentic podium workstation posture resting over keyboard/buzzer.
       const idleBreath = Math.sin(t * 1.8 + seatId * 1.2) * 0.012;
       const typingFreq = 7.5;
       const typingWiggle = Math.sin(t * typingFreq + seatId * 2.1) * 0.016;
       const keyTap = Math.sin(t * (typingFreq * 2) + seatId * 3.4) * 0.018;
+      const isStandingPosture = posture === "standing";
 
-      const idleLeftArm = {
-        x: -0.58 + idleBreath,
-        y: 0.08,
-        z: -0.08,
-      };
-      const idleLeftForearm = {
-        x: -0.78 + idleBreath * 0.3,
-        y: 0.10,
-        z: -0.06,
-      };
-      const idleLeftWrist = {
-        x: 0.22,
-        y: -0.06,
-        z: 0.04,
-      };
+      const idleLeftArm = isStandingPosture
+        ? { x: 0.02 + idleBreath * 0.6, y: 0.0, z: -0.025 }
+        : {
+            x: -0.58 + idleBreath,
+            y: 0.08,
+            z: -0.08,
+          };
+      const idleLeftForearm = isStandingPosture
+        ? { x: -0.06, y: 0.0, z: 0.015 }
+        : {
+            x: -0.78 + idleBreath * 0.3,
+            y: 0.10,
+            z: -0.06,
+          };
+      const idleLeftWrist = isStandingPosture
+        ? { x: 0.02, y: 0.0, z: 0.0 }
+        : {
+            x: 0.22,
+            y: -0.06,
+            z: 0.04,
+          };
 
-      let idleRightArm = {
-        x: -0.60 + idleBreath,
-        y: -0.08,
-        z: 0.08,
-      };
-      let idleRightForearm = {
-        x: -0.82 + typingWiggle,
-        y: -0.10,
-        z: 0.06,
-      };
-      let idleRightWrist = {
-        x: 0.24 + keyTap,
-        y: 0.06,
-        z: -0.04,
-      };
+      let idleRightArm = isStandingPosture
+        ? { x: 0.02 + idleBreath * 0.6, y: 0.0, z: 0.025 }
+        : {
+            x: -0.60 + idleBreath,
+            y: -0.08,
+            z: 0.08,
+          };
+      let idleRightForearm = isStandingPosture
+        ? { x: -0.06, y: 0.0, z: -0.015 }
+        : {
+            x: -0.82 + typingWiggle,
+            y: -0.10,
+            z: 0.06,
+          };
+      let idleRightWrist = isStandingPosture
+        ? { x: 0.02, y: 0.0, z: 0.0 }
+        : {
+            x: 0.24 + keyTap,
+            y: 0.06,
+            z: -0.04,
+          };
 
-      if (isBuzzed) {
+      if (!isStandingPosture && isBuzzed) {
         // Red dome buzzer is at X = +0.26m, Z = -0.15m: right hand reaches and presses down firmly
         idleRightArm = {
           x: -0.74,
@@ -1740,16 +1753,19 @@ export function ContestantFigure({
         };
       }
 
-      // Head tilted ~15 deg looking directly at glowing laptop screen with subtle reading scan
-      // When head is nested inside chest (which has idleChest.x = 0.12), head relative pitch is 0.14 rad
-      // Cumulative world pitch = 0.12 + 0.14 = 0.26 rad (~14.9 deg)
-      const headReadScan = Math.sin(t * 1.2 + seatId * 0.9) * 0.035;
-      const idleHead = {
-        x: 0.14 + Math.sin(t * 1.5 + seatId) * 0.010,
-        y: headReadScan,
-        z: 0,
-      };
-      const idleChest = { x: 0.12 }; // Alert forward student posture leaning toward workstation
+      const headReadScan = Math.sin(t * 1.2 + seatId * 0.9) * (isStandingPosture ? 0.015 : 0.035);
+      const idleHead = isStandingPosture
+        ? {
+            x: 0.02 + Math.sin(t * 1.5 + seatId) * 0.008,
+            y: headReadScan,
+            z: 0,
+          }
+        : {
+            x: 0.14 + Math.sin(t * 1.5 + seatId) * 0.010,
+            y: headReadScan,
+            z: 0,
+          };
+      const idleChest = { x: isStandingPosture ? 0.0 : 0.12 }; // Upright behind door; forward focus at workstation
 
       // 2. Target signature gesture posture
       let targetLeftArm = { ...idleLeftArm };
@@ -2006,7 +2022,7 @@ export function ContestantFigure({
                   scale={0.88}
                   skinMat={skinMat}
                   isLeft={true}
-                  mode={isWalking ? "hang" : gesture === "desk_bow" ? "rest" : "rest"}
+                  mode={isWalking || (posture === "standing" && gesture === "none") ? "hang" : "rest"}
                 />
               </group>
             </group>
@@ -2050,7 +2066,7 @@ export function ContestantFigure({
                   skinMat={skinMat}
                   isLeft={false}
                   mode={
-                    isWalking
+                    isWalking || (posture === "standing" && gesture === "none")
                       ? "hang"
                       : gesture === "wave"
                       ? "card"
@@ -2908,13 +2924,7 @@ export function ContestantPodium({
           />
         </mesh>
 
-        {/* Dual Point Lights on Buzzer Trigger */}
-        {isBuzzed && (
-          <>
-            <pointLight position={[0, 0.25, 0]} color="#ff0033" intensity={14.0} distance={4.5} />
-            <pointLight position={[0, 0.10, 0]} color="#ff4466" intensity={10.0} distance={2.5} />
-          </>
-        )}
+        {/* Red dome lighting & halo handled cleanly via emissive material + shared persistent Podiums buzzer light (zero shader recompile on buzz #1) */}
       </group>
 
       {/* Desktop Gooseneck Microphone (Stage Left of Laptop on Desk) */}
@@ -4695,7 +4705,7 @@ export function evaluateContestantEntranceTrajectory(
       "wave",
       "fist_pump",
       "heart",
-      "open_arms",
+      "wave",
     ];
     curGesture = signatureGestures[seatId % signatureGestures.length];
     curGestureProg = Math.max(0, Math.min(1.0, (t - 1.8) / 1.2));
@@ -6487,10 +6497,19 @@ export function PersistentContestantEntity({
   const rootRef = useRef<THREE.Group>(null);
   const [isWalking, setIsWalking] = useState(false);
   const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
+  const [posture, setPosture] = useState<"standing" | "desk">("standing");
   const gestureProgressRef = useRef<number>(0);
   const walkPhaseRef = useRef<number>(0);
   const lastWalkingRef = useRef<boolean>(false);
   const lastGestureRef = useRef<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
+  const lastPostureRef = useRef<"standing" | "desk">("standing");
+
+  const setPostureSafe = (next: "standing" | "desk") => {
+    if (lastPostureRef.current !== next) {
+      lastPostureRef.current = next;
+      setPosture(next);
+    }
+  };
 
   // Về Đích turn tracking
   const lastVdStateRef = useRef<{ turnIdx: number; mode: string; startedPerf: number }>({
@@ -6527,6 +6546,7 @@ export function PersistentContestantEntity({
 
     if (isThisContestantInVeDichTurn) {
       root.visible = true;
+      setPostureSafe("standing");
       const curTurn = vd?.turnIdx ?? 0;
       const curPhase = vd?.phase ?? "idle";
       const mode = curPhase === "seatDone" ? "seatDone" : vd?.onStage ? "onStage" : "idle";
@@ -6590,6 +6610,7 @@ export function PersistentContestantEntity({
     // ── 2. SUMMARY GESTURES (Match finished) ──
     if (state?.summaryState?.active) {
       root.visible = true;
+      setPostureSafe("desk");
       root.position.set(deskWorldX, deskWorldY, deskWorldZ);
       root.rotation.y = deskRotY;
       if (lastWalkingRef.current) {
@@ -6641,6 +6662,7 @@ export function PersistentContestantEntity({
       const slotPos = getVictoryPodiumSlotWorldPos(seatId, aw, totalSeats);
 
       if (isCalled) {
+        setPostureSafe("standing");
         const elapsed = Math.max(0, (now - walkStart) / 1000);
         const WALK_DUR = 3.6;
         if (elapsed < WALK_DUR) {
@@ -6678,6 +6700,7 @@ export function PersistentContestantEntity({
         }
       } else {
         // Still at booth waiting to be called
+        setPostureSafe("desk");
         root.position.set(deskWorldX, deskWorldY, deskWorldZ);
         root.rotation.y = deskRotY;
         if (lastWalkingRef.current) {
@@ -6704,6 +6727,7 @@ export function PersistentContestantEntity({
 
     if (hasEntranceCompleted || isCompetitionRound) {
       root.visible = true;
+      setPostureSafe("desk");
       root.position.set(deskWorldX, deskWorldY, deskWorldZ);
       root.rotation.y = deskRotY;
       if (lastWalkingRef.current) {
@@ -6736,6 +6760,7 @@ export function PersistentContestantEntity({
 
     // Always keep contestant figure visible continuously across all phases (lobby, wing waiting, entrance, rounds, awards)
     root.visible = true;
+    setPostureSafe(t < traj.arrivalSec ? "standing" : "desk");
     root.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
     root.rotation.y = traj.rotY;
 
@@ -6762,9 +6787,50 @@ export function PersistentContestantEntity({
         gesture={gesture}
         gestureProgressRef={gestureProgressRef}
         isBuzzed={isBuzzed}
+        posture={posture}
       />
     </group>
   );
+}
+
+/**
+ * Single persistent buzzer accent pointLight shared across all contestant podiums.
+ * Keeps WebGL NUM_POINT_LIGHTS constant from room startup so buzz #1 never triggers
+ * a synchronous GLSL shader recompilation stall across the studio scene.
+ */
+function SharedBuzzerAccentLight({
+  contestantConfigs,
+  state,
+}: {
+  contestantConfigs: Array<{ seatId: number; pos: [number, number, number]; rotY: number }>;
+  state?: OlympiaState | null;
+}) {
+  const lightRef = useRef<THREE.PointLight>(null);
+
+  useFrame((_, delta) => {
+    const light = lightRef.current;
+    if (!light) return;
+    let activeCfg: { seatId: number; pos: [number, number, number]; rotY: number } | null = null;
+    for (const cfg of contestantConfigs) {
+      if (isSeatBuzzedIn3D(cfg.seatId, state)) {
+        activeCfg = cfg;
+        break;
+      }
+    }
+    if (activeCfg) {
+      const cosR = Math.cos(activeCfg.rotY);
+      const sinR = Math.sin(activeCfg.rotY);
+      // Buzzer dome local offset [0.26, 0.895, -0.15] rotated by podium rotY around Y
+      const bx = activeCfg.pos[0] + 0.26 * cosR - 0.15 * sinR;
+      const bz = activeCfg.pos[2] - 0.26 * sinR - 0.15 * cosR;
+      light.position.set(bx, activeCfg.pos[1] + 1.15, bz);
+      light.intensity = THREE.MathUtils.lerp(light.intensity, 14.0, Math.min(1, delta * 18));
+    } else {
+      light.intensity = THREE.MathUtils.lerp(light.intensity, 0.0, Math.min(1, delta * 14));
+    }
+  });
+
+  return <pointLight ref={lightRef} position={[0, 1.4, -2]} color="#ff0033" intensity={0} distance={4.5} decay={2} />;
 }
 
 /**
@@ -6886,6 +6952,7 @@ export function Podiums({
 
       {/* N Contestant Arc Podiums on Raised Dais (Group shifted slightly right to align with background screen) */}
       <group position={[0.22, 0, 0]}>
+        <SharedBuzzerAccentLight contestantConfigs={contestantConfigs} state={state} />
         {contestantConfigs.map((cfg) => {
         const seat = state?.seats?.[cfg.seatId];
         const name = seat?.name || `Thí sinh ${cfg.seatId + 1}`;

@@ -2778,6 +2778,7 @@ function KhoiDong({ state, serverNow, isFullscreen }: P) {
         </div>
       ) : (
         <EconovaLowerThirdV3
+          key={`kd-lower-third-${kd.segIdx ?? 0}`}
           state={state}
           serverNow={serverNow}
           activeSeatId={currentSoloSeat}
@@ -3086,6 +3087,7 @@ function Chp({ state, serverNow, isFullscreen }: P) {
         ) : null
       ) : q ? (
         <EconovaLowerThirdV3
+          key="chp-lower-third"
           state={state}
           serverNow={serverNow}
           buzzedSeatId={cp.buzzedSeat || cp.winner}

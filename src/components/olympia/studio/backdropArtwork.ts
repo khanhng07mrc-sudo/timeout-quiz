@@ -3,9 +3,9 @@
  * Native 4096 x 1848 resolution (aspect ratio ~2.2165:1 matching the 18.85m x 8.50m cyclorama)
  * for 1:1 undistorted projection across all broadcast camera angles:
  * - Deep royal cobalt & electric sapphire atmospheric gradient with radiant lateral horizon glows
- * - Delicate geometric tech & knowledge constellation rings + circuit web on Left & Right audience wings
- * - Sharp central faceted wireframe-lit polygonal mountain massif with luminous ascending path & peak flag,
- *   calibrated vertically & horizontally to sit cleanly inside the redesigned wide entrance portal.
+ * - Evenly linked, strictly mirror-symmetric knowledge & tech constellations on Left & Right wings
+ * - Single unified continuous faceted wireframe-lit polygonal mountain massif spanning across
+ *   the center portal with zero center gaps, crowned by a multi-switchback serpentine trail & peak flag.
  */
 
 export interface BackdropCanvasOptions {
@@ -29,15 +29,14 @@ export function paintOlympiaBackdropCanvas(
 
   // ── 1. DEEP ROYAL COBALT & SAPPHIRE BROADCAST GRADIENT (Reference Image Style) ──
   const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-  bgGrad.addColorStop(0.00, "#020b26"); // Upper stage ceiling indigo
-  bgGrad.addColorStop(0.26, "#06256e"); // Deep royal sapphire
-  bgGrad.addColorStop(0.56, "#093ba6"); // Vibrant cobalt stage wash
-  bgGrad.addColorStop(0.84, "#062875"); // Mid-backstage navy
-  bgGrad.addColorStop(1.00, "#020d2e"); // Floor perimeter blend
+  bgGrad.addColorStop(0.00, "#020b26");
+  bgGrad.addColorStop(0.25, "#06256e");
+  bgGrad.addColorStop(0.55, "#093ba6");
+  bgGrad.addColorStop(0.84, "#062875");
+  bgGrad.addColorStop(1.00, "#020d2e");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Soft lateral electric-blue stage wing glow halos (framing both sides behind Quizorra & Olympia)
   const addRadialWash = (cx: number, cy: number, r: number, color0: string, color1: string) => {
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     g.addColorStop(0, color0);
@@ -46,11 +45,11 @@ export function paintOlympiaBackdropCanvas(
     ctx.fillRect(Math.max(0, cx - r), Math.max(0, cy - r), r * 2, r * 2);
   };
 
-  addRadialWash(w * 0.19, h * 0.48, w * 0.24, "rgba(37, 99, 235, 0.34)", "rgba(37, 99, 235, 0)");
-  addRadialWash(w * 0.81, h * 0.48, w * 0.24, "rgba(37, 99, 235, 0.34)", "rgba(37, 99, 235, 0)");
-  addRadialWash(mx, h * 0.56, w * 0.22, "rgba(56, 189, 248, 0.30)", "rgba(6, 37, 110, 0)");
+  addRadialWash(w * 0.19, h * 0.44, w * 0.23, "rgba(37, 99, 235, 0.34)", "rgba(37, 99, 235, 0)");
+  addRadialWash(w * 0.81, h * 0.44, w * 0.23, "rgba(37, 99, 235, 0.34)", "rgba(37, 99, 235, 0)");
+  addRadialWash(mx, h * 0.56, w * 0.22, "rgba(56, 189, 248, 0.32)", "rgba(6, 37, 110, 0)");
 
-  // Subtle horizontal & vertical broadcast light-wall grid sheen (very restrained)
+  // Subtle horizontal & vertical broadcast light-wall grid sheen
   ctx.save();
   ctx.strokeStyle = "rgba(125, 211, 252, 0.045)";
   ctx.lineWidth = 1.5;
@@ -68,17 +67,17 @@ export function paintOlympiaBackdropCanvas(
   }
   ctx.restore();
 
-  // Subtle atmospheric bokeh & star particles (fine pinpoint dots matching studio photograph)
+  // Fine studio star/bokeh pinpoint glow dots
   const pseudoRand = (seed: number) => {
     const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
     return x - Math.floor(x);
   };
   ctx.save();
-  for (let i = 0; i < 340; i++) {
+  for (let i = 0; i < 320; i++) {
     const sx = pseudoRand(i + 1) * w;
-    const sy = pseudoRand(i + 301) * (h * 0.86);
-    const sr = 1.0 + pseudoRand(i + 601) * 2.4;
-    const alpha = 0.14 + pseudoRand(i + 901) * 0.42;
+    const sy = pseudoRand(i + 301) * (h * 0.85);
+    const sr = 1.0 + pseudoRand(i + 601) * 2.2;
+    const alpha = 0.14 + pseudoRand(i + 901) * 0.38;
     ctx.beginPath();
     ctx.arc(sx, sy, sr, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(186, 230, 253, ${alpha})`;
@@ -86,43 +85,66 @@ export function paintOlympiaBackdropCanvas(
   }
   ctx.restore();
 
-  // ── 2. SUBTLE KNOWLEDGE & TECH NETWORK PATTERN ACROSS LEFT & RIGHT WINGS ──
-  // Thin glowing cyan circular nodes + dotted rings + delicate geometric web lines
-  // Positioned carefully around Quizorra / Olympia wing corridors (Y = 0.20h .. 0.72h)
+  // ── 2. EVENLY LINKED SYMMETRIC KNOWLEDGE & TECH CONSTELLATIONS (LEFT & RIGHT WINGS) ──
+  // Both sides share identical mirrored geometry, concentric orbital telemetry rings,
+  // and balanced triangulated link graphs centered cleanly behind Quizorra & Olympia signage.
   type WingNode = { x: number; y: number; r: number; icon: string };
+  const leftNodesSpec: Array<{ xFrac: number; yFrac: number; r: number; leftIcon: string; rightIcon: string }> = [
+    { xFrac: 0.068, yFrac: 0.35, r: 54, leftIcon: "compass", rightIcon: "flask" },
+    { xFrac: 0.125, yFrac: 0.21, r: 50, leftIcon: "neural", rightIcon: "space" },
+    { xFrac: 0.168, yFrac: 0.41, r: 62, leftIcon: "book", rightIcon: "medal" },
+    { xFrac: 0.105, yFrac: 0.59, r: 54, leftIcon: "globe", rightIcon: "code" },
+    { xFrac: 0.238, yFrac: 0.23, r: 52, leftIcon: "atom", rightIcon: "bulb" },
+    { xFrac: 0.248, yFrac: 0.57, r: 58, leftIcon: "gear", rightIcon: "data" },
+    { xFrac: 0.315, yFrac: 0.36, r: 52, leftIcon: "chip", rightIcon: "award" },
+    { xFrac: 0.322, yFrac: 0.60, r: 46, leftIcon: "dna", rightIcon: "math" },
+  ];
+
+  const wingBaseEdges: Array<[number, number]> = [
+    [0, 1], [0, 2], [0, 3],
+    [1, 2], [1, 4],
+    [2, 3], [2, 4], [2, 5], [2, 6],
+    [3, 5],
+    [4, 6],
+    [5, 6], [5, 7],
+    [6, 7],
+  ];
+
   const wingNodes: WingNode[] = [
-    // Left Wing Constellation (x < 0.36w)
-    { x: w * 0.075, y: h * 0.34, r: 58, icon: "compass" },
-    { x: w * 0.135, y: h * 0.22, r: 50, icon: "neural" },
-    { x: w * 0.165, y: h * 0.42, r: 64, icon: "book" },
-    { x: w * 0.115, y: h * 0.59, r: 54, icon: "globe" },
-    { x: w * 0.245, y: h * 0.24, r: 54, icon: "atom" },
-    { x: w * 0.255, y: h * 0.56, r: 62, icon: "gear" },
-    { x: w * 0.320, y: h * 0.37, r: 52, icon: "chip" },
-    { x: w * 0.335, y: h * 0.61, r: 46, icon: "dna" },
-
-    // Right Wing Constellation (x > 0.64w)
-    { x: w * 0.665, y: h * 0.61, r: 46, icon: "math" },
-    { x: w * 0.680, y: h * 0.37, r: 52, icon: "award" },
-    { x: w * 0.745, y: h * 0.56, r: 62, icon: "data" },
-    { x: w * 0.755, y: h * 0.24, r: 54, icon: "bulb" },
-    { x: w * 0.835, y: h * 0.42, r: 64, icon: "medal" },
-    { x: w * 0.885, y: h * 0.59, r: 54, icon: "code" },
-    { x: w * 0.865, y: h * 0.22, r: 50, icon: "space" },
-    { x: w * 0.925, y: h * 0.34, r: 58, icon: "flask" },
+    ...leftNodesSpec.map((n) => ({ x: w * n.xFrac, y: h * n.yFrac, r: n.r, icon: n.leftIcon })),
+    ...leftNodesSpec.map((n) => ({ x: w * (1 - n.xFrac), y: h * n.yFrac, r: n.r, icon: n.rightIcon })),
   ];
 
+  const leftCount = leftNodesSpec.length;
   const wingLinks: Array<[number, number]> = [
-    // Left links
-    [0, 1], [0, 2], [0, 3], [1, 2], [1, 4], [2, 3], [2, 4], [2, 5], [3, 5], [4, 6], [5, 6], [5, 7], [6, 7],
-    // Right links
-    [8, 9], [8, 10], [9, 10], [9, 11], [10, 12], [10, 13], [11, 12], [11, 14], [12, 13], [12, 15], [14, 15], [13, 15],
+    ...wingBaseEdges,
+    ...wingBaseEdges.map(([a, b]): [number, number] => [a + leftCount, b + leftCount]),
   ];
 
-  // Delicate tech circuit lines + micro junction dots
+  // Concentric orbital rings framing each wing focal hub (matching real backdrop radial circuits)
+  for (const hubX of [w * 0.185, w * 0.815]) {
+    const hubY = h * 0.42;
+    ctx.save();
+    for (const [rad, dash, alpha] of [
+      [250, [10, 10], 0.16],
+      [410, [16, 14], 0.13],
+      [580, [], 0.09],
+    ] as Array<[number, number[], number]>) {
+      ctx.setLineDash(dash);
+      ctx.strokeStyle = `rgba(125, 211, 252, ${alpha})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(hubX, hubY, rad, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Uniform wing constellation link lines + midpoint nodes
   ctx.save();
-  ctx.strokeStyle = "rgba(125, 211, 252, 0.24)";
-  ctx.lineWidth = 2.0;
+  ctx.strokeStyle = "rgba(125, 211, 252, 0.28)";
+  ctx.lineWidth = 2.2;
   for (const [aIdx, bIdx] of wingLinks) {
     const na = wingNodes[aIdx];
     const nb = wingNodes[bIdx];
@@ -131,19 +153,18 @@ export function paintOlympiaBackdropCanvas(
     ctx.lineTo(nb.x, nb.y);
     ctx.stroke();
 
-    // Small glowing midpoint telemetry dot
-    ctx.fillStyle = "rgba(186, 230, 253, 0.45)";
+    ctx.fillStyle = "rgba(186, 230, 253, 0.55)";
     ctx.beginPath();
-    ctx.arc((na.x + nb.x) * 0.5, (na.y + nb.y) * 0.5, 4, 0, Math.PI * 2);
+    ctx.arc((na.x + nb.x) * 0.5, (na.y + nb.y) * 0.5, 4.2, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 
-  // Subtle translucent hex lattice behind the wing icons
+  // Subtle translucent hex accents evenly anchored around each wing node
   const drawFaintHex = (hx: number, hy: number, hr: number, alpha: number) => {
     ctx.save();
     ctx.strokeStyle = `rgba(125, 211, 252, ${alpha})`;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     for (let k = 0; k < 6; k++) {
       const ang = (Math.PI / 3) * k - Math.PI / 6;
@@ -157,48 +178,44 @@ export function paintOlympiaBackdropCanvas(
     ctx.restore();
   };
 
-  for (const node of wingNodes) {
-    drawFaintHex(node.x + 88, node.y - 72, 34, 0.14);
-    drawFaintHex(node.x - 84, node.y + 78, 28, 0.11);
-  }
+  wingNodes.forEach((node, idx) => {
+    const isRight = idx >= leftCount;
+    const dir = isRight ? -1 : 1;
+    drawFaintHex(node.x + dir * 82, node.y - 68, 30, 0.14);
+  });
 
-  // Render clean subtle tech/knowledge circular medallions
+  // Render crisp circular tech medallions
   for (const b of wingNodes) {
     ctx.save();
-    // Soft radial halo behind circle
     const halo = ctx.createRadialGradient(b.x, b.y, b.r * 0.3, b.x, b.y, b.r * 1.6);
-    halo.addColorStop(0, "rgba(56, 189, 248, 0.16)");
+    halo.addColorStop(0, "rgba(56, 189, 248, 0.18)");
     halo.addColorStop(1, "rgba(56, 189, 248, 0)");
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r * 1.6, 0, Math.PI * 2);
     ctx.fill();
 
-    // Outer dashed ring
     ctx.setLineDash([6, 6]);
-    ctx.strokeStyle = "rgba(186, 230, 253, 0.30)";
+    ctx.strokeStyle = "rgba(186, 230, 253, 0.34)";
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r + 12, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Primary luminous ring
-    ctx.strokeStyle = "rgba(125, 211, 252, 0.48)";
+    ctx.strokeStyle = "rgba(125, 211, 252, 0.54)";
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Inner fill disc
-    ctx.fillStyle = "rgba(5, 29, 86, 0.55)";
+    ctx.fillStyle = "rgba(5, 29, 86, 0.58)";
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r - 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Crisp translucent white-cyan vector icon inside
-    ctx.strokeStyle = "rgba(224, 242, 254, 0.72)";
-    ctx.fillStyle = "rgba(224, 242, 254, 0.72)";
+    ctx.strokeStyle = "rgba(224, 242, 254, 0.78)";
+    ctx.fillStyle = "rgba(224, 242, 254, 0.78)";
     ctx.lineWidth = 2.6;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -345,7 +362,6 @@ export function paintOlympiaBackdropCanvas(
       ctx.lineTo(b.x + s * 0.20, b.y - s * 0.72);
       ctx.stroke();
     } else {
-      // compass
       ctx.beginPath();
       ctx.arc(b.x, b.y - s * 0.48, s * 0.18, 0, Math.PI * 2);
       ctx.stroke();
@@ -360,84 +376,154 @@ export function paintOlympiaBackdropCanvas(
     ctx.restore();
   }
 
-  // ── 3. CENTRAL OLYMPIA WIREFRAME POLYGONAL MOUNTAIN MASSIF (100% Centered Inside Wide Portal) ──
-  // Vertically calibrated for cyclorama Y_world in [-0.20m .. +8.30m]:
-  // Top portal beam sits around Y_world ≈ 6.2m (canvas Y ≈ 460px); landing plinth Y = 1.95m (canvas Y ≈ 1380px).
-  // Center summit peak placed at (mx, 540) so summit flag & glowing halo sit neatly framed below the portal crown!
-  const apexY = Math.round(h * 0.285); // ~527px -> Y_world ~5.88m
-  const baseY = Math.round(h * 0.86);  // ~1589px -> extends behind top landing plinth nicely
+  // ── 3. UNIFIED CONTINUOUS WIREFRAME-LIT MOUNTAIN MASSIF (ZERO CENTER GAP!) ──
+  // Single integrated mesh spanning seamlessly from Left flank -> Central spine -> Right flank
+  // across X in [mx - 690 .. mx + 690] and Y from apexY to baseY, guaranteeing full center facet coverage.
+  const apexY = Math.round(h * 0.285); // ~527px -> sits crisply inside top of portal
+  const baseY = Math.round(h * 0.87);  // ~1608px -> settles cleanly behind grandstand stairs
 
-  // Crisp cyan-azure halo corona behind the mountain peak (like reference photo!)
-  addRadialWash(mx, apexY + 80, 560, "rgba(56, 189, 248, 0.55)", "rgba(6, 37, 110, 0)");
-  addRadialWash(mx, apexY, 220, "rgba(224, 242, 254, 0.55)", "rgba(56, 189, 248, 0)");
+  addRadialWash(mx, apexY + 120, 620, "rgba(56, 189, 248, 0.56)", "rgba(6, 37, 110, 0)");
+  addRadialWash(mx, apexY, 230, "rgba(224, 242, 254, 0.58)", "rgba(56, 189, 248, 0)");
 
-  // Low-poly mountain wireframe vertices covering central doorway vista (X in mx ± 640px)
-  const leftNodes: Array<[number, number]> = [
-    [mx, apexY],              // 0: Main peak
-    [mx - 74, apexY + 112],   // 1: Upper spine left
-    [mx - 155, apexY + 162],  // 2: Left ridge shoulder 1
-    [mx - 58, apexY + 250],   // 3: Upper canyon left
-    [mx - 190, apexY + 285],  // 4: Mid facet left
-    [mx - 310, apexY + 235],  // 5: Secondary left peak
-    [mx - 95, apexY + 395],   // 6: Canyon bend left
-    [mx - 245, apexY + 425],  // 7: Rib node
-    [mx - 390, apexY + 385],  // 8: Shoulder flank
-    [mx - 485, apexY + 465],  // 9: Outer slope
-    [mx - 115, apexY + 560],  // 10: Lower canyon left
-    [mx - 290, apexY + 580],  // 11: Lower ridge left
-    [mx - 455, apexY + 575],  // 12: Foothill rib
-    [mx - 585, apexY + 615],  // 13: Outer foothill peak
-    [mx - 135, apexY + 755],  // 14: Base canyon lip left
-    [mx - 340, apexY + 760],  // 15: Base rib left
-    [mx - 545, apexY + 765],  // 16: Base apron left
-    [mx - 165, baseY],        // 17: Floor canyon left
-    [mx - 405, baseY],        // 18: Floor mid left
-    [mx - 675, baseY],        // 19: Floor outer left
+  // Unified layered lattice:
+  // Tier 0 (Summit)
+  // Tier 1 (Upper Crown, 3 vertices)
+  // Tier 2 (Upper Shoulder, 5 vertices)
+  // Tier 3 (Mid Crag, 7 vertices)
+  // Tier 4 (Lower Crag & Secondary Foothill Peaks, 9 vertices)
+  // Tier 5 (Base Apron, 9 vertices)
+  // Tier 6 (Floor Ground, 9 vertices)
+  const M_VERTS: Array<[number, number]> = [
+    // 0: Main Summit Peak
+    [mx, apexY],
+
+    // 1..3: Tier 1 (Upper Crown)
+    [mx - 108, apexY + 135],
+    [mx + 12,  apexY + 150], // Central spine vertex bridging left & right!
+    [mx + 114, apexY + 130],
+
+    // 4..8: Tier 2 (Upper Shoulders & Secondary Flanking Spurs)
+    [mx - 285, apexY + 225],
+    [mx - 145, apexY + 290],
+    [mx - 18,  apexY + 315], // Central spine vertex
+    [mx + 148, apexY + 282],
+    [mx + 292, apexY + 230],
+
+    // 9..15: Tier 3 (Mid Slopes)
+    [mx - 445, apexY + 375],
+    [mx - 300, apexY + 415],
+    [mx - 155, apexY + 465],
+    [mx + 22,  apexY + 485], // Central spine vertex
+    [mx + 170, apexY + 460],
+    [mx + 315, apexY + 410],
+    [mx + 455, apexY + 382],
+
+    // 16..24: Tier 4 (Lower Slopes & Outer Foothills)
+    [mx - 585, apexY + 575],
+    [mx - 455, apexY + 565],
+    [mx - 315, apexY + 625],
+    [mx - 165, apexY + 660],
+    [mx - 20,  apexY + 685], // Central valley saddle vertex
+    [mx + 165, apexY + 655],
+    [mx + 320, apexY + 618],
+    [mx + 462, apexY + 560],
+    [mx + 592, apexY + 585],
+
+    // 25..33: Tier 5 (Foothill Base Apron)
+    [mx - 640, apexY + 810],
+    [mx - 485, apexY + 795],
+    [mx - 335, apexY + 835],
+    [mx - 175, apexY + 860],
+    [mx + 15,  apexY + 875], // Central apron vertex
+    [mx + 185, apexY + 855],
+    [mx + 345, apexY + 830],
+    [mx + 495, apexY + 790],
+    [mx + 648, apexY + 815],
+
+    // 34..42: Tier 6 (Ground Floor Baseline)
+    [mx - 700, baseY],
+    [mx - 525, baseY],
+    [mx - 355, baseY],
+    [mx - 185, baseY],
+    [mx,       baseY],       // Exact floor center
+    [mx + 185, baseY],
+    [mx + 360, baseY],
+    [mx + 530, baseY],
+    [mx + 700, baseY],
   ];
 
-  const rightNodes: Array<[number, number]> = leftNodes.map(([x, y], idx) => {
-    if (idx === 0) return [mx, apexY];
-    const dx = mx - x;
-    const jitter = idx >= 4 ? ((idx % 3) - 1) * 14 : 0;
-    return [mx + dx, y + jitter];
-  });
+  // Even, gap-free strip triangulation tying every adjacent column AND bridging the center axis cleanly!
+  const M_TRIS: Array<[number, number, number]> = [
+    // Summit -> Tier 1
+    [0, 1, 2], [0, 2, 3],
 
-  const faces: Array<[number, number, number, string, string]> = [
-    [0, 1, 2, "#38bdf8", "#0284c7"],
-    [0, 1, 3, "#7dd3fc", "#0ea5e9"],
-    [1, 3, 4, "#0ea5e9", "#0369a1"],
-    [1, 2, 4, "#0284c7", "#0369a1"],
-    [2, 4, 5, "#38bdf8", "#0284c7"],
-    [4, 5, 8, "#0284c7", "#075985"],
-    [3, 4, 6, "#0ea5e9", "#0369a1"],
-    [4, 6, 7, "#0284c7", "#075985"],
-    [4, 7, 8, "#0369a1", "#0c4a6e"],
-    [5, 8, 9, "#0ea5e9", "#0369a1"],
-    [8, 9, 12, "#0284c7", "#075985"],
-    [6, 7, 10, "#38bdf8", "#0284c7"],
-    [7, 10, 11, "#0ea5e9", "#0369a1"],
-    [7, 8, 11, "#0284c7", "#075985"],
-    [8, 11, 12, "#0369a1", "#082f49"],
-    [9, 12, 13, "#0ea5e9", "#075985"],
-    [10, 11, 14, "#0ea5e9", "#0369a1"],
-    [11, 14, 15, "#0284c7", "#075985"],
-    [11, 12, 15, "#0369a1", "#082f49"],
-    [12, 15, 16, "#075985", "#041c3c"],
-    [12, 13, 16, "#0284c7", "#062552"],
-    [14, 15, 17, "#0284c7", "#062552"],
-    [15, 17, 18, "#0369a1", "#041c3c"],
-    [15, 16, 18, "#075985", "#03142e"],
-    [16, 18, 19, "#062552", "#020c22"],
+    // Tier 1 -> Tier 2 (Left spur, Left inner, Center bridge, Right inner, Right spur)
+    [1, 4, 5],
+    [1, 5, 2], [2, 5, 6],
+    [2, 6, 7], [2, 7, 3],
+    [3, 7, 8],
+
+    // Tier 2 -> Tier 3 (Continuous across center index 6 <-> 12!)
+    [4, 9, 10], [4, 10, 5],
+    [5, 10, 11], [5, 11, 6],
+    [6, 11, 12], [6, 12, 7],
+    [7, 12, 13], [7, 13, 8],
+    [8, 13, 14], [8, 14, 15],
+
+    // Tier 3 -> Tier 4 (Continuous across center index 12 <-> 20!)
+    [9, 16, 17], [9, 17, 10],
+    [10, 17, 18], [10, 18, 11],
+    [11, 18, 19], [11, 19, 12],
+    [12, 19, 20], [12, 20, 21],
+    [12, 21, 13],
+    [13, 21, 22], [13, 22, 14],
+    [14, 22, 23], [14, 23, 15],
+    [15, 23, 24],
+
+    // Tier 4 -> Tier 5 (8 quads -> 16 balanced triangles)
+    [16, 25, 26], [16, 26, 17],
+    [17, 26, 27], [17, 27, 18],
+    [18, 27, 28], [18, 28, 19],
+    [19, 28, 29], [19, 29, 20],
+    [20, 29, 30], [20, 30, 21],
+    [21, 30, 31], [21, 31, 22],
+    [22, 31, 32], [22, 32, 23],
+    [23, 32, 33], [23, 33, 24],
+
+    // Tier 5 -> Tier 6 (8 quads -> 16 balanced triangles)
+    [25, 34, 35], [25, 35, 26],
+    [26, 35, 36], [26, 36, 27],
+    [27, 36, 37], [27, 37, 28],
+    [28, 37, 38], [28, 38, 29],
+    [29, 38, 39], [29, 39, 30],
+    [30, 39, 40], [30, 40, 31],
+    [31, 40, 41], [31, 41, 32],
+    [32, 41, 42], [32, 42, 33],
   ];
 
-  const drawCrystalFacet = (
-    p1: [number, number],
-    p2: [number, number],
-    p3: [number, number],
-    c1: string,
-    c2: string,
-    isRight: boolean
-  ) => {
+  const paletteLight = [
+    ["#7dd3fc", "#0ea5e9"], // High illuminated ridge
+    ["#38bdf8", "#0284c7"], // Sunlit azure face
+    ["#0ea5e9", "#0369a1"], // Mid facet
+    ["#0284c7", "#075985"], // Shaded cobalt slope
+    ["#0369a1", "#0c4a6e"], // Deep canyon facet
+    ["#075985", "#041c3c"], // Foothill shadow facet
+  ] as const;
+
+  for (let i = 0; i < M_TRIS.length; i++) {
+    const [a, b, c] = M_TRIS[i];
+    const p1 = M_VERTS[a];
+    const p2 = M_VERTS[b];
+    const p3 = M_VERTS[c];
+    const centroidX = (p1[0] + p2[0] + p3[0]) / 3;
+    const centroidY = (p1[1] + p2[1] + p3[1]) / 3;
+    const normY = Math.max(0, Math.min(1, (centroidY - apexY) / Math.max(1, baseY - apexY)));
+    const isRightSlope = centroidX >= mx;
+    // Directional light from top-left creates authentic sculptural bevel contrast across center ridge
+    const baseBand = Math.min(4, Math.floor(normY * 4.5));
+    const band = Math.min(paletteLight.length - 1, baseBand + (isRightSlope ? 1 : 0));
+    const [c1, c2] = paletteLight[band];
+
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(p1[0], p1[1]);
@@ -449,79 +535,155 @@ export function paintOlympiaBackdropCanvas(
     const maxX = Math.max(p1[0], p2[0], p3[0]);
     const minY = Math.min(p1[1], p2[1], p3[1]);
     const maxY = Math.max(p1[1], p2[1], p3[1]);
-    const grad = ctx.createLinearGradient(isRight ? maxX : minX, minY, isRight ? minX : maxX, maxY);
+    const grad = ctx.createLinearGradient(isRightSlope ? maxX : minX, minY, isRightSlope ? minX : maxX, maxY);
     grad.addColorStop(0, c1);
     grad.addColorStop(1, c2);
-    ctx.globalAlpha = 0.84;
+    ctx.globalAlpha = 0.88;
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Glowing cyan wireframe mesh lines (Signature look in reference photo)
     ctx.globalAlpha = 1.0;
-    ctx.strokeStyle = "rgba(125, 211, 252, 0.62)";
+    ctx.strokeStyle = "rgba(125, 211, 252, 0.68)";
     ctx.lineWidth = 2.0;
     ctx.stroke();
     ctx.restore();
-  };
-
-  for (const [a, b, c, c1, c2] of faces) {
-    drawCrystalFacet(leftNodes[a], leftNodes[b], leftNodes[c], c1, c2, false);
-  }
-  for (const [a, b, c, c1, c2] of faces) {
-    const rightC1 = c1 === "#7dd3fc" ? "#38bdf8" : c1 === "#38bdf8" ? "#0ea5e9" : c1;
-    const rightC2 = c2 === "#0ea5e9" ? "#0284c7" : "#062b63";
-    drawCrystalFacet(rightNodes[a], rightNodes[b], rightNodes[c], rightC1, rightC2, true);
   }
 
-  // Luminous vertex nodes on wireframe lattice
+  // Luminous vertex lattice nodes across mountain face (excluding floor edge vertices)
   ctx.save();
   ctx.fillStyle = "#e0f2fe";
   ctx.shadowColor = "#38bdf8";
   ctx.shadowBlur = 10;
-  for (let i = 0; i < leftNodes.length - 3; i++) {
+  for (let i = 0; i < 34; i++) {
     ctx.beginPath();
-    ctx.arc(leftNodes[i][0], leftNodes[i][1], 3.4, 0, Math.PI * 2);
+    ctx.arc(M_VERTS[i][0], M_VERTS[i][1], i === 0 ? 5.5 : 3.5, 0, Math.PI * 2);
     ctx.fill();
-    if (i > 0) {
-      ctx.beginPath();
-      ctx.arc(rightNodes[i][0], rightNodes[i][1], 3.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
   }
   ctx.restore();
 
-  // Graceful winding luminous path ascending the central mountain valley toward summit
+  // ── 4. MULTI-SWITCHBACK SERPENTINE LUMINOUS PATH (4 DISTINCT S-CURVES TO SUMMIT) ──
+  // Continuous polyline sampled across chained alternating switchback Beziers from wide valley entrance
+  // winding left-right-left-right up the central massif directly to the sunlit peak!
+  const roadTopY = apexY + 58;
+  const totalRise = baseY - roadTopY;
+  const roadSpine: Array<{ x: number; y: number; halfW: number }> = [];
+
+  const switchbackWaypoints: Array<[number, number]> = [
+    [mx - 10, baseY],                      // Start centered bottom mouth
+    [mx + 165, baseY - totalRise * 0.16],  // Curve 1: wide sweep RIGHT
+    [mx - 150, baseY - totalRise * 0.37],  // Curve 2: sharp hairpin LEFT
+    [mx + 115, baseY - totalRise * 0.58],  // Curve 3: graceful sweep RIGHT
+    [mx - 74,  baseY - totalRise * 0.78],  // Curve 4: high switchback LEFT
+    [mx + 26,  baseY - totalRise * 0.91],  // Crest bend RIGHT
+    [mx,       roadTopY],                  // Summit termination
+  ];
+
+  // Smooth Catmull-Rom spline sampling along switchback waypoints so every S-curve is silky smooth
+  const samplesPerSeg = 22;
+  const ptsExtended = [
+    switchbackWaypoints[0],
+    ...switchbackWaypoints,
+    switchbackWaypoints[switchbackWaypoints.length - 1],
+  ];
+  const segCount = switchbackWaypoints.length - 1;
+  const totalSamples = segCount * samplesPerSeg;
+
+  for (let seg = 0; seg < segCount; seg++) {
+    const p0 = ptsExtended[seg];
+    const p1 = ptsExtended[seg + 1];
+    const p2 = ptsExtended[seg + 2];
+    const p3 = ptsExtended[seg + 3];
+    const stepEnd = seg === segCount - 1 ? samplesPerSeg : samplesPerSeg - 1;
+    for (let s = 0; s <= stepEnd; s++) {
+      const t = s / samplesPerSeg;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const x =
+        0.5 *
+        (2 * p1[0] +
+          (-p0[0] + p2[0]) * t +
+          (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+          (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+      const y =
+        0.5 *
+        (2 * p1[1] +
+          (-p0[1] + p2[1]) * t +
+          (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+          (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+      const globalU = (seg * samplesPerSeg + s) / totalSamples;
+      // Perspective taper from 88px half-width at ground stairs to 6px hairline at summit
+      const halfW = 88 * Math.pow(1 - globalU, 1.45) + 6;
+      roadSpine.push({ x, y, halfW });
+    }
+  }
+
+  // Construct tapered left & right trail edge banks perpendicular to local tangent
+  const leftBank: Array<[number, number]> = [];
+  const rightBank: Array<[number, number]> = [];
+  for (let i = 0; i < roadSpine.length; i++) {
+    const prev = roadSpine[Math.max(0, i - 1)];
+    const next = roadSpine[Math.min(roadSpine.length - 1, i + 1)];
+    const tx = next.x - prev.x;
+    const ty = next.y - prev.y;
+    const len = Math.hypot(tx, ty) || 1;
+    const nx = -ty / len;
+    const ny = tx / len;
+    // Clamp vertical shift slightly so horizontal road width remains broadcast crisp
+    const wX = nx * roadSpine[i].halfW;
+    const wY = ny * (roadSpine[i].halfW * 0.45);
+    leftBank.push([roadSpine[i].x - wX, roadSpine[i].y - wY]);
+    rightBank.push([roadSpine[i].x + wX, roadSpine[i].y + wY]);
+  }
+
   ctx.save();
-  const roadTopY = apexY + 75;
   const roadGrad = ctx.createLinearGradient(0, baseY, 0, roadTopY);
-  roadGrad.addColorStop(0.0, "rgba(14, 165, 233, 0.85)");
-  roadGrad.addColorStop(0.55, "rgba(56, 189, 248, 0.95)");
-  roadGrad.addColorStop(1.0, "rgba(224, 242, 254, 1.0)");
+  roadGrad.addColorStop(0.00, "rgba(14, 165, 233, 0.88)");
+  roadGrad.addColorStop(0.48, "rgba(56, 189, 248, 0.96)");
+  roadGrad.addColorStop(1.00, "rgba(240, 249, 255, 1.00)");
 
   ctx.beginPath();
-  ctx.moveTo(mx - 155, baseY);
-  ctx.bezierCurveTo(mx - 125, baseY - 220, mx + 60, baseY - 460, mx - 18, roadTopY);
-  ctx.lineTo(mx + 18, roadTopY);
-  ctx.bezierCurveTo(mx + 110, baseY - 460, mx + 45, baseY - 220, mx + 155, baseY);
+  ctx.moveTo(leftBank[0][0], leftBank[0][1]);
+  for (let i = 1; i < leftBank.length; i++) {
+    ctx.lineTo(leftBank[i][0], leftBank[i][1]);
+  }
+  for (let i = rightBank.length - 1; i >= 0; i--) {
+    ctx.lineTo(rightBank[i][0], rightBank[i][1]);
+  }
   ctx.closePath();
   ctx.fillStyle = roadGrad;
   ctx.shadowColor = "#38bdf8";
-  ctx.shadowBlur = 24;
+  ctx.shadowBlur = 28;
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(224, 242, 254, 0.92)";
+  // Crisp glowing outer curb strokes + bright serpentine center highway line
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = "rgba(224, 242, 254, 0.90)";
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(leftBank[0][0], leftBank[0][1]);
+  for (let i = 1; i < leftBank.length; i++) ctx.lineTo(leftBank[i][0], leftBank[i][1]);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(rightBank[0][0], rightBank[0][1]);
+  for (let i = 1; i < rightBank.length; i++) ctx.lineTo(rightBank[i][0], rightBank[i][1]);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
   ctx.lineWidth = 3.2;
   ctx.beginPath();
-  ctx.moveTo(mx, baseY);
-  ctx.bezierCurveTo(mx - 40, baseY - 220, mx + 85, baseY - 460, mx, roadTopY);
+  ctx.moveTo(roadSpine[0].x, roadSpine[0].y);
+  for (let i = 1; i < roadSpine.length; i++) {
+    ctx.lineTo(roadSpine[i].x, roadSpine[i].y);
+  }
   ctx.stroke();
   ctx.restore();
 
-  // Clean sunlit summit beacon & waving pennant flag on exact mountain peak
+  // ── 5. SUMMIT BEACON & PENNANT FLAG ON PEAK ──
   ctx.save();
   ctx.translate(mx, apexY);
   ctx.shadowColor = "#7dd3fc";
-  ctx.shadowBlur = 22;
+  ctx.shadowBlur = 24;
 
   ctx.strokeStyle = "#e0f2fe";
   ctx.lineWidth = 3.5;
@@ -541,20 +703,19 @@ export function paintOlympiaBackdropCanvas(
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Peak star glint
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.arc(0, 0, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Atmospheric cool cyan mist veil across lower base so mountain merges smoothly behind stairs
-  const mistGrad = ctx.createLinearGradient(0, h * 0.68, 0, h);
+  // Atmospheric cool cyan mist veil across lower perimeter
+  const mistGrad = ctx.createLinearGradient(0, h * 0.70, 0, h);
   mistGrad.addColorStop(0, "rgba(6, 37, 110, 0)");
-  mistGrad.addColorStop(0.65, "rgba(4, 24, 72, 0.55)");
-  mistGrad.addColorStop(1, "rgba(2, 13, 46, 0.95)");
+  mistGrad.addColorStop(0.65, "rgba(4, 24, 72, 0.52)");
+  mistGrad.addColorStop(1, "rgba(2, 13, 46, 0.94)");
   ctx.fillStyle = mistGrad;
-  ctx.fillRect(0, h * 0.68, w, h * 0.32);
+  ctx.fillRect(0, h * 0.70, w, h * 0.30);
 
   return canvas;
 }

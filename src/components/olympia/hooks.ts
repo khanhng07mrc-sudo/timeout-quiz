@@ -1303,10 +1303,15 @@ export function useOlympiaAudio(
     };
   }, [unlockAudio]);
 
-  // Tự động khởi tạo AudioContext khi hook mount và enabled, đồng thời pre-warm buzzer audio
+  // Tự động khởi tạo AudioContext + kênh routing fast-path khi mount và enabled, đồng thời pre-warm buzzer audio
   useEffect(() => {
     if (enabled) {
-      getAudioContext();
+      const ctx = getAudioContext();
+      if (ctx && !fastRoutingGraphRef.current) {
+        try {
+          fastRoutingGraphRef.current = createChannelRoutingGraph(ctx);
+        } catch {}
+      }
       prewarmBuzzerSounds(resolvedSeason);
     }
   }, [enabled, getAudioContext, resolvedSeason]);

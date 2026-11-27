@@ -4,7 +4,8 @@ import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { OlympiaRightScreenMode, OlympiaState } from "@/lib/olympia/types";
-import { parseVcnvAnswer } from "@/lib/olympia/engine";
+import { parseVcnvAnswer, cleanVcnvWord } from "@/lib/olympia/engine";
+import { RULESETS, getO22Rules } from "@/lib/olympia/rulesets";
 import { isPreMatchIdle } from "./useOlympiaLightingState";
 
 interface CentralLedWallProps {
@@ -832,223 +833,681 @@ function renderScoreboardToCanvas(
 }
 
 /**
+ * Word-wrap helper that breaks text cleanly on whitespace (with char-wrap fallback for very long words).
+ */
+function measureWrappedLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxW: number
+): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word;
+    if (ctx.measureText(test).width <= maxW || !current) {
+      current = test;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+/**
+ * Draws wrapped text inside a bounding box, automatically stepping down font size
+ * from maxFontPx to minFontPx so long questions fit completely with zero clipping or giant overflow.
+ */
+function drawFittedTextBlock(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxW: number,
+  maxH: number,
+  opts: {
+    fontFamily: string;
+    fontWeight?: string;
+    color?: string;
+    maxFontPx: number;
+    minFontPx: number;
+    lineHeightRatio?: number;
+    align?: CanvasTextAlign;
+    vAlign?: "top" | "center";
+  }
+): void {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return;
+  const weight = opts.fontWeight ?? "700";
+  const lhRatio = opts.lineHeightRatio ?? 1.32;
+  let chosenSize = opts.minFontPx;
+  let chosenLines: string[] = [trimmed];
+
+  for (let fs = Math.round(opts.maxFontPx); fs >= Math.round(opts.minFontPx); fs -= 2) {
+    ctx.font = `${weight} ${fs}px ${opts.fontFamily}`;
+    const lines = measureWrappedLines(ctx, trimmed, maxW);
+    const totalH = lines.length * fs * lhRatio;
+    if (totalH <= maxH) {
+      chosenSize = fs;
+      chosenLines = lines;
+      break;
+    }
+    chosenSize = fs;
+    chosenLines = lines;
+  }
+
+  ctx.font = `${weight} ${chosenSize}px ${opts.fontFamily}`;
+  ctx.fillStyle = opts.color ?? "#ffffff";
+  ctx.textAlign = opts.align ?? "left";
+  ctx.textBaseline = "top";
+  const lineH = Math.round(chosenSize * lhRatio);
+  const blockH = chosenLines.length * lineH;
+  const startY = opts.vAlign === "center" ? y + Math.max(0, (maxH - blockH) / 2) : y;
+  const anchorX = opts.align === "center" ? x + maxW / 2 : opts.align === "right" ? x + maxW : x;
+
+  for (let i = 0; i < chosenLines.length; i++) {
+    const ly = startY + i * lineH;
+    if (ly + lineH > y + maxH + 4) break;
+    ctx.fillText(chosenLines[i], anchorX, ly, maxW);
+  }
+}
+
+function getScreenFontFamily(isClassic: boolean): string {
+  return isClassic
+    ? 'Arial, "Helvetica Neue", Helvetica, sans-serif'
+    : '"UTM Avo", "Montserrat", "Be Vietnam Pro", system-ui, sans-serif';
+}
+
+/**
+ * Audience Top Scoreboard Strip + Question/Answer Lower-Third Mirror (Khởi Động, Về Đích, CHP).
+ * Mirrors the exact DisplayScreen visual layout & content visibility rules so Stage Right Screen
+ * stays 1:1 synchronized with what the audience sees.
+ */
+function renderAudienceLowerThirdMirrorToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState,
+  opts: {
+    round: "khoiDong" | "veDich" | "cauHoiPhu";
+    badgeLabel?: string | null;
+    questionText?: string | null;
+    answerText?: string | null;
+    activeSeatId?: number | null;
+    buzzedSeatId?: number | null;
+    lockedSeats?: number[];
+    hopeStarActive?: boolean;
+    veDichOwner?: number | null;
+  }
+): void {
+  const isClassic = state.themeMode === "o26_classic";
+  const fontFam = getScreenFontFamily(isClassic);
+  const seats = (state.seats || []).slice(0, 8);
+  const n = Math.max(1, seats.length);
+  const cx = width / 2;
+
+  const isVeDich = opts.round === "veDich";
+  const panelX = Math.round(width * 0.045);
+  const panelW = Math.round(width * 0.91);
+  const panelY = Math.round(height * 0.09);
+  const panelH = Math.round(height * 0.82);
+
+  ctx.save();
+
+  // Optional top round / question badge (e.g., Câu 1/6, CÂU HỎI PHỤ 1/3)
+  if (opts.badgeLabel) {
+    const bw = Math.min(260, Math.round(width * 0.24));
+    const bh = Math.round(height * 0.068);
+    ctx.fillStyle = isClassic ? "#291808" : "#071a42";
+    ctx.strokeStyle = isClassic ? "#fbbf24" : "#38bdf8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(panelX + 12, panelY - bh + 4, bw, bh, [10, 10, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = `700 ${Math.round(height * 0.032)}px ${fontFam}`;
+    ctx.fillStyle = isClassic ? "#fde047" : "#fbbf24";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(opts.badgeLabel.toUpperCase(), panelX + 12 + bw / 2, panelY - bh / 2 + 2, bw - 14);
+  }
+
+  // Main Lower-Third Body Frame
+  const bodyGrad = ctx.createLinearGradient(0, panelY, 0, panelY + panelH);
+  if (isClassic) {
+    bodyGrad.addColorStop(0, "rgba(26, 30, 38, 0.95)");
+    bodyGrad.addColorStop(1, "rgba(12, 15, 22, 0.98)");
+  } else {
+    bodyGrad.addColorStop(0, "rgba(10, 34, 107, 0.94)");
+    bodyGrad.addColorStop(1, "rgba(3, 13, 48, 0.98)");
+  }
+  ctx.fillStyle = bodyGrad;
+  ctx.strokeStyle = isClassic ? "#d4af37" : "#cbd5e1";
+  ctx.lineWidth = isClassic ? 3.5 : 3;
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  // Top Shelf: Contestant Tabs matching audience screen
+  const shelfH = Math.round(panelH * 0.19);
+  const shelfY = panelY + 8;
+  const clusterW = isVeDich ? Math.round(panelW * 0.21) : 0;
+  const tabsTotalW = panelW - 16 - (clusterW > 0 ? clusterW + 10 : 0);
+  const tabGap = 6;
+  const tabW = (tabsTotalW - tabGap * (n - 1)) / n;
+
+  seats.forEach((seat, idx) => {
+    const tx = panelX + 8 + idx * (tabW + tabGap);
+    const isBuzzed = opts.buzzedSeatId === seat.id;
+    const isTurn = opts.activeSeatId === seat.id;
+    const isLocked = opts.lockedSeats?.includes(seat.id);
+
+    ctx.fillStyle = isBuzzed
+      ? "#b91c1c"
+      : isTurn
+      ? isVeDich
+        ? "#d97706"
+        : isClassic
+        ? "#92400e"
+        : "#dc2626"
+      : isLocked
+      ? "rgba(0,0,0,0.68)"
+      : isClassic
+      ? "rgba(24, 28, 36, 0.92)"
+      : "rgba(5, 20, 51, 0.85)";
+    ctx.strokeStyle = isBuzzed
+      ? "#f87171"
+      : isTurn
+      ? "#fde047"
+      : isClassic
+      ? "rgba(212, 175, 55, 0.55)"
+      : "rgba(56, 189, 248, 0.45)";
+    ctx.lineWidth = isBuzzed || isTurn ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.roundRect(tx, shelfY, tabW, shelfH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    const label = `${seat.name || `TS ${seat.id + 1}`} (${seat.score})`;
+    ctx.font = `700 ${Math.round(height * (n <= 4 ? 0.032 : 0.024))}px ${fontFam}`;
+    ctx.fillStyle = isLocked ? "#64748b" : "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, tx + tabW / 2, shelfY + shelfH / 2, Math.max(20, tabW - 10));
+  });
+
+  // Về Đích Right Score Cluster (Owner Big Score + Question Points Package Strip)
+  if (isVeDich && clusterW > 0) {
+    const cX = panelX + panelW - clusterW - 8;
+    const cY = panelY + 8;
+    const cH = panelH - 16;
+    ctx.fillStyle = isClassic ? "rgba(32, 22, 10, 0.92)" : "rgba(6, 24, 66, 0.92)";
+    ctx.strokeStyle = isClassic ? "#d4af37" : "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(cX, cY, clusterW, cH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    const ownerId = opts.veDichOwner ?? opts.activeSeatId ?? 0;
+    const ownerSeat = state.seats?.[ownerId];
+    ctx.font = `700 ${Math.round(height * 0.14)}px ${fontFam}`;
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${ownerSeat?.score ?? 0}`, cX + clusterW / 2, cY + cH * 0.42, clusterW - 16);
+
+    const vd = state.veDich;
+    const pkg = vd?.packages?.[ownerId] || [];
+    if (pkg.length > 0) {
+      const stripH = Math.round(cH * 0.24);
+      const stripY = cY + cH - stripH - 4;
+      const pGap = 4;
+      const pw = (clusterW - 8 - pGap * (pkg.length - 1)) / pkg.length;
+      pkg.forEach((p, pIdx) => {
+        const px = cX + 4 + pIdx * (pw + pGap);
+        const isCurQ = vd?.qIdx === pIdx;
+        ctx.fillStyle = isCurQ ? (isClassic ? "#b45309" : "#0284c7") : "rgba(5, 20, 51, 0.92)";
+        ctx.strokeStyle = "rgba(255,255,255,0.45)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(px, stripY, pw, stripH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = `700 ${Math.round(height * 0.036)}px ${fontFam}`;
+        ctx.fillStyle = isCurQ ? "#ffffff" : "#e2e8f0";
+        ctx.fillText(`${p.points}`, px + pw / 2, stripY + stripH / 2);
+      });
+    }
+
+    if (opts.hopeStarActive) {
+      ctx.font = `700 ${Math.round(height * 0.036)}px ${fontFam}`;
+      ctx.fillStyle = "#fde047";
+      ctx.fillText("⭐ NSHV", cX + clusterW / 2, cY + cH * 0.14);
+    }
+  }
+
+  // Body Question / Answer Chamber (Strictly fits & mirrors what Audience sees)
+  const chamberX = panelX + 24;
+  const chamberY = shelfY + shelfH + 18;
+  const chamberW = (clusterW > 0 ? panelW - clusterW - 56 : panelW - 48);
+  const chamberH = panelY + panelH - chamberY - 22;
+
+  if (opts.answerText) {
+    ctx.font = `700 ${Math.round(height * 0.030)}px ${fontFam}`;
+    ctx.fillStyle = isClassic ? "#fbbf24" : "#67e8f9";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("ĐÁP ÁN CHÍNH XÁC", chamberX, chamberY);
+
+    drawFittedTextBlock(ctx, `✔ ${opts.answerText}`, chamberX, chamberY + Math.round(height * 0.055), chamberW, chamberH - Math.round(height * 0.06), {
+      fontFamily: fontFam,
+      fontWeight: "700",
+      color: "#34d399",
+      maxFontPx: Math.round(height * 0.064),
+      minFontPx: Math.round(height * 0.034),
+      align: "left",
+      vAlign: "top",
+    });
+  } else if (opts.questionText) {
+    drawFittedTextBlock(ctx, opts.questionText, chamberX, chamberY, chamberW, chamberH, {
+      fontFamily: fontFam,
+      fontWeight: "700",
+      color: "#ffffff",
+      maxFontPx: Math.round(height * 0.046),
+      minFontPx: Math.round(height * 0.028),
+      lineHeightRatio: 1.34,
+      align: "left",
+      vAlign: "top",
+    });
+  }
+
+  ctx.restore();
+  void cx;
+}
+
+/**
+ * Mirrors the Audience Về Đích Package Selection Grid on Stage Right LED Screen.
+ */
+function renderVeDichPackageGridMirrorToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState
+): void {
+  const vd = state.veDich;
+  if (!vd) return;
+  const isClassic = state.themeMode === "o26_classic";
+  const fontFam = getScreenFontFamily(isClassic);
+  const owner = vd.order?.[vd.turnIdx] ?? 0;
+  const ownerSeat = state.seats?.[owner];
+  const ruleset = RULESETS[state.rulesetId] || RULESETS.O26;
+  const o22Q = state.rulesetId === "O22" ? getO22Rules(state.o22Quarter ?? 1) : null;
+  const pointOptions = o22Q ? o22Q.veDich.pointOptions : ruleset.veDich.pointOptions;
+  const qCount = o22Q ? o22Q.veDich.questionsPerSeat : ruleset.veDich.questionsPerSeat;
+  const selectedPkg = vd.packages?.[owner] || [];
+
+  const cx = width / 2;
+  ctx.save();
+  ctx.font = `700 ${Math.round(height * 0.048)}px ${fontFam}`;
+  ctx.fillStyle = isClassic ? "#fbbf24" : "#67e8f9";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    `GÓI CÂU HỎI VỀ ĐÍCH — ${(ownerSeat?.name || `THÍ SINH ${owner + 1}`).toUpperCase()}`,
+    cx,
+    height * 0.13,
+    width * 0.88
+  );
+
+  const gridW = width * 0.72;
+  const gridH = height * 0.56;
+  const gx = (width - gridW) / 2;
+  const gy = height * 0.24;
+  const rows = pointOptions.length;
+  const cols = qCount;
+  const cellGap = 12;
+  const cellW = (gridW - cellGap * (cols - 1)) / cols;
+  const cellH = (gridH - cellGap * (rows - 1)) / rows;
+
+  for (let r = 0; r < rows; r++) {
+    const ptsVal = pointOptions[r];
+    for (let c = 0; c < cols; c++) {
+      const x = gx + c * (cellW + cellGap);
+      const y = gy + r * (cellH + cellGap);
+      const picked = selectedPkg[c]?.points === ptsVal;
+      ctx.fillStyle = picked
+        ? isClassic
+          ? "#b45309"
+          : "#dc2626"
+        : isClassic
+        ? "rgba(24, 28, 36, 0.90)"
+        : "rgba(7, 27, 71, 0.90)";
+      ctx.strokeStyle = picked ? "#fde047" : isClassic ? "#d4af37" : "#38bdf8";
+      ctx.lineWidth = picked ? 3.5 : 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, cellW, cellH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = `700 ${Math.round(height * 0.068)}px ${fontFam}`;
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${ptsVal}`, x + cellW / 2, y + cellH / 2);
+    }
+  }
+  ctx.restore();
+}
+
+/**
  * Render Live Broadcast Round Graphics onto Stage Right Screen Canvas
+ * — Strict mirror copy of Audience DisplayScreen graphics across all rounds & 2..8 seats.
  */
 function renderRoundGraphicsToCanvas(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  state: any,
+  state: OlympiaState | null | undefined,
   fadeProgress: number = 0
 ): void {
+  if (!state) return;
   const cx = width / 2;
-  const round = state?.currentRound;
+  const round = state.currentRound;
+  const isClassic = state.themeMode === "o26_classic";
+  const fontFam = getScreenFontFamily(isClassic);
+  const seats = (state.seats || []).slice(0, 8);
 
-  // 1. VCNV Answers Revealed -> Vertical Brass Rail with 4 Staggered Plaques
-  if (round === "vcnv" && state.vcnv?.answersRevealed) {
+  // 1. VCNV Answers Revealed -> Vertical Brass/Arrow Plaques supporting ALL 2..8 contestants
+  if (round === "vcnv" && (state.vcnv?.answersRevealed || state.vcnv?.phase === "answers")) {
     ctx.save();
-    ctx.font = '900 44px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = "#ffd700";
+    ctx.font = `700 ${Math.round(height * 0.056)}px ${fontFam}`;
+    ctx.fillStyle = isClassic ? "#fbbf24" : "#67e8f9";
     ctx.textAlign = "center";
-    ctx.fillText("VƯỢT CHƯỚNG NGẠI VẬT — ĐÁP ÁN", cx, 60);
+    ctx.textBaseline = "middle";
+    ctx.fillText("VƯỢT CHƯỚNG NGẠI VẬT — ĐÁP ÁN THÍ SINH", cx, height * 0.085, width * 0.90);
 
-    // Central brass rod
-    const rodW = 18;
+    const rodW = 14;
     const rodGrad = ctx.createLinearGradient(cx - rodW / 2, 0, cx + rodW / 2, 0);
     rodGrad.addColorStop(0, "#78350f");
-    rodGrad.addColorStop(0.4, "#fef08a");
-    rodGrad.addColorStop(0.7, "#d97706");
+    rodGrad.addColorStop(0.5, "#fef08a");
     rodGrad.addColorStop(1, "#451a03");
     ctx.fillStyle = rodGrad;
-    ctx.fillRect(cx - rodW / 2, 110, rodW, height - 150);
+    ctx.fillRect(cx - rodW / 2, height * 0.14, rodW, height * 0.80);
 
-    const seats = state.seats?.slice(0, 4) || [];
-    const plaqueH = 80;
-    const plaqueW = width * 0.40;
-    const startY = 130;
-    const gapY = (height - 230) / 4;
+    const count = Math.max(1, seats.length);
+    const startY = height * 0.155;
+    const availH = height * 0.78;
+    const isTwoSide = count > 4;
+    const rowsPerSide = isTwoSide ? Math.ceil(count / 2) : count;
+    const gapY = Math.round(height * 0.02);
+    const plaqueH = Math.min(Math.round((availH - gapY * (rowsPerSide - 1)) / rowsPerSide), Math.round(height * 0.16));
+    const plaqueW = isTwoSide ? width * 0.42 : width * 0.72;
 
-    seats.forEach((s: any, idx: number) => {
-      const isRight = idx % 2 === 0;
-      const py = startY + idx * gapY;
-      const px = isRight ? cx + 20 : cx - 20 - plaqueW;
+    seats.forEach((s, idx) => {
+      const rowIdx = isTwoSide ? Math.floor(idx / 2) : idx;
+      const py = startY + rowIdx * (plaqueH + gapY);
+      const px = isTwoSide
+        ? idx % 2 === 0
+          ? cx - 18 - plaqueW
+          : cx + 18
+        : cx - plaqueW / 2;
       const ans = state.vcnv?.answers?.[s.id]?.text || "";
 
-      // Rivet
+      ctx.fillStyle = isClassic ? "#141821" : "#071b47";
+      ctx.strokeStyle = isClassic ? "#d4af37" : "#38bdf8";
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(cx, py + plaqueH / 2, 16, 0, Math.PI * 2);
-      ctx.fillStyle = "#ef4444";
-      ctx.fill();
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Plaque body
-      ctx.fillStyle = "#0f172a";
-      ctx.strokeStyle = "#cbd5e1";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.roundRect(px, py, plaqueW, plaqueH, 40);
+      ctx.roundRect(px, py, plaqueW, plaqueH, 16);
       ctx.fill();
       ctx.stroke();
 
-      // Name chip
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
-      ctx.textAlign = "center";
-      ctx.fillText(s.name, px + plaqueW / 2, py + 26);
+      ctx.fillStyle = isClassic ? "#fde047" : "#67e8f9";
+      ctx.font = `700 ${Math.round(plaqueH * 0.28)}px ${fontFam}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(s.name || `TS ${idx + 1}`, px + 18, py + plaqueH * 0.30, plaqueW - 36);
 
-      // Answer text
       ctx.fillStyle = "#ffffff";
-      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(ans, px + plaqueW / 2, py + 62);
+      ctx.font = `700 ${Math.round(plaqueH * 0.38)}px ${fontFam}`;
+      ctx.fillText(ans || "—", px + 18, py + plaqueH * 0.68, plaqueW - 36);
     });
     ctx.restore();
     return;
   }
 
-  // 2. TĂNG TỐC Ranking Revealed -> Vertical Brass Rail with 4 Ranked Plaques
-  if (round === "tangToc" && state.tangToc?.phase === "ranking") {
+  // 2. TĂNG TỐC Ranking / Graded Revealed -> Supports ALL 2..8 ranked submissions
+  if (round === "tangToc" && (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded")) {
     ctx.save();
-    ctx.font = '900 44px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = "#ffd700";
+    ctx.font = `700 ${Math.round(height * 0.056)}px ${fontFam}`;
+    ctx.fillStyle = isClassic ? "#fbbf24" : "#67e8f9";
     ctx.textAlign = "center";
-    ctx.fillText("TĂNG TỐC — KẾT QUẢ TRẢ LỜI", cx, 60);
+    ctx.textBaseline = "middle";
+    ctx.fillText("TĂNG TỐC — KẾT QUẢ TRẢ LỜI", cx, height * 0.085, width * 0.90);
 
-    const rodW = 18;
-    const rodGrad = ctx.createLinearGradient(cx - rodW / 2, 0, cx + rodW / 2, 0);
-    rodGrad.addColorStop(0, "#78350f");
-    rodGrad.addColorStop(0.4, "#fef08a");
-    rodGrad.addColorStop(0.7, "#d97706");
-    rodGrad.addColorStop(1, "#451a03");
-    ctx.fillStyle = rodGrad;
-    ctx.fillRect(cx - rodW / 2, 110, rodW, height - 150);
-
-    const ranking = state.tangToc?.ranking || [];
-    const plaqueH = 82;
-    const plaqueW = width * 0.78;
+    const ranking = (state.tangToc?.ranking || []).slice(0, 8);
+    const rCount = Math.max(1, ranking.length);
+    const startY = height * 0.16;
+    const availH = height * 0.78;
+    const gapY = Math.round(height * 0.018);
+    const plaqueH = Math.min(Math.round((availH - gapY * (rCount - 1)) / rCount), Math.round(height * 0.165));
+    const plaqueW = width * 0.84;
     const px = (width - plaqueW) / 2;
-    const startY = 130;
-    const gapY = (height - 230) / 4;
 
-    ranking.forEach((r: any, idx: number) => {
-      const py = startY + idx * gapY;
+    ranking.forEach((r, idx) => {
+      const py = startY + idx * (plaqueH + gapY);
       const s = state.seats?.[r.seat];
-      const ans = r.noAnswer ? "" : r.answer;
+      const ans = r.noAnswer ? "—" : r.answer || "—";
       const sec = r.noAnswer ? "" : `${(r.ms / 1000).toFixed(2)}s`;
 
-      ctx.beginPath();
-      ctx.arc(cx, py + plaqueH / 2, 14, 0, Math.PI * 2);
-      ctx.fillStyle = "#ef4444";
-      ctx.fill();
-      ctx.strokeStyle = "#ffffff";
+      ctx.fillStyle = r.wrong ? "#2b0d12" : isClassic ? "#141821" : "#071b47";
+      ctx.strokeStyle = r.wrong ? "#ef4444" : isClassic ? "#d4af37" : "#38bdf8";
       ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      ctx.fillStyle = r.wrong ? "#2b0d12" : "#0f172a";
-      ctx.strokeStyle = r.wrong ? "#ef4444" : "#cbd5e1";
-      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.roundRect(px, py, plaqueW, plaqueH, 40);
+      ctx.roundRect(px, py, plaqueW, plaqueH, 16);
       ctx.fill();
       ctx.stroke();
 
-      ctx.font = '800 26px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#f8fafc";
+      ctx.font = `700 ${Math.round(plaqueH * 0.36)}px ${fontFam}`;
+      ctx.fillStyle = isClassic ? "#fde047" : "#67e8f9";
       ctx.textAlign = "left";
-      ctx.fillText(s?.name || `TS ${r.seat + 1}`, px + 36, py + plaqueH / 2);
+      ctx.textBaseline = "middle";
+      ctx.fillText(s?.name || `TS ${r.seat + 1}`, px + 24, py + plaqueH / 2, plaqueW * 0.28);
 
-      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+      ctx.font = `700 ${Math.round(plaqueH * 0.42)}px ${fontFam}`;
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
-      ctx.fillText(ans, cx, py + plaqueH / 2);
+      ctx.fillText(ans, cx, py + plaqueH / 2, plaqueW * 0.44);
 
-      ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
+      ctx.font = `700 ${Math.round(plaqueH * 0.34)}px ${fontFam}`;
       ctx.fillStyle = "#f59e0b";
       ctx.textAlign = "right";
-      ctx.fillText(sec, px + plaqueW - 36, py + plaqueH / 2);
+      ctx.fillText(sec, px + plaqueW - 24, py + plaqueH / 2);
     });
     ctx.restore();
     return;
   }
 
-  // 3. VCNV Crossword / 4 Rows
+  // 3. VCNV Crossword / 4 Rows + Wrapped Active Row Hint (mirrors audience board)
   if (round === "vcnv" && state.vcnv?.rows) {
     ctx.save();
-    ctx.font = '900 44px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = "#ffd700";
+    ctx.font = `700 ${Math.round(height * 0.056)}px ${fontFam}`;
+    ctx.fillStyle = isClassic ? "#fbbf24" : "#67e8f9";
     ctx.textAlign = "center";
-    ctx.fillText("VƯỢT CHƯỚNG NGẠI VẬT", cx, 60);
+    ctx.textBaseline = "middle";
+    ctx.fillText("VƯỢT CHƯỚNG NGẠI VẬT", cx, height * 0.085);
 
-    const startY = 140;
-    const rowH = 70;
-    const gapY = 24;
+    const vcnv = state.vcnv;
+    const isQuestionOpen = vcnv.phase === "question";
+    const startY = height * 0.175;
+    const rowStep = isQuestionOpen ? height * 0.115 : height * 0.165;
+    const btnR = isQuestionOpen ? Math.round(height * 0.036) : Math.round(height * 0.044);
 
-    state.vcnv.rows.forEach((r: any, rIdx: number) => {
-      const y = startY + rIdx * (rowH + gapY);
-      const isCur = state.vcnv?.currentRow === rIdx;
-      const count = parseVcnvAnswer(r.answer || "       ").primary.replace(/\s/g, "").length || 7;
-      const btnR = 24;
-      const btnGap = 12;
-      const totalW = count * (btnR * 2 + btnGap);
-      let btnX = cx - totalW / 2 + btnR;
+    vcnv.rows.forEach((r, rIdx) => {
+      const y = startY + rIdx * rowStep;
+      const isCur = vcnv.currentRow === rIdx;
+      const cleanLetters = cleanVcnvWord(parseVcnvAnswer(r.answer || "").primary || r.answer || "").toUpperCase();
+      const count = cleanLetters.length || 7;
+      const btnGap = Math.max(5, Math.round(width * 0.008));
+      const maxRowW = width * 0.78;
+      const effR = Math.min(btnR, Math.floor((maxRowW / Math.max(1, count) - btnGap) / 2));
+      const totalW = count * (effR * 2 + btnGap);
+      let btnX = cx - totalW / 2 + effR;
 
+      // Row number badge
       ctx.fillStyle = isCur ? "#0284c7" : "#0369a1";
-      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeStyle = isCur ? "#fde047" : "#38bdf8";
       ctx.lineWidth = 2;
+      const numSize = effR * 1.9;
       ctx.beginPath();
-      ctx.roundRect(cx + totalW / 2 + 20, y - btnR, 50, 50, 10);
+      ctx.roundRect(cx + totalW / 2 + 16, y - numSize / 2, numSize, numSize, 8);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#ffffff";
-      ctx.font = '900 28px "Plus Jakarta Sans", sans-serif';
+      ctx.font = `700 ${Math.round(effR * 1.05)}px ${fontFam}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`${rIdx + 1}`, cx + totalW / 2 + 45, y);
+      ctx.fillText(`${rIdx + 1}`, cx + totalW / 2 + 16 + numSize / 2, y);
 
       for (let c = 0; c < count; c++) {
-        const bGrad = ctx.createRadialGradient(btnX - 6, y - 6, 2, btnX, y, btnR);
-        bGrad.addColorStop(0, "#475569");
-        bGrad.addColorStop(0.5, "#1e293b");
-        bGrad.addColorStop(1, "#020617");
-        ctx.fillStyle = bGrad;
-        ctx.strokeStyle = isCur ? "#f59e0b" : "#64748b";
+        ctx.fillStyle = r.wrong ? "#3f1018" : r.opened ? "#064e3b" : "#0f172a";
+        ctx.strokeStyle = r.wrong ? "#ef4444" : isCur ? "#f59e0b" : r.opened ? "#34d399" : "#64748b";
         ctx.lineWidth = isCur ? 3 : 2;
         ctx.beginPath();
-        ctx.arc(btnX, y, btnR, 0, Math.PI * 2);
+        ctx.arc(btnX, y, effR, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
         if (r.opened) {
-          ctx.fillStyle = "#ffd700";
-          ctx.font = '900 26px "Plus Jakarta Sans", sans-serif';
-          ctx.fillText((r.answer[c] || "").toUpperCase(), btnX, y);
+          ctx.fillStyle = "#fde047";
+          ctx.font = `700 ${Math.round(effR * 1.05)}px ${fontFam}`;
+          ctx.fillText(cleanLetters[c] || "", btnX, y);
         }
-        btnX += btnR * 2 + btnGap;
+        btnX += effR * 2 + btnGap;
       }
     });
 
-    const curIdx = state.vcnv?.currentRow ?? -1;
-    const curHint = curIdx >= 0 && curIdx < 4 ? state.vcnv?.rows[curIdx]?.hint : state.vcnv?.centerQuestion?.q;
+    const curIdx = vcnv.currentRow ?? -1;
+    const curHint =
+      isQuestionOpen && curIdx >= 0
+        ? curIdx < 4
+          ? vcnv.rows[curIdx]?.hint
+          : vcnv.centerQuestion?.q
+        : null;
     if (curHint) {
-      const qBoxY = height - 150;
+      const qBoxX = Math.round(width * 0.05);
+      const qBoxY = Math.round(height * 0.65);
+      const qBoxW = Math.round(width * 0.90);
+      const qBoxH = Math.round(height * 0.28);
       ctx.fillStyle = "rgba(10, 18, 40, 0.95)";
-      ctx.strokeStyle = "#d4af37";
+      ctx.strokeStyle = isClassic ? "#d4af37" : "#38bdf8";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.roundRect(40, qBoxY, width - 80, 120, 16);
+      ctx.roundRect(qBoxX, qBoxY, qBoxW, qBoxH, 14);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = "#ffffff";
-      ctx.font = '700 32px "Plus Jakarta Sans", sans-serif';
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(curHint, cx, qBoxY + 60);
+      drawFittedTextBlock(ctx, curHint, qBoxX + 24, qBoxY + 14, qBoxW - 48, qBoxH - 28, {
+        fontFamily: fontFam,
+        fontWeight: "700",
+        color: "#ffffff",
+        maxFontPx: Math.round(height * 0.044),
+        minFontPx: Math.round(height * 0.028),
+        align: "center",
+        vAlign: "center",
+      });
     }
     ctx.restore();
     return;
   }
+
+  // 4. TĂNG TỐC Active Question -> Exact Question Mirror with compact fitted text
+  if (round === "tangToc" && state.tangToc) {
+    const tt = state.tangToc;
+    if (tt.qIdx >= 0 && (tt.phase === "question" || tt.phase === "waitingAnswer")) {
+      const qObj = tt.questions?.[tt.qIdx];
+      renderQuestionPromptToCanvas(ctx, width, height, state, fadeProgress, {
+        customTitle: `TĂNG TỐC — CÂU ${tt.qIdx + 1}/${tt.questions?.length || 4}`,
+        customBody: qObj?.q || "",
+        isAnswerReveal: false,
+      });
+      return;
+    }
+    renderRoundTitleSlideToCanvas(ctx, width, height, state, fadeProgress);
+    return;
+  }
+
+  // 5. KHỞI ĐỘNG -> Lower-Third Mirror (syncs with questionRevealed & result phase)
+  if (round === "khoiDong" && state.khoiDong) {
+    const kd = state.khoiDong;
+    if (!kd.started || kd.phase === "segmentDone" || kd.phase === "intro") {
+      renderRoundTitleSlideToCanvas(ctx, width, height, state, fadeProgress);
+      return;
+    }
+    const seg = kd.segments?.[kd.segIdx ?? 0];
+    const isSolo = seg?.kind === "solo";
+    const isUnlimited = (seg?.questions ?? 0) >= 50 || Boolean(seg?.globalMs && (seg?.questions ?? 0) >= 30);
+    const totalQ = isUnlimited ? "" : `/${seg?.questions ?? 0}`;
+    const hasRev = Boolean(kd.questionRevealed && kd.current?.q);
+    const badge = hasRev ? `Câu ${Math.max(1, (kd.qIdx ?? 0) + 1)}${totalQ}` : `Câu 0${totalQ}`;
+    renderAudienceLowerThirdMirrorToCanvas(ctx, width, height, state, {
+      round: "khoiDong",
+      badgeLabel: badge,
+      questionText: hasRev ? kd.current?.q : "",
+      answerText: kd.phase === "result" ? (kd.current?.a || "") : null,
+      activeSeatId: isSolo ? (seg?.seat ?? null) : null,
+      buzzedSeatId: kd.buzzedSeat ?? null,
+      lockedSeats: kd.lockedSeats || [],
+    });
+    return;
+  }
+
+  // 6. VỀ ĐÍCH -> Package Grid Mirror (choosing) OR Lower-Third Mirror (question/stealing/result)
+  if (round === "veDich" && state.veDich) {
+    const vd = state.veDich;
+    const owner = vd.order?.[vd.turnIdx] ?? 0;
+    if (vd.phase === "choosing" || (vd.phase === "idle" && vd.onStage)) {
+      renderVeDichPackageGridMirrorToCanvas(ctx, width, height, state);
+      return;
+    }
+    if (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result") {
+      renderAudienceLowerThirdMirrorToCanvas(ctx, width, height, state, {
+        round: "veDich",
+        questionText: vd.current?.q?.q || "",
+        answerText: vd.phase === "result" ? (vd.current?.q?.a || "") : null,
+        activeSeatId: owner,
+        buzzedSeatId: vd.steal?.buzzedSeat ?? null,
+        hopeStarActive: Boolean(vd.hopeStarActive),
+        veDichOwner: owner,
+      });
+      return;
+    }
+    renderRoundTitleSlideToCanvas(ctx, width, height, state, fadeProgress);
+    return;
+  }
+
+  // 7. CÂU HỎI PHỤ -> Lower-Third Mirror
+  if (round === "cauHoiPhu" && state.cauHoiPhu) {
+    const cp = state.cauHoiPhu;
+    const q = cp.questions?.[cp.qIdx];
+    if (q && cp.phase !== "idle") {
+      renderAudienceLowerThirdMirrorToCanvas(ctx, width, height, state, {
+        round: "cauHoiPhu",
+        badgeLabel: `CÂU HỎI PHỤ ${cp.qIdx + 1}`,
+        questionText: q.q,
+        answerText: cp.phase === "result" ? q.a : null,
+        buzzedSeatId: cp.buzzedSeat ?? cp.winner ?? null,
+      });
+      return;
+    }
+  }
+
+  renderRoundTitleSlideToCanvas(ctx, width, height, state, fadeProgress);
 }
 
 /**
@@ -1494,8 +1953,11 @@ export function hasActiveRightQuestionContent(state?: OlympiaState | null): bool
   const round = state.currentRound;
   if (round === "khoiDong") {
     return Boolean(
-      state.khoiDong?.current?.q &&
-        (state.khoiDong.questionRevealed || state.khoiDong.started || state.khoiDong.phase === "question")
+      state.khoiDong?.started &&
+        state.khoiDong.phase !== "segmentDone" &&
+        state.khoiDong.phase !== "intro" &&
+        state.khoiDong.questionRevealed &&
+        state.khoiDong.current?.q
     );
   }
   if (round === "vcnv") {
@@ -1504,11 +1966,17 @@ export function hasActiveRightQuestionContent(state?: OlympiaState | null): bool
     if (v.answersRevealed) return true;
     const cur = v.currentRow ?? -1;
     if (cur < 0) return false;
-    return v.phase === "selecting" || v.phase === "question" || v.phase === "waitingAnswer" || v.phase === "answers";
+    return v.phase === "question";
   }
   if (round === "tangToc") {
     const tt = state.tangToc;
-    return Boolean(tt && tt.qIdx != null && tt.qIdx >= 0 && tt.phase === "question");
+    return Boolean(
+      tt &&
+        tt.qIdx != null &&
+        tt.qIdx >= 0 &&
+        (tt.phase === "question" || tt.phase === "waitingAnswer" || tt.phase === "graded") &&
+        tt.questions?.[tt.qIdx]?.q
+    );
   }
   if (round === "veDich") {
     const vd = state.veDich;
@@ -1546,7 +2014,7 @@ export function resolveRightScreenDisplayMode(
     return state?.stage === "playing" && state?.currentRound ? "roundTitle" : "logo";
   }
 
-  // Dynamic "auto" mode routing by live match state
+  // Dynamic "auto" mode routing synced directly with Audience DisplayScreen
   if (state?.showScoreboard || state?.summaryState?.active || state?.awardsState?.active) {
     return "scoreboard";
   }
@@ -1556,28 +2024,18 @@ export function resolveRightScreenDisplayMode(
   if (state?.banner || !state?.roundIntroDoneAt || state?.introStandby || state?.entranceState?.active) {
     return "roundTitle";
   }
-  if (hasActiveRightQuestionContent(state)) {
-    return "question";
-  }
   if (state?.currentRound && state.roundStatus?.[state.currentRound] === "done") {
     return "scoreboard";
   }
   if (state?.currentRound) {
-    // Initially when entering any round, and between turns in Khởi Động / Tăng Tốc / Về Đích,
-    // default the Right LED Screen to the Round Title card instead of immediately jumping to roundGraphics.
     if (state.currentRound === "khoiDong") {
       const kd = state.khoiDong;
-      if (
-        !kd ||
-        !kd.started ||
-        kd.phase === "intro" ||
-        kd.phase === "idle" ||
-        kd.phase === "segmentDone" ||
-        ((kd.qIdx ?? -1) < 0 && !kd.questionRevealed)
-      ) {
+      if (!kd || !kd.started || kd.phase === "intro" || kd.phase === "idle" || kd.phase === "segmentDone") {
         return "roundTitle";
       }
-    } else if (state.currentRound === "vcnv") {
+      return "roundGraphics";
+    }
+    if (state.currentRound === "vcnv") {
       const v = state.vcnv;
       const anyRowTouched = Boolean(v?.rows?.some((r) => r.opened || r.wrong));
       if (
@@ -1590,21 +2048,28 @@ export function resolveRightScreenDisplayMode(
       ) {
         return "roundTitle";
       }
-    } else if (state.currentRound === "tangToc") {
+      return "roundGraphics";
+    }
+    if (state.currentRound === "tangToc") {
       const tt = state.tangToc;
-      if (!tt || tt.phase === "idle") {
+      if (!tt || tt.phase === "idle" || (tt.qIdx ?? -1) < 0) {
         return "roundTitle";
       }
-    } else if (state.currentRound === "veDich") {
+      return "roundGraphics";
+    }
+    if (state.currentRound === "veDich") {
       const vd = state.veDich;
-      if (!vd || vd.phase === "idle" || vd.phase === "seatDone") {
+      if (!vd || (vd.phase === "idle" && !vd.onStage) || vd.phase === "seatDone") {
         return "roundTitle";
       }
-    } else if (state.currentRound === "cauHoiPhu") {
+      return "roundGraphics";
+    }
+    if (state.currentRound === "cauHoiPhu") {
       const chp = state.cauHoiPhu;
       if (!chp || chp.phase === "idle" || chp.qIdx < 0) {
         return "roundTitle";
       }
+      return "roundGraphics";
     }
     return "roundGraphics";
   }
@@ -1820,141 +2285,8 @@ function renderRightRoundStatusGraphicsToCanvas(
   fadeProgress: number,
   timeSec: number
 ): void {
-  const round = state?.currentRound;
-  if (
-    (round === "vcnv" && (state?.vcnv?.answersRevealed || state?.vcnv?.rows)) ||
-    (round === "tangToc" && state?.tangToc?.phase === "ranking")
-  ) {
-    renderRoundGraphicsToCanvas(ctx, width, height, state, fadeProgress);
-    return;
-  }
-
-  const cx = width / 2;
-  const isRed = fadeProgress > 0.5;
-  const accent = isRed ? "#fb7185" : "#00e5ff";
-  const { displayTitle } = getRoundDisplayTitleAndKey(round);
-
-  let subtitle = "CHUẨN BỊ THI ĐẤU";
-  const statusLines: string[] = [];
-
-  if (round === "khoiDong" && state?.khoiDong) {
-    const kd = state.khoiDong;
-    const seg = kd.segments?.[kd.segIdx ?? 0];
-    if (seg?.kind === "solo" && seg.seat != null) {
-      const seat = state.seats?.[seg.seat];
-      subtitle = `LƯỢT RIÊNG — ${seat?.name || `THÍ SINH ${seg.seat + 1}`}`.toUpperCase();
-    } else if (seg?.kind === "shared") {
-      subtitle = "KHỞI ĐỘNG CHUNG";
-    }
-    const qTotal = seg?.questions ?? 0;
-    const qCur = Math.max(0, (kd.qIdx ?? -1) + 1);
-    if (qTotal > 0 && qTotal < 900) statusLines.push(`Câu ${qCur} / ${qTotal}`);
-    else if (qCur > 0) statusLines.push(`Câu ${qCur}`);
-    if (kd.buzzedSeat != null) {
-      statusLines.push(`Chuông: ${state.seats?.[kd.buzzedSeat]?.name || `TS ${kd.buzzedSeat + 1}`}`);
-    }
-  } else if (round === "tangToc" && state?.tangToc) {
-    const tt = state.tangToc;
-    const qNum = Math.max(1, (tt.qIdx ?? 0) + 1);
-    subtitle = `CÂU HỎI TĂNG TỐC SỐ ${qNum} / ${tt.questions?.length || 4}`;
-    const qObj = tt.questions?.[tt.qIdx ?? 0];
-    if (qObj?.category === "iq") statusLines.push("Dạng câu: Tư duy logic (IQ)");
-    else if (qObj?.category === "data") statusLines.push("Dạng câu: Dữ kiện mở dần");
-    else if (qObj?.category === "arrange") statusLines.push("Dạng câu: Sắp xếp thứ tự");
-    const subCount = Object.keys(tt.submissions || {}).length;
-    if (subCount > 0) statusLines.push(`Đã nộp đáp án: ${subCount} thí sinh`);
-  } else if (round === "veDich" && state?.veDich) {
-    const vd = state.veDich;
-    const owner = vd.order?.[vd.turnIdx] ?? 0;
-    const seat = state.seats?.[owner];
-    subtitle = `LƯỢT THI: ${(seat?.name || `THÍ SINH ${owner + 1}`).toUpperCase()} (${seat?.score ?? 0}đ)`;
-    const pkg = vd.packages?.[owner];
-    if (pkg && pkg.length > 0) {
-      statusLines.push(`Gói câu hỏi: ${pkg.map((p) => `${p.points}đ`).join(" · ")}`);
-    } else {
-      statusLines.push("Đang chọn gói câu hỏi (20đ / 30đ)");
-    }
-    if (vd.hopeStarActive) statusLines.push("⭐ NGÔI SAO HY VỌNG ĐANG BẬT");
-  } else if (round === "cauHoiPhu" && state?.cauHoiPhu) {
-    const chp = state.cauHoiPhu;
-    subtitle = `CÂU HỎI PHỤ SỐ ${Math.max(1, (chp.qIdx ?? 0) + 1)}`;
-    if (chp.tied?.length) {
-      statusLines.push(
-        `Thí sinh tham gia: ${chp.tied
-          .map((id: number) => state.seats?.[id]?.name || `TS ${id + 1}`)
-          .join(", ")}`
-      );
-    }
-  }
-
-  ctx.save();
-  // Header strip
-  ctx.fillStyle = "rgba(8, 22, 54, 0.80)";
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.roundRect(width * 0.06, height * 0.05, width * 0.88, height * 0.16, 16);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.font = `900 ${Math.round(height * 0.072)}px "Plus Jakarta Sans", sans-serif`;
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.shadowColor = accent;
-  ctx.shadowBlur = 18;
-  ctx.fillText(displayTitle, cx, height * 0.13);
-
-  // Mid graphic card
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(4, 12, 32, 0.84)";
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(width * 0.08, height * 0.25, width * 0.84, height * 0.36, 18);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.font = `800 ${Math.round(height * 0.056)}px "Plus Jakarta Sans", sans-serif`;
-  ctx.fillStyle = "#fde047";
-  ctx.fillText(subtitle, cx, height * 0.36);
-
-  ctx.font = `700 ${Math.round(height * 0.045)}px "Plus Jakarta Sans", sans-serif`;
-  ctx.fillStyle = "#e0f2fe";
-  statusLines.slice(0, 2).forEach((ln, idx) => {
-    ctx.fillText(ln, cx, height * (0.46 + idx * 0.085));
-  });
-
-  // Compact horizontal seat strip along bottom
-  const seats = (state?.seats || []).slice(0, 8);
-  if (seats.length > 0) {
-    const stripY = height * 0.67;
-    const stripH = height * 0.26;
-    const gap = Math.round(width * 0.015);
-    const totalW = width * 0.88;
-    const boxW = (totalW - gap * (seats.length - 1)) / seats.length;
-    const startX = width * 0.06;
-
-    seats.forEach((s, idx) => {
-      const bx = startX + idx * (boxW + gap);
-      ctx.fillStyle = "rgba(10, 24, 58, 0.88)";
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(bx, stripY, boxW, stripH, 12);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.font = `800 ${Math.round(height * 0.036)}px "Plus Jakarta Sans", sans-serif`;
-      ctx.fillStyle = "#f8fafc";
-      ctx.fillText(s?.name || `TS ${idx + 1}`, bx + boxW / 2, stripY + stripH * 0.30, boxW - 14);
-
-      ctx.font = `900 ${Math.round(height * 0.068)}px "Plus Jakarta Sans", sans-serif`;
-      ctx.fillStyle = "#fde047";
-      ctx.fillText(`${s?.score ?? 0}`, bx + boxW / 2, stripY + stripH * 0.68);
-    });
-  }
-  ctx.restore();
+  // Always mirror the exact audience round broadcast graphic directly instead of inventing a status card.
+  renderRoundGraphicsToCanvas(ctx, width, height, state, fadeProgress);
   void timeSec;
 }
 
@@ -1963,81 +2295,113 @@ function renderQuestionPromptToCanvas(
   width: number,
   height: number,
   state: OlympiaState | null | undefined,
-  fadeProgress: number
+  fadeProgress: number,
+  overrideOpts?: { customTitle?: string; customBody?: string; isAnswerReveal?: boolean }
 ): boolean {
   const cx = width / 2;
   const isRed = fadeProgress > 0.5;
-  const accent = isRed ? "#ff4d6d" : "#00e5ff";
+  const isClassic = state?.themeMode === "o26_classic";
+  const fontFam = getScreenFontFamily(isClassic);
+  const accent = isRed ? "#ff4d6d" : isClassic ? "#d4af37" : "#38bdf8";
 
-  let roundTitle: string | null = null;
-  let questionPrompt: string | null = null;
-  if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
-    roundTitle = "KHỞI ĐỘNG";
-    questionPrompt = state.khoiDong.current.q;
-  } else if (state?.currentRound === "vcnv") {
-    roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
-    const cur = state.vcnv?.currentRow ?? -1;
-    if (cur >= 0 && cur < 4) questionPrompt = state.vcnv?.rows?.[cur]?.hint || null;
-    else if (cur === 4) questionPrompt = state.vcnv?.centerQuestion?.q || null;
-  } else if (state?.currentRound === "tangToc" && state.tangToc?.qIdx != null) {
-    roundTitle = `TĂNG TỐC — CÂU ${(state.tangToc.qIdx ?? 0) + 1}`;
-    questionPrompt = state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
-  } else if (state?.currentRound === "veDich" && state.veDich?.current) {
-    roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
-    questionPrompt = state.veDich.current.q?.q || null;
-  } else if (state?.currentRound === "cauHoiPhu" && state.cauHoiPhu?.qIdx != null) {
-    roundTitle = "CÂU HỎI PHỤ";
-    questionPrompt = state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx]?.q || null;
+  let roundTitle: string | null = overrideOpts?.customTitle ?? null;
+  let questionPrompt: string | null = overrideOpts?.customBody ?? null;
+
+  if (roundTitle == null && questionPrompt == null) {
+    if (
+      state?.currentRound === "khoiDong" &&
+      state.khoiDong?.questionRevealed &&
+      state.khoiDong?.current?.q
+    ) {
+      roundTitle = "KHỞI ĐỘNG";
+      questionPrompt =
+        state.khoiDong.phase === "result"
+          ? `✔ ${state.khoiDong.current.a || ""}`
+          : state.khoiDong.current.q;
+    } else if (state?.currentRound === "vcnv" && state.vcnv?.phase === "question") {
+      roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
+      const cur = state.vcnv?.currentRow ?? -1;
+      if (cur >= 0 && cur < 4) questionPrompt = state.vcnv?.rows?.[cur]?.hint || null;
+      else if (cur === 4) questionPrompt = state.vcnv?.centerQuestion?.q || null;
+    } else if (
+      state?.currentRound === "tangToc" &&
+      state.tangToc?.qIdx != null &&
+      state.tangToc.qIdx >= 0 &&
+      (state.tangToc.phase === "question" || state.tangToc.phase === "waitingAnswer" || state.tangToc.phase === "graded")
+    ) {
+      roundTitle = `TĂNG TỐC — CÂU ${(state.tangToc.qIdx ?? 0) + 1}`;
+      questionPrompt =
+        state.tangToc.phase === "graded"
+          ? `✔ ${state.tangToc.correctAnswer || state.tangToc.questions?.[state.tangToc.qIdx]?.answer || ""}`
+          : state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
+    } else if (
+      state?.currentRound === "veDich" &&
+      state.veDich?.current?.q?.q &&
+      (state.veDich.phase === "thinking" ||
+        state.veDich.phase === "stealing" ||
+        state.veDich.phase === "result")
+    ) {
+      roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
+      questionPrompt =
+        state.veDich.phase === "result"
+          ? `✔ ${state.veDich.current.q.a || ""}`
+          : state.veDich.current.q.q;
+    } else if (
+      state?.currentRound === "cauHoiPhu" &&
+      state.cauHoiPhu?.qIdx != null &&
+      state.cauHoiPhu.qIdx >= 0 &&
+      state.cauHoiPhu.phase !== "idle"
+    ) {
+      roundTitle = "CÂU HỎI PHỤ";
+      const chpQ = state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx];
+      questionPrompt = state.cauHoiPhu.phase === "result" ? `✔ ${chpQ?.a || ""}` : chpQ?.q || null;
+    }
   }
 
   if (!roundTitle || !questionPrompt) return false;
 
   ctx.save();
-  const bannerH = height * 0.18;
+  const bannerH = height * 0.145;
   const bannerGrad = ctx.createLinearGradient(0, 0, width, 0);
-  bannerGrad.addColorStop(0, isRed ? "rgba(220, 38, 38, 0.20)" : "rgba(0, 180, 255, 0.15)");
-  bannerGrad.addColorStop(0.5, isRed ? "rgba(244, 63, 94, 0.45)" : "rgba(0, 220, 255, 0.45)");
-  bannerGrad.addColorStop(1, isRed ? "rgba(220, 38, 38, 0.20)" : "rgba(0, 180, 255, 0.15)");
+  bannerGrad.addColorStop(0, isRed ? "rgba(220, 38, 38, 0.22)" : isClassic ? "rgba(42, 30, 12, 0.85)" : "rgba(0, 180, 255, 0.16)");
+  bannerGrad.addColorStop(0.5, isRed ? "rgba(244, 63, 94, 0.45)" : isClassic ? "rgba(92, 62, 18, 0.90)" : "rgba(0, 220, 255, 0.40)");
+  bannerGrad.addColorStop(1, isRed ? "rgba(220, 38, 38, 0.22)" : isClassic ? "rgba(42, 30, 12, 0.85)" : "rgba(0, 180, 255, 0.16)");
   ctx.fillStyle = bannerGrad;
-  ctx.fillRect(0, 20, width, bannerH);
-
+  ctx.beginPath();
+  ctx.roundRect(width * 0.05, 22, width * 0.90, bannerH, 12);
+  ctx.fill();
   ctx.strokeStyle = accent;
-  ctx.lineWidth = 3;
-  ctx.strokeRect(40, 20, width - 80, bannerH);
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
 
-  ctx.font = `900 ${Math.round(height * 0.068)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.font = `700 ${Math.round(height * 0.052)}px ${fontFam}`;
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = accent;
-  ctx.shadowBlur = 20;
-  ctx.fillText(roundTitle, cx, 20 + bannerH / 2);
+  ctx.fillText(roundTitle, cx, 22 + bannerH / 2, width * 0.84);
 
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(10, 22, 48, 0.85)";
-  ctx.strokeStyle = isRed ? "rgba(244, 63, 94, 0.55)" : "rgba(0, 229, 255, 0.55)";
-  ctx.lineWidth = 2;
-  const qx = width * 0.08;
-  const qy = height * 0.28;
-  const qw = width * 0.84;
-  const qh = height * 0.62;
-  ctx.fillRect(qx, qy, qw, qh);
-  ctx.strokeRect(qx, qy, qw, qh);
+  const qx = width * 0.05;
+  const qy = height * 0.23;
+  const qw = width * 0.90;
+  const qh = height * 0.69;
+  ctx.fillStyle = isClassic ? "rgba(18, 22, 30, 0.92)" : "rgba(8, 20, 52, 0.90)";
+  ctx.strokeStyle = isClassic ? "rgba(212, 175, 55, 0.7)" : isRed ? "rgba(244, 63, 94, 0.55)" : "rgba(56, 189, 248, 0.65)";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(qx, qy, qw, qh, 14);
+  ctx.fill();
+  ctx.stroke();
 
-  const fontSize = Math.round(height * 0.056);
-  ctx.font = `700 ${fontSize}px "Plus Jakarta Sans", sans-serif`;
-  ctx.fillStyle = "#f8fafc";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  drawWrappedCenterText(
-    ctx,
-    questionPrompt,
-    cx,
-    qy + height * 0.075,
-    qw - width * 0.08,
-    Math.round(fontSize * 1.38),
-    qy + qh - height * 0.08
-  );
+  drawFittedTextBlock(ctx, questionPrompt, qx + 32, qy + 24, qw - 64, qh - 48, {
+    fontFamily: fontFam,
+    fontWeight: "700",
+    color: overrideOpts?.isAnswerReveal ? "#34d399" : "#f8fafc",
+    maxFontPx: Math.round(height * 0.044),
+    minFontPx: Math.round(height * 0.028),
+    lineHeightRatio: 1.35,
+    align: "center",
+    vAlign: "center",
+  });
   ctx.restore();
   return true;
 }

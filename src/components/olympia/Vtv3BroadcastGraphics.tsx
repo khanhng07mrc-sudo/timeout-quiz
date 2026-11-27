@@ -3001,13 +3001,16 @@ export function VcnvAnswerRevealGraphic({
                               y={cols.cells[0].cy + textBaselineOffset}
                               textAnchor="middle"
                               fill="#ffffff"
-                              fontWeight="900"
+                              fontWeight="700"
                               fontSize={nameFontSize}
-                              letterSpacing={isLongName ? "0.01em" : "0.05em"}
+                              letterSpacing={isLongName ? "0.01em" : "0.04em"}
                               textLength={isLongName ? maxNameW : undefined}
                               lengthAdjust={isLongName ? "spacingAndGlyphs" : undefined}
-                              className="uppercase font-sans"
-                              style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
+                              className="uppercase font-v3-avo"
+                              style={{
+                                fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, sans-serif",
+                                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))",
+                              }}
                             >
                               {seat.name}
                             </text>
@@ -3024,13 +3027,16 @@ export function VcnvAnswerRevealGraphic({
                               y={cols.cells[1].cy + textBaselineOffset}
                               textAnchor="middle"
                               fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
-                              fontWeight="900"
+                              fontWeight="700"
                               fontSize={ansFontSize}
-                              letterSpacing={isLongAns ? "0.01em" : "0.08em"}
+                              letterSpacing={isLongAns ? "0.01em" : "0.06em"}
                               textLength={isLongAns ? maxAnsW : undefined}
                               lengthAdjust={isLongAns ? "spacingAndGlyphs" : undefined}
-                              className="uppercase font-sans"
-                              style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                              className="uppercase font-v3-avo"
+                              style={{
+                                fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, sans-serif",
+                                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))",
+                              }}
                             >
                               {answerText || ""}
                             </text>
@@ -4765,16 +4771,16 @@ function SlantedTabLabel({
       dominantBaseline="alphabetic"
       textAnchor="middle"
       fill={fill}
-      fontWeight="900"
+      fontWeight="700"
       fontSize={fontSize}
       transform={
         sx < 0.999
           ? `translate(${cx}, ${baselineY}) scale(${sx}, 1) translate(${-cx}, ${-baselineY})`
           : undefined
       }
-      className="uppercase font-sans"
+      className="uppercase font-v3-avo"
       style={{
-        fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+        fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
         filter: textShadow,
       }}
     >
@@ -4830,8 +4836,9 @@ function FlexAutoFitTabLabel({
   return (
     <span
       ref={ref}
-      className={`text-[15px] sm:text-[18px] font-black uppercase tracking-wide whitespace-nowrap leading-none ${className}`}
+      className={`text-[15px] sm:text-[18px] font-bold uppercase tracking-wide whitespace-nowrap leading-none font-v3-avo ${className}`}
       style={{
+        fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
         display: "inline-block",
         transformOrigin: "center center",
         transform: sx < 0.999 ? `scaleX(${sx})` : undefined,
@@ -5158,59 +5165,31 @@ export function EconovaLowerThirdV3({
   expandFromCenter?: boolean;
   children?: React.ReactNode;
 }) {
+  // Latch initial runAnim state across Q0 -> Q1 transition so the fixed arrow graphic
+  // never snaps, resets CSS classes, or shifts before/after the first question opens.
+  const latchedRunAnimRef = useRef(runAnim);
+  const effectiveRunAnim = latchedRunAnimRef.current;
   const fromCenter = Boolean(arrowFromCenter || expandFromCenter);
   const isFs = overlayMode === "FULLSCREEN";
   const isVeDich = state.currentRound === "veDich";
   const W = 1000;
-  const baseH = isVeDich ? 200 : 186;
+  // Fixed arrow graphic height (constant across Câu 0, Câu 1, & multi-line questions just like Classic)
+  const H = isVeDich ? 216 : 206;
   const isKhoiDongO23ToO26 = state.currentRound === "khoiDong" && !showTimerClock;
   const shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));
   const topReserve = showScoreTab ? 48 : 16;
   const bottomReserve = shouldShowTimerBar ? 28 : 14;
 
   const strLen = typeof questionText === "string" ? questionText.length : 60;
-  // Standard broadcast typography with auto-scaling for long questions (UTM Avo / Montserrat)
+  // Compact, refined UTM Avo Bold broadcast typography so 1–4 line questions fit inside fixed box cleanly
   const fontSizeClass =
-    strLen > 300
-      ? "text-[17px] sm:text-[18px] md:text-[19px] leading-snug font-bold"
-      : strLen > 200
-      ? "text-[20px] sm:text-[21px] md:text-[22px] leading-snug font-extrabold"
-      : "text-[23px] sm:text-[25px] md:text-[27px] leading-snug font-black";
+    strLen > 240
+      ? "text-[14px] sm:text-[15px] md:text-[15.5px] leading-snug font-bold"
+      : strLen > 160
+      ? "text-[15.5px] sm:text-[16.5px] md:text-[17.5px] leading-snug font-bold"
+      : "text-[17px] sm:text-[18px] md:text-[19px] leading-snug font-bold";
 
-  const approxCharsPerLine = isVeDich ? 34 : 46;
-  const estLines =
-    questionText && typeof questionText === "string"
-      ? Math.max(1, Math.ceil(strLen / approxCharsPerLine))
-      : 1;
-  const estLineH = strLen > 300 ? 27 : strLen > 200 ? 31 : 38;
-  const estQHeight = answerText
-    ? 88
-    : estLines * estLineH + (mediaElement ? 96 : 16);
-
-  const [measuredQuestionH, setMeasuredQuestionH] = useState(0);
-  const questionMeasureRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const el = questionMeasureRef.current;
-    if (!el) {
-      setMeasuredQuestionH((prev) => (prev !== 0 ? 0 : prev));
-      return;
-    }
-    const measure = () => {
-      // offsetHeight / scrollHeight stays in untransformed design pixels inside V3ScaledStage
-      const next = Math.ceil(Math.max(el.offsetHeight || 0, el.scrollHeight || 0));
-      setMeasuredQuestionH((prev) => (Math.abs(prev - next) >= 2 ? next : prev));
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [questionText, answerText, mediaElement, showScoreTab, shouldShowTimerBar]);
-
-  const effectiveQHeight = Math.max(estQHeight, measuredQuestionH);
-  const H = Math.max(baseH, topReserve + Math.ceil(effectiveQHeight) + bottomReserve);
-  const cThick = Math.round(baseH * 0.16);
+  const cThick = Math.round(H * 0.16);
   const pad = Math.round(cThick * 1.5);
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, cThick, pad });
   const seats = activeSeats(state);
@@ -5389,8 +5368,8 @@ export function EconovaLowerThirdV3({
           }
 
           @keyframes buzz-pulse-v3a {
-            from { filter: brightness(1.0); }
-            to   { filter: brightness(1.35) drop-shadow(0 0 10px rgba(255, 56, 56, 0.9)); }
+            from { opacity: 1; }
+            to   { opacity: 0.78; filter: brightness(1.22); }
           }
 
           /* Master Animation Classes: 2.4s duration */
@@ -5465,31 +5444,31 @@ export function EconovaLowerThirdV3({
             </defs>
 
             {/* Left cyan wing trailing glows */}
-            <g className={runAnim ? "v3-anim-l-g1" : ""} opacity={runAnim ? undefined : 0.3}>
+            <g className={effectiveRunAnim ? "v3-anim-l-g1" : ""} opacity={effectiveRunAnim ? undefined : 0.35}>
               <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
             </g>
-            <g className={runAnim ? "v3-anim-l-g2" : ""} opacity={runAnim ? undefined : 0.65}>
+            <g className={effectiveRunAnim ? "v3-anim-l-g2" : ""} opacity={effectiveRunAnim ? undefined : 0.65}>
               <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
             </g>
-            <g className={runAnim ? "v3-anim-l-l3" : ""}>
+            <g className={effectiveRunAnim ? "v3-anim-l-l3" : ""}>
               <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
             </g>
 
             {/* Right cyan wing trailing glows */}
-            <g className={runAnim ? "v3-anim-r-l3" : ""}>
+            <g className={effectiveRunAnim ? "v3-anim-r-l3" : ""}>
               <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
             </g>
-            <g className={runAnim ? "v3-anim-r-g2" : ""} opacity={runAnim ? undefined : 0.65}>
+            <g className={effectiveRunAnim ? "v3-anim-r-g2" : ""} opacity={effectiveRunAnim ? undefined : 0.65}>
               <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
             </g>
-            <g className={runAnim ? "v3-anim-r-g1" : ""} opacity={runAnim ? undefined : 0.3}>
+            <g className={effectiveRunAnim ? "v3-anim-r-g1" : ""} opacity={effectiveRunAnim ? undefined : 0.35}>
               <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
             </g>
           </svg>
 
           {/* Tier 2 (Middle / z-10): Unified wrapper containing BOTH hexagon SVG body AND HTML question/timer layers, clipped by 6-vertex polygon */}
           <div
-            className={runAnim ? "v3-anim-body absolute inset-0" : "absolute inset-0"}
+            className={effectiveRunAnim ? "v3-anim-body absolute inset-0" : "absolute inset-0"}
             style={{
               zIndex: 10,
               clipPath: `polygon(${toPoly(shell.bgPts)})`,
@@ -5695,37 +5674,36 @@ export function EconovaLowerThirdV3({
             )}
           </div>
 
-          {/* Decoupled Independent Question Bounding Box (outside Tier-2 SVG clipPath, zero bottom clipping on 3+ lines, instant swap without fade) */}
+          {/* Decoupled Independent Question Bounding Box (outside Tier-2 SVG clipPath & fixed frame height, like Classic Lower Chamber) */}
           <div
             data-testid="v3-question-bounding-box"
-            className={`absolute flex flex-col justify-start items-start text-left font-v3-avo ${
-              runAnim ? "v3-anim-content" : ""
+            className={`absolute flex flex-col justify-start items-start text-left font-v3-avo overflow-y-auto ${
+              effectiveRunAnim ? "v3-anim-content" : ""
             }`}
             style={{
               zIndex: 25,
               left: qLeft,
               top: qTop,
               width: qWidth,
-              minHeight: qHeight,
+              height: qHeight,
               maxWidth: qWidth,
-              overflow: "visible",
               clipPath: "none",
               fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
             }}
           >
-            <div ref={questionMeasureRef} className="w-full flex flex-col items-start justify-start text-left">
+            <div className="w-full flex flex-col items-start justify-start text-left">
               {answerText ? (
                 <div className="flex flex-col items-start justify-center gap-1 w-full pt-1 pr-3 select-none">
                   <div className="text-xs sm:text-sm font-bold tracking-widest text-cyan-300 uppercase">
                     ĐÁP ÁN CHÍNH XÁC
                   </div>
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-400 drop-shadow-[0_0_18px_rgba(52,211,153,0.7)] tracking-wide">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-emerald-400 drop-shadow-[0_0_18px_rgba(52,211,153,0.7)] tracking-wide">
                     ✔ {answerText}
                   </div>
                 </div>
               ) : questionText ? (
                 <div
-                  className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full pt-1 pb-1.5 pr-3 select-none break-words`}
+                  className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full pt-1.5 pb-1 pr-3 select-none break-words`}
                 >
                   {questionText}
                 </div>
@@ -5743,11 +5721,11 @@ export function EconovaLowerThirdV3({
             className="absolute inset-0 overflow-visible pointer-events-none"
             style={{ zIndex: 30 }}
           >
-            <g className={runAnim ? "v3-anim-l-navy" : ""}>
+            <g className={effectiveRunAnim ? "v3-anim-l-navy" : ""}>
               <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={2} />
               <path d={toSvgPath(shell.alnPts)} fill="none" stroke="#ffffff" strokeWidth={1.2} opacity={0.9} />
             </g>
-            <g className={runAnim ? "v3-anim-r-navy" : ""}>
+            <g className={effectiveRunAnim ? "v3-anim-r-navy" : ""}>
               <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={2} />
               <path d={toSvgPath(shell.arnPts)} fill="none" stroke="#ffffff" strokeWidth={1.2} opacity={0.9} />
             </g>
@@ -5774,13 +5752,14 @@ export function EconovaLowerThirdV3({
 
           {(questionNumberBadge || headerBadge || timerBadge) && (
             <div
-              className={`absolute z-40 pointer-events-none flex items-center justify-between select-none ${
-                runAnim ? "v3-anim-content" : ""
+              className={`absolute z-40 pointer-events-none flex items-center justify-between select-none font-v3-avo ${
+                effectiveRunAnim ? "v3-anim-content" : ""
               }`}
               style={{
                 top: -30,
                 left: qLeft,
                 width: qWidth,
+                fontFamily: "'UTM Avo', 'Montserrat', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
               }}
             >
               <div className="flex items-center gap-2">

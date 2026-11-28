@@ -13,6 +13,7 @@ interface CentralLedWallProps {
   screenFadeProgress?: number; // 0.0 (Sapphire Blue) -> 1.0 (Fiery Red)
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   liveFactor?: number;
+  isPaused?: boolean;
 }
 
 /**
@@ -3462,6 +3463,7 @@ export function CentralLedWall({
   screenFadeProgress = 0,
   quality = "HIGH",
   liveFactor = 1.0,
+  isPaused = false,
 }: CentralLedWallProps) {
   const { gl, scene, camera } = useThree();
   const logoImageRef = useRef<HTMLImageElement | null>(null);
@@ -3864,6 +3866,17 @@ export function CentralLedWall({
     quality,
   ]);
 
+  // Pause/resume background math wall video while the 3D scene is paused (e.g. during Broadcast Round Intro)
+  useEffect(() => {
+    const video = mathWallVideoRef.current;
+    if (!video) return;
+    if (isPaused) {
+      if (!video.paused) video.pause();
+    } else if (video.paused && video.src) {
+      video.play().catch(() => {});
+    }
+  }, [isPaused]);
+
   // 30 FPS Dynamic Canvas Engine (Requirement R5)
   // Drives smooth floating kinematics, uniform 0.2s delayed Right LED Screen queue & optional Camera RenderTarget feed.
   useFrame((_, delta) => {
@@ -3872,7 +3885,7 @@ export function CentralLedWall({
     const t = accumulatedTimeRef.current;
     const nowMs = performance.now();
 
-    if (mathWallVideoTexture && mathWallVideoRef.current && !mathWallVideoRef.current.paused) {
+    if (!isPaused && mathWallVideoTexture && mathWallVideoRef.current && !mathWallVideoRef.current.paused) {
       mathWallVideoTexture.needsUpdate = true;
     }
 

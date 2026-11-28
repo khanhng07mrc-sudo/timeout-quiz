@@ -524,6 +524,7 @@ export function OlympiaStudio3DScene({
           screenFadeProgress={screenFadeProgress}
           quality={quality}
           liveFactor={liveFactor}
+          isPaused={isPaused}
         />
 
         <Podiums

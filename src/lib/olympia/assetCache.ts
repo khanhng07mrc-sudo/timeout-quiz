@@ -175,14 +175,12 @@ export async function preloadOlympiaIntroVideos(options?: {
   if (options?.signal?.aborted) return;
   if (activePreloadPromise) return activePreloadPromise;
 
-  const yieldMs = options?.yieldMs ?? 450;
+  const yieldMs = options?.yieldMs ?? 200;
 
   let run: Promise<void> | null = null;
   run = (async () => {
     try {
-      const testVideo = document.createElement("video");
-      const canPlayWebm = testVideo.canPlayType && testVideo.canPlayType('video/webm; codecs="vp9, opus"') !== "";
-      const primaryFormat: "webm" | "mp4" = canPlayWebm ? "webm" : "mp4";
+      const primaryFormat = getPreferredIntroFormat();
       const primaryEntries = primaryFormat === "webm" ? Object.entries(INTRO_WEBM_PATHS) : Object.entries(INTRO_MP4_PATHS);
 
       // Load sequentially in game round progression order (khoiDong -> vcnv -> tangToc -> veDich)
@@ -270,6 +268,26 @@ export function getPreloadedVideoUrl(roundId: string, format: "webm" | "mp4" = "
 /**
  * Helper to retrieve both preloaded MP4 and WebM URLs for multi-source video playback
  */
+export function getPreferredIntroFormat(): "webm" | "mp4" {
+  if (typeof document === "undefined") return "webm";
+  try {
+    const testVideo = document.createElement("video");
+    const canPlayWebm =
+      testVideo.canPlayType && testVideo.canPlayType('video/webm; codecs="vp9, opus"') !== "";
+    return canPlayWebm ? "webm" : "mp4";
+  } catch {
+    return "webm";
+  }
+}
+
+export function isPreloadedVideoReady(roundId: string, format: "webm" | "mp4" = "webm"): boolean {
+  const table = format === "mp4" ? INTRO_MP4_PATHS : INTRO_VIDEO_PATHS;
+  const directPath = table[roundId];
+  if (!directPath) return false;
+  const roundKey = format === "mp4" ? `${roundId}:mp4` : roundId;
+  return Boolean(memoryBlobUrls.get(roundKey) || memoryBlobUrls.get(directPath));
+}
+
 export function getPreloadedVideoUrls(roundId: string): { mp4: string; webm: string } {
   return {
     mp4: getPreloadedVideoUrl(roundId, "mp4"),

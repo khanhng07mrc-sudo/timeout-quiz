@@ -337,6 +337,22 @@ export const isLoopingBgm = (sound: string): boolean =>
 export const isIntroOrMusicTrack = (sound: string): boolean =>
   /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
 
+export const isRoundLeadTrack = (sound?: string): boolean => {
+  if (!sound) return false;
+  const clean = sound.split("?")[0].replace(/\.mp3$/, "");
+  return /(?:^|\/)(?:section_intro|start_round)$/.test(clean);
+};
+
+export const isStartRoundCancelTrigger = (sound?: string): boolean => {
+  if (!sound) return false;
+  const clean = sound.split("?")[0].replace(/\.mp3$/, "");
+  return (
+    /(?:^|\/)(?:ready|open_question|show_row|choose_row|show_question|on_stage|choose_package|finish_turn)$/.test(clean) ||
+    isCountdownTrack(clean) ||
+    /kd_bgm_[123]$/.test(clean)
+  );
+};
+
 export const isIntroSeamlessLoopTrack = (sound: string): boolean => {
   if (!sound) return false;
   const clean = sound.split("?")[0].replace(/\.mp3$/, "");
@@ -526,51 +542,20 @@ export function getPrewarmBuzzerUrls(season: string = "O26"): string[] {
     `/olympia-audio/${effectiveSeason}/4_VeDich/correct.mp3`,
     `/olympia-audio/${effectiveSeason}/4_VeDich/wrong.mp3`,
     `/olympia-audio/${effectiveSeason}/4_VeDich/star_of_hope.mp3`,
-    // Non-priority round cues
+    // Short round transition / prompt cues (cached safely via CacheStorage without flooding HTMLAudio decoders)
+    `/olympia-audio/${effectiveSeason}/6_NhacKhac/section_intro.mp3`,
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/start_round.mp3`,
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/ready.mp3`,
     `/olympia-audio/${effectiveSeason}/1_KhoiDong/open_question.mp3`,
+    `/olympia-audio/${effectiveSeason}/1_KhoiDong/finish_turn.mp3`,
+    `/olympia-audio/${effectiveSeason}/2_VuotChuongNgaiVat/start_round.mp3`,
     `/olympia-audio/${effectiveSeason}/2_VuotChuongNgaiVat/choose_row.mp3`,
+    `/olympia-audio/${effectiveSeason}/3_TangToc/start_round.mp3`,
     `/olympia-audio/${effectiveSeason}/3_TangToc/show_question.mp3`,
     `/olympia-audio/${effectiveSeason}/3_TangToc/show_answer.mp3`,
+    `/olympia-audio/${effectiveSeason}/4_VeDich/start_round.mp3`,
     `/olympia-audio/${effectiveSeason}/4_VeDich/open_question.mp3`,
-    `/olympia-audio/${effectiveSeason}/6_NhacKhac/show_intro.mp3`,
-    `/olympia-audio/${effectiveSeason}/6_NhacKhac/contest_intro.mp3`,
-    `/olympia-audio/${effectiveSeason}/3_TangToc/tick_20s.mp3`,
-    `/olympia-audio/${effectiveSeason}/3_TangToc/tick_30s.mp3`,
   ];
-  if (effectiveSeason === "O22") {
-    rawList.push(
-      `/olympia-audio/O22/6_NhacKhac/contestant_intro.mp3`,
-      `/olympia-audio/O22/6_NhacKhac/section_intro.mp3`,
-      `/olympia-audio/O22/1_KhoiDong/start_round.mp3`,
-      `/olympia-audio/O22/1_KhoiDong/ready.mp3`,
-      `/olympia-audio/O22/1_KhoiDong/30s.mp3`,
-      `/olympia-audio/O22/1_KhoiDong/60s.mp3`,
-      `/olympia-audio/O22/1_KhoiDong/90s.mp3`,
-      `/olympia-audio/O22/1_KhoiDong/finish_turn.mp3`,
-      `/olympia-audio/O22/2_VuotChuongNgaiVat/start_round.mp3`,
-      `/olympia-audio/O22/2_VuotChuongNgaiVat/15s_tick.mp3`,
-      `/olympia-audio/O22/3_TangToc/start_round.mp3`,
-      `/olympia-audio/O22/3_TangToc/tick_10s.mp3`,
-      `/olympia-audio/O22/3_TangToc/tick_20s.mp3`,
-      `/olympia-audio/O22/3_TangToc/tick_30s.mp3`,
-      `/olympia-audio/O22/3_TangToc/tick_40s.mp3`,
-      `/olympia-audio/O22/4_VeDich/start_round.mp3`,
-      `/olympia-audio/O22/4_VeDich/on_stage.mp3`,
-      `/olympia-audio/O22/4_VeDich/choose_package.mp3`,
-      `/olympia-audio/O22/4_VeDich/15s_tick.mp3`,
-      `/olympia-audio/O22/4_VeDich/20s_tick.mp3`,
-      `/olympia-audio/O22/4_VeDich/30s_tick.mp3`,
-      `/olympia-audio/O22/4_VeDich/5s_steal.mp3`,
-      `/olympia-audio/O22/5_CauHoiPhu/15s_tick.mp3`,
-      `/olympia-audio/O22/6_NhacKhac/summary.mp3`,
-      `/olympia-audio/O22/6_NhacKhac/prize_award.mp3`
-    );
-  } else if (effectiveSeason !== "O26") {
-    rawList.push(
-      `/olympia-audio/${effectiveSeason}/3_TangToc/tick_10s.mp3`,
-      `/olympia-audio/${effectiveSeason}/3_TangToc/tick_40s.mp3`
-    );
-  }
   return Array.from(new Set(rawList.map(withOlympiaAudioVersion)));
 }
 
@@ -628,7 +613,9 @@ function prewarmSfx(url: string): Promise<void> {
         }
       }
 
-      if (!sfxAudioCache.has(versionedUrl)) {
+      // Only hold pooled <audio preload="auto"> elements for short instant SFX (bell/correct/wrong/star_of_hope)
+      // to keep browser media decoder slots completely free for round intro video & gameplay countdown tracks.
+      if (isPriorityInstantCue(versionedUrl) && !sfxAudioCache.has(versionedUrl)) {
         try {
           const a = new Audio(versionedUrl);
           a.preload = "auto";
@@ -753,6 +740,7 @@ export function useOlympiaAudio(
   const pendingShowIntroRef = useRef(false); // set when show_intro fired before audioSeason arrived
   const bgm = useRef<HTMLAudioElement | null>(null);
   const activeBgmSet = useRef<Set<HTMLAudioElement>>(new Set());
+  const activeRoundLeadAudioSet = useRef<Set<HTMLAudioElement>>(new Set());
   const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
   const activeAudioSet = useRef<Set<HTMLAudioElement>>(new Set());
   const activeIntroTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -1080,10 +1068,29 @@ export function useOlympiaAudio(
     [channel, getAudioContext]
   );
 
+  const stopRoundLeadTracks = useCallback((filter: "all" | "section_intro" | "start_round" = "all") => {
+    activeRoundLeadAudioSet.current.forEach((a) => {
+      const src = a.src || "";
+      const matchFilter =
+        filter === "all" ||
+        (filter === "section_intro" && src.includes("section_intro")) ||
+        (filter === "start_round" && src.includes("start_round"));
+      if (!matchFilter) return;
+      try {
+        a.pause();
+        a.currentTime = 0;
+        a.src = "";
+      } catch {}
+      activeRoundLeadAudioSet.current.delete(a);
+      activeAudioSet.current.delete(a);
+    });
+  }, []);
+
   const registerActive = useCallback((a: HTMLAudioElement) => {
     activeAudioSet.current.add(a);
     const cleanup = () => {
       activeAudioSet.current.delete(a);
+      activeRoundLeadAudioSet.current.delete(a);
     };
     a.addEventListener("ended", cleanup, { once: true });
     a.addEventListener("error", cleanup, { once: true });
@@ -1320,6 +1327,7 @@ export function useOlympiaAudio(
   useEffect(() => {
     if (!enabled) {
       pendingCueRef.current = null;
+      stopRoundLeadTracks("all");
       stopBgm(true);
       activeAudioSet.current.forEach((a) => {
         try {
@@ -1329,7 +1337,18 @@ export function useOlympiaAudio(
       });
       activeAudioSet.current.clear();
     }
-  }, [enabled, stopBgm]);
+  }, [enabled, stopBgm, stopRoundLeadTracks]);
+
+  // Dọn sạch âm thanh lead/intro mùa cũ khi đổi mùa thi đấu (system:setRuleset)
+  const prevAudioSeasonEffectRef = useRef<string>(resolvedSeason);
+  useEffect(() => {
+    if (prevAudioSeasonEffectRef.current !== resolvedSeason) {
+      prevAudioSeasonEffectRef.current = resolvedSeason;
+      pendingCueRef.current = null;
+      stopRoundLeadTracks("all");
+      stopBgm(true);
+    }
+  }, [resolvedSeason, stopBgm, stopRoundLeadTracks]);
 
   // Lắng nghe sự kiện đổi chế độ kênh âm thanh (Đều 2 bên / Lệch trái / Lệch phải) để cập nhật panner tức thì (nội bộ và liên tab)
   useEffect(() => {
@@ -1563,6 +1582,7 @@ export function useOlympiaAudio(
 
     if (cue.kind === "stop" || !cue.sound) {
       pendingCueRef.current = null;
+      stopRoundLeadTracks("all");
       stopBgm(true);
       activeAudioSet.current.forEach((a) => {
         try {
@@ -1574,8 +1594,26 @@ export function useOlympiaAudio(
       return;
     }
 
-    // Khi có âm thanh kết thúc lượt (finish_turn), lập tức dừng toàn bộ countdown BGM đang phát
+    // Single-Channel Round Lifecycle:
+    // 1. Khi bắt đầu intro vòng (section_intro): ngắt dứt điểm show_intro / contest_intro / contestant_intro / BGM cũ
+    // 2. Khi mở vòng (start_round): ngắt ngay section_intro & BGM intro cũ
+    // 3. Khi vào lượt thi/câu hỏi (ready, open_question, show_row, show_question, on_stage, countdown): ngắt ngay section_intro & start_round (không chạm BGM đếm giờ)
+    const isSectionIntroCue = /(?:^|\/)section_intro(?:\.mp3)?$/.test(cue.sound);
+    const isStartRoundCue = /(?:^|\/)start_round(?:\.mp3)?$/.test(cue.sound);
+    if (isSectionIntroCue) {
+      pendingCueRef.current = null;
+      stopRoundLeadTracks("all");
+      stopBgm(true);
+    } else if (isStartRoundCue) {
+      stopRoundLeadTracks("all");
+      stopBgm(true);
+    } else if (isStartRoundCancelTrigger(cue.sound)) {
+      stopRoundLeadTracks("all");
+    }
+
+    // Khi có âm thanh kết thúc lượt (finish_turn), lập tức dừng toàn bộ countdown BGM & lead track đang phát
     if (cue.sound.endsWith("finish_turn")) {
+      stopRoundLeadTracks("all");
       stopBgm(true);
     }
 
@@ -1651,8 +1689,19 @@ export function useOlympiaAudio(
       }
       connectPanner(a, currentChannel);
       registerActive(a);
+      if (isRoundLeadTrack(cue.sound)) {
+        activeRoundLeadAudioSet.current.add(a);
+      }
 
       a.onerror = () => {
+        activeAudioSet.current.delete(a);
+        activeBgmSet.current.delete(a);
+        activeRoundLeadAudioSet.current.delete(a);
+        if (bgm.current === a) bgm.current = null;
+        try {
+          a.pause();
+          a.src = "";
+        } catch {}
         // First try resolving closest valid timer track inside the same season (e.g., arrange/match duration in O22)
         const vdTickMatch = /^4_VeDich\/(\d+)s_tick$/.exec(cue.sound);
         const vdPracticeMatch = /^4_VeDich\/(\d+)s_practice$/.exec(cue.sound);
@@ -1760,6 +1809,7 @@ export function useOlympiaAudio(
     setupIntroSeamlessLoop,
     connectPanner,
     registerActive,
+    stopRoundLeadTracks,
   ]);
 
   useEffect(() => () => {

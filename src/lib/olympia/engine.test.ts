@@ -6,7 +6,12 @@ import path from "node:path";
 
 import { OlympiaGame, computeFinalSeatRanks, isPostMatchSummaryContext, stripVcnvLetterCount, getVcnvUnit } from "./engine";
 import { exportOlympiaSetToSheets, parseJsonSet, parseSheets } from "./excel-import";
-import { isPriorityInstantCue } from "../../components/olympia/hooks";
+import {
+  getPrewarmBuzzerUrls,
+  isPriorityInstantCue,
+  isRoundLeadTrack,
+  isStartRoundCancelTrigger,
+} from "../../components/olympia/hooks";
 
 import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
 
@@ -4515,6 +4520,69 @@ test("VCNV Studio-First opening, selector rotation, row grade metadata & CNV poi
   assert.equal(g.state.ttsCommand?.meta?.isCorrect, true);
   assert.equal(typeof g.state.ttsCommand?.meta?.pointsAwarded, "number");
   assert.ok((g.state.ttsCommand?.meta?.pointsAwarded as number) > 0);
+});
+
+test("Round-start performance, Sandbox banner unlock, single-channel lead audio & camera boundary timers", () => {
+  // 1. Single-channel round lead helpers prevent section_intro + start_round + gameplay BGM overlap
+  assert.equal(isRoundLeadTrack("1_KhoiDong/section_intro"), true);
+  assert.equal(isRoundLeadTrack("1_KhoiDong/start_round"), true);
+  assert.equal(isRoundLeadTrack("2_VCNV/start_round"), true);
+  assert.equal(isRoundLeadTrack("3_TangToc/section_intro"), true);
+  assert.equal(isRoundLeadTrack("1_KhoiDong/30s"), false);
+  assert.equal(isRoundLeadTrack("show_intro"), false);
+
+  assert.equal(isStartRoundCancelTrigger("1_KhoiDong/ready"), true);
+  assert.equal(isStartRoundCancelTrigger("1_KhoiDong/60s"), true);
+  assert.equal(isStartRoundCancelTrigger("2_VCNV/show_row"), true);
+  assert.equal(isStartRoundCancelTrigger("3_TangToc/open_question"), true);
+  assert.equal(isStartRoundCancelTrigger("4_VeDich/choose_package"), true);
+  assert.equal(isStartRoundCancelTrigger("6_NhacKhac/finish_turn"), true);
+  assert.equal(isStartRoundCancelTrigger("1_KhoiDong/start_round"), false);
+  assert.equal(isStartRoundCancelTrigger("1_KhoiDong/section_intro"), false);
+
+  // 2. Audio prewarm excludes heavy multi-MB gameplay BGMs so Chrome decoder pool doesn't stall
+  for (const season of ["O26", "O22", "O23", "O13-21"] as const) {
+    const urls = getPrewarmBuzzerUrls(season);
+    assert.ok(urls.length > 0 && urls.length < 36, `Prewarm list for ${season} must stay lean (got ${urls.length})`);
+    for (const heavy of ["30s.mp3", "60s.mp3", "90s.mp3", "summary.mp3", "prize_award.mp3"]) {
+      assert.equal(
+        urls.some((u) => u.includes(heavy)),
+        false,
+        `${season} prewarm must exclude heavy BGM ${heavy}`
+      );
+    }
+  }
+
+  // 3. Verify DisplayScreen unlocks Sandbox primary audio viewport banner dismissal & early preload
+  const displaySrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/DisplayScreen.tsx"), "utf-8");
+  assert.ok(
+    !displaySrc.includes("window.self !== window.top || isSandboxParam"),
+    "DisplayScreen must allow unmuted Sandbox/iframe primary viewport to emit banner:hide/skip instead of 10.5s stall"
+  );
+  assert.ok(
+    displaySrc.includes("if (isExplicitMuteParam)") && displaySrc.includes("Muted secondary viewports must not trigger global banner dismissal"),
+    "DisplayScreen BroadcastRoundIntroOverlay onDismiss must only block muted viewports"
+  );
+
+  // 4. Verify BroadcastRoundIntroOverlay puts cached/preferred WebM first and renders visible Title Card layer immediately
+  const vtv3Src = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/Vtv3BroadcastGraphics.tsx"), "utf-8");
+  assert.ok(vtv3Src.includes("preferWebmFirst"), "BroadcastRoundIntroOverlay must order cached/preferred WebM before MP4");
+  assert.ok(vtv3Src.includes("startWatchdog"), "BroadcastRoundIntroOverlay must include fast video-start watchdog fallback");
+  assert.ok(!vtv3Src.includes("handleDismiss();\n    }, 9500)") && !vtv3Src.includes("}, 9500);"), "Legacy 9.5s hang fallback must be tightened");
+
+  // 5. Verify hooks.ts wires single-channel activeRoundLeadAudioSet cutoff & skips decoder pooling for non-priority tracks
+  const hooksSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/hooks.ts"), "utf-8");
+  assert.ok(hooksSrc.includes("activeRoundLeadAudioSet"), "hooks.ts must track active round lead audio instances for hard cutoff");
+  assert.ok(hooksSrc.includes("stopRoundLeadTracks"), "hooks.ts must stop competing round lead tracks on phase transitions");
+
+  // 6. Verify useOlympiaCamera removes 33ms React tick storm during startCooldownUntil & CentralLedWall honors isPaused
+  const camSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/useOlympiaCamera.ts"), "utf-8");
+  assert.ok(
+    !camSrc.includes("getNow() >= state.khoiDong.startCooldownUntil - 150"),
+    "useOlympiaCamera must not hammer DisplayScreen with 33ms React re-renders during startCooldownUntil"
+  );
+  const wallSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/CentralLedWall.tsx"), "utf-8");
+  assert.ok(wallSrc.includes("if (isPaused)") && wallSrc.includes("!isPaused && mathWallVideoTexture"), "CentralLedWall must pause math wall video when 3D scene is paused");
 });
 
 // Import Smart TTS test suite

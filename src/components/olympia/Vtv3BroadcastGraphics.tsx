@@ -6,7 +6,7 @@ import { ROUND_LABELS, type HostAction, type OlympiaState, type Seat, type Timer
 import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount, getVcnvUnit } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
-import { getPreloadedVideoUrl } from "@/lib/olympia/assetCache";
+import { getPreferredIntroFormat, getPreloadedVideoUrl, isPreloadedVideoReady } from "@/lib/olympia/assetCache";
 import { HopeStarBadge } from "./HopeStarBadge";
 
 /**
@@ -383,7 +383,7 @@ export const ROUND_FALLBACK_VIDEOS: Record<string, string> = {
  * Câu Hỏi Phụ (cauHoiPhu) has no intro video or banner.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-export function BroadcastRoundIntroOverlay({
+export const BroadcastRoundIntroOverlay = React.memo(function BroadcastRoundIntroOverlay({
   state,
   serverNow,
   onDismiss,
@@ -396,17 +396,32 @@ export function BroadcastRoundIntroOverlay({
   const isChp = round === "cauHoiPhu";
   const isValidRound = Boolean(round && !isChp);
 
-  const mp4Src = isValidRound && round ? (getPreloadedVideoUrl(round, "mp4") || ROUND_MP4_VIDEOS[round] || null) : null;
+  const preferredFormat = getPreferredIntroFormat();
+  const webmCached = isValidRound && round ? isPreloadedVideoReady(round, "webm") : false;
+  const mp4Cached = isValidRound && round ? isPreloadedVideoReady(round, "mp4") : false;
   const webmSrc = isValidRound && round ? (getPreloadedVideoUrl(round, "webm") || ROUND_VIDEOS[round] || null) : null;
+  const mp4Src = isValidRound && round ? (getPreloadedVideoUrl(round, "mp4") || ROUND_MP4_VIDEOS[round] || null) : null;
+
+  // Order cached / browser-preferred format first so Chrome decodes cached WebM instead of stalling on uncached MP4
+  const preferWebmFirst = webmCached || (!mp4Cached && preferredFormat === "webm");
+  const primaryVideoSource = preferWebmFirst
+    ? (webmSrc ? { src: webmSrc, type: "video/webm" } : mp4Src ? { src: mp4Src, type: "video/mp4" } : null)
+    : (mp4Src ? { src: mp4Src, type: "video/mp4" } : webmSrc ? { src: webmSrc, type: "video/webm" } : null);
+  const secondaryVideoSource = preferWebmFirst
+    ? (mp4Src && mp4Src !== primaryVideoSource?.src ? { src: mp4Src, type: "video/mp4" } : null)
+    : (webmSrc && webmSrc !== primaryVideoSource?.src ? { src: webmSrc, type: "video/webm" } : null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
   const dismissedRef = useRef(false);
+  const isPlayingRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
+  isPlayingRef.current = isPlaying;
 
   useEffect(() => {
     setIsPlaying(false);
+    isPlayingRef.current = false;
     setHasError(false);
     dismissedRef.current = false;
   }, [round, state.bannerSeq]);
@@ -425,6 +440,19 @@ export function BroadcastRoundIntroOverlay({
     },
     [state.bannerSeq]
   );
+
+  // Fast video start watchdog: if <video> hasn't started decoding within 450ms (800ms if cached),
+  // abort waiting on slow/stalled video decode so the visible Title Card handles the full duration cleanly.
+  useEffect(() => {
+    if (state.stage !== "playing" || !state.banner || !isValidRound || isPlaying || hasError) return;
+    const waitMs = webmCached || mp4Cached ? 800 : 450;
+    const startWatchdog = setTimeout(() => {
+      if (!isPlayingRef.current) {
+        setHasError(true);
+      }
+    }, waitMs);
+    return () => clearTimeout(startWatchdog);
+  }, [state.stage, state.banner, state.bannerSeq, isValidRound, isPlaying, hasError, webmCached, mp4Cached]);
 
   // Video playback timer: counts down once video actually starts playing (onPlaying)
   // Matching 7.66s video duration + 200ms graceful hold
@@ -448,88 +476,93 @@ export function BroadcastRoundIntroOverlay({
     return () => clearTimeout(timer);
   }, [hasError, handleDismiss, state.banner, state.stage, state.bannerStartedAt, serverNow]);
 
-  // Safety mount fallback: if video stalls or fails to trigger onPlaying for 9.5s
+  // Safety mount fallback: if video stalls or fails to trigger onPlaying for 8.5s
   useEffect(() => {
     if (state.stage !== "playing" || !state.banner) return;
     const fallbackTimer = setTimeout(() => {
       handleDismiss();
-    }, 9500);
+    }, 8500);
     return () => clearTimeout(fallbackTimer);
   }, [state.bannerSeq, state.banner, state.stage, handleDismiss]);
 
-  if (state.stage !== "playing" || !state.banner || isChp || (!mp4Src && !webmSrc)) {
+  if (state.stage !== "playing" || !state.banner || isChp) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none pointer-events-none">
-      {!hasError ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010410] overflow-hidden select-none pointer-events-none">
+      {/* Always keep Animated Title Card rendered as base layer from frame 0 so buffering never shows a pitch-black stall */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#020b22] via-[#010410] to-[#000000] z-10 text-center px-4 overflow-hidden pointer-events-none">
+        {/* Ambient luminous aura */}
+        <div className="absolute w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none animate-pulse" />
+        <div className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
+        {/* Laurel & Shield Badge */}
+        <div className="relative mb-6 flex items-center justify-center">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-amber-400/60 bg-gradient-to-b from-amber-500/20 to-transparent flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.3)]">
+            <img
+              src="/brand/olympia_laurel_2016.webp"
+              alt="Olympia"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = "none";
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Sub-label */}
+        <div className="text-amber-400/90 uppercase tracking-[0.35em] text-xs sm:text-sm font-semibold mb-3 drop-shadow">
+          ĐƯỜNG LÊN ĐỈNH OLYMPIA
+        </div>
+
+        {/* Main Round Title */}
+        <h1
+          className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-100 to-amber-300 tracking-wider uppercase drop-shadow-[0_5px_25px_rgba(245,158,11,0.4)]"
+          style={{
+            fontFamily: "var(--font-heading, Arial, sans-serif)",
+            letterSpacing: "0.06em",
+          }}
+        >
+          {state.banner || (round ? ROUND_LABELS[round] : "")}
+        </h1>
+
+        {/* Elegant metallic divider & progress shimmer */}
+        <div className="mt-6 w-64 sm:w-96 h-1 rounded-full bg-slate-800 relative overflow-hidden shadow-inner">
+          <div
+            className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-500 rounded-full"
+            style={{
+              animation: "shimmerSweep 2s ease-in-out infinite, pulse-gold 2s ease-in-out infinite",
+              width: "100%",
+            }}
+          />
+        </div>
+      </div>
+
+      {!hasError && primaryVideoSource && (
         <video
           key={`round-intro-video-${state.bannerSeq ?? 0}`}
           autoPlay
           playsInline
           muted
+          preload="auto"
           loop={false}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-300 ${
+          className={`relative z-20 w-full h-full object-cover pointer-events-none transition-opacity duration-300 ${
             isPlaying ? "opacity-100" : "opacity-0"
           }`}
-          onPlaying={() => setIsPlaying(true)}
+          onPlaying={() => {
+            isPlayingRef.current = true;
+            setIsPlaying(true);
+          }}
           onEnded={() => handleDismiss()}
           onError={() => {
             console.warn("[BroadcastRoundIntroOverlay] Video decode error detected, engaging broadcast title card fallback");
             setHasError(true);
           }}
         >
-          {mp4Src && <source src={mp4Src} type="video/mp4" />}
-          {webmSrc && <source src={webmSrc} type="video/webm" />}
+          <source src={primaryVideoSource.src} type={primaryVideoSource.type} />
+          {secondaryVideoSource && <source src={secondaryVideoSource.src} type={secondaryVideoSource.type} />}
         </video>
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#020b22] via-[#010410] to-[#000000] z-20 text-center px-4 overflow-hidden pointer-events-none">
-          {/* Ambient luminous aura */}
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none animate-pulse" />
-          <div className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
-
-          {/* Laurel & Shield Badge */}
-          <div className="relative mb-6 flex items-center justify-center">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-amber-400/60 bg-gradient-to-b from-amber-500/20 to-transparent flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.3)]">
-              <img
-                src="/brand/olympia_laurel_2016.webp"
-                alt="Olympia"
-                className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = "none";
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Sub-label */}
-          <div className="text-amber-400/90 uppercase tracking-[0.35em] text-xs sm:text-sm font-semibold mb-3 drop-shadow">
-            ĐƯỜNG LÊN ĐỈNH OLYMPIA
-          </div>
-
-          {/* Main Round Title */}
-          <h1
-            className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-100 to-amber-300 tracking-wider uppercase drop-shadow-[0_5px_25px_rgba(245,158,11,0.4)]"
-            style={{
-              fontFamily: "var(--font-heading, Arial, sans-serif)",
-              letterSpacing: "0.06em",
-            }}
-          >
-            {state.banner || (round ? ROUND_LABELS[round] : "")}
-          </h1>
-
-          {/* Elegant metallic divider & progress shimmer */}
-          <div className="mt-6 w-64 sm:w-96 h-1 rounded-full bg-slate-800 relative overflow-hidden shadow-inner">
-            <div
-              className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-500 rounded-full"
-              style={{
-                animation: "shimmerSweep 2s ease-in-out infinite, pulse-gold 2s ease-in-out infinite",
-                width: "100%",
-              }}
-            />
-          </div>
-        </div>
       )}
 
       {/* Explicit skip button for operators / testing without accidental clicks */}
@@ -546,7 +579,7 @@ export function BroadcastRoundIntroOverlay({
       </button>
     </div>
   );
-}
+});
 
 /**
  * Fixed standard broadcast question font-size with auto-shrink fallback for very long questions.

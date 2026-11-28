@@ -432,10 +432,7 @@ export function useOlympiaCameraState(
       isRoundPostIntroStandby(state, getNow()) ||
       hasActiveBuzzer ||
       isThinking ||
-      (state?.currentRound === "khoiDong" &&
-        state?.khoiDong &&
-        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil + 2500) ||
-          state.khoiDong.phase === "segmentDone")) ||
+      (state?.currentRound === "khoiDong" && state?.khoiDong?.phase === "segmentDone") ||
       Boolean(state?.summaryState?.active) ||
       (state?.currentRound === "veDich" &&
         state?.veDich &&
@@ -444,13 +441,11 @@ export function useOlympiaCameraState(
           state.veDich.phase === "packageReady"))
   );
 
+  // Only run 30fps React ticker during brief segmentDone CAM 18 optical push (1.5s at end of turn).
+  // startCooldownUntil (CAM 14 -> CAM 10 -> curved orbit) runs purely at 60fps inside CameraController useFrame
+  // using exact boundary timeouts below, avoiding full DisplayScreen re-render storms on round start.
   const isHighFreqCameraTransition = Boolean(
-    state?.currentRound === "khoiDong" &&
-      state?.khoiDong &&
-      (state.khoiDong.phase === "segmentDone" ||
-        (state.khoiDong.startCooldownUntil != null &&
-          getNow() >= state.khoiDong.startCooldownUntil - 150 &&
-          getNow() < state.khoiDong.startCooldownUntil + 2600))
+    state?.currentRound === "khoiDong" && state?.khoiDong?.phase === "segmentDone"
   );
 
   useEffect(() => {
@@ -461,6 +456,24 @@ export function useOlympiaCameraState(
     );
     return () => clearInterval(id);
   }, [needsTimedCameraTicker, isHighFreqCameraTransition]);
+
+  // Exact boundary timers for Khởi Động startCooldownUntil (3.5s sweep end + 2.5s curved orbit end)
+  useEffect(() => {
+    if (state?.currentRound !== "khoiDong") return;
+    const cooldownUntil = state?.khoiDong?.startCooldownUntil;
+    if (!cooldownUntil) return;
+    const now = getNow();
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (now < cooldownUntil) {
+      timers.push(setTimeout(() => setTick((t) => (t + 1) % 100000), cooldownUntil - now + 16));
+    }
+    if (now < cooldownUntil + 2500) {
+      timers.push(setTimeout(() => setTick((t) => (t + 1) % 100000), cooldownUntil + 2500 - now + 16));
+    }
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [state?.currentRound, state?.khoiDong?.startCooldownUntil]);
 
   const baseCameraState = useMemo<OlympiaCameraState>(() => {
     // Default fallback

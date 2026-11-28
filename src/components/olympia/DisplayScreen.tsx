@@ -691,12 +691,12 @@ export default function DisplayScreen({ code }: { code: string }) {
                 void preloadOlympiaIntroVideos({ signal: controller.signal });
               }
             },
-            { timeout: 1500 }
+            { timeout: 1000 }
           );
         } else {
           void preloadOlympiaIntroVideos({ signal: controller.signal });
         }
-      }, 2000);
+      }, 400);
     });
 
     return () => {
@@ -2606,8 +2606,9 @@ export default function DisplayScreen({ code }: { code: string }) {
         state={state}
         serverNow={serverNow}
         onDismiss={(opts) => {
-          if (typeof window !== "undefined" && (window.self !== window.top || isSandboxParam)) {
-            // Embedded preview/sandbox iframes must not trigger global banner dismissal
+          if (isExplicitMuteParam) {
+            // Muted secondary viewports must not trigger global banner dismissal;
+            // primary audio viewport (including Sandbox audio=1 viewport) owns banner lifecycle.
             return;
           }
           if (opts?.isSkip) {
